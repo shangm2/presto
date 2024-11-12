@@ -76,4 +76,7 @@ public class RuntimeMetricName
     public static final String DIRECTORY_LISTING_CACHE_MISS = "directoryListingCacheMiss";
     public static final String DIRECTORY_LISTING_TIME_NANOS = "directoryListingTimeNanos";
     public static final String FILES_READ_COUNT = "filesReadCount";
+    public static final String TASK_RESOURCE_UPDATE_TASK = "taskResourceUpdateTaskTimeNanos";
+    public static final String SQL_TASK_UPDATE_TASK = "sqlTaskUpdateTaskTimeNanos";
+    public static final String SQL_TASK_CREATE_TASK_EXECUTION = "sqlTaskCreateTaskExecution";
 }

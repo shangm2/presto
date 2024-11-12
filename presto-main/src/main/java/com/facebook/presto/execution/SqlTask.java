@@ -59,6 +59,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.facebook.presto.common.RuntimeMetricName.SQL_TASK_CREATE_TASK_EXECUTION;
+import static com.facebook.presto.common.RuntimeUnit.NANO;
 import static com.facebook.presto.execution.TaskState.ABORTED;
 import static com.facebook.presto.execution.TaskState.FAILED;
 import static com.facebook.presto.util.Failures.toFailures;
@@ -435,6 +437,7 @@ public class SqlTask
             OutputBuffers outputBuffers,
             Optional<TableWriteInfo> tableWriteInfo)
     {
+
         try {
             // The LazyOutput buffer does not support write methods, so the actual
             // output buffer must be established before drivers are created (e.g.
@@ -443,6 +446,7 @@ public class SqlTask
 
             // assure the task execution is only created once
             SqlTaskExecution taskExecution;
+            long start = System.nanoTime();
             synchronized (this) {
                 // is task already complete?
                 TaskHolder taskHolder = taskHolderReference.get();
@@ -466,6 +470,7 @@ public class SqlTask
                     needsPlan.set(false);
                 }
             }
+            queryContext.getTaskContextByTaskId(taskExecution.getTaskId()).getRuntimeStats().addMetricValue(SQL_TASK_CREATE_TASK_EXECUTION, NANO,System.nanoTime() - start);
 
             if (taskExecution != null) {
                 taskExecution.addSources(sources);
