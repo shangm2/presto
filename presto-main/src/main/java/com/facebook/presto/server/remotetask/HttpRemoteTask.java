@@ -95,6 +95,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -234,6 +235,8 @@ public final class HttpRemoteTask
     private final DecayCounter taskUpdateRequestSize;
     private final SchedulerStatsTracker schedulerStatsTracker;
 
+    private final ExecutorService taskExecutorService;
+
     public HttpRemoteTask(
             Session session,
             TaskId taskId,
@@ -245,6 +248,7 @@ public final class HttpRemoteTask
             OutputBuffers outputBuffers,
             HttpClient httpClient,
             Executor executor,
+            ExecutorService taskExecutorService,
             ScheduledExecutorService updateScheduledExecutor,
             ScheduledExecutorService errorScheduledExecutor,
             Duration maxErrorDuration,
@@ -298,6 +302,7 @@ public final class HttpRemoteTask
         requireNonNull(connectorTypeSerdeManager, "connectorTypeSerdeManager is null");
         requireNonNull(taskUpdateRequestSize, "taskUpdateRequestSize cannot be null");
         requireNonNull(schedulerStatsTracker, "schedulerStatsTracker is null");
+        requireNonNull(taskExecutorService, "taskExecutorService is null");
 
         try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
             this.taskId = taskId;
@@ -309,6 +314,7 @@ public final class HttpRemoteTask
             this.outputBuffers.set(outputBuffers);
             this.httpClient = httpClient;
             this.executor = executor;
+            this.taskExecutorService = taskExecutorService;
             this.errorScheduledExecutor = errorScheduledExecutor;
             this.summarizeTaskInfo = summarizeTaskInfo;
             this.taskInfoCodec = taskInfoCodec;
@@ -980,40 +986,44 @@ public final class HttpRemoteTask
         }
     }
 
-    private synchronized void cleanUpTask()
+    private void cleanUpTask()
     {
-        checkState(getTaskStatus().getState().isDone(), "attempt to clean up a task that is not done yet");
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                checkState(getTaskStatus().getState().isDone(), "attempt to clean up a task that is not done yet");
 
-        // clear pending splits to free memory
-        pendingSplits.clear();
-        pendingSourceSplitCount = 0;
-        pendingSourceSplitsWeight = 0;
-        updateTaskStats();
-        splitQueueHasSpace = true;
-        whenSplitQueueHasSpace.complete(null, executor);
+                // clear pending splits to free memory
+                pendingSplits.clear();
+                pendingSourceSplitCount = 0;
+                pendingSourceSplitsWeight = 0;
+                updateTaskStats();
+                splitQueueHasSpace = true;
+                whenSplitQueueHasSpace.complete(null, executor);
 
-        // cancel pending request
-        if (currentRequest != null) {
-            // do not terminate if the request is already running to avoid closing pooled connections
-            currentRequest.cancel(false);
-            currentRequest = null;
-            currentRequestStartNanos = 0;
-        }
+                // cancel pending request
+                if (currentRequest != null) {
+                    // do not terminate if the request is already running to avoid closing pooled connections
+                    currentRequest.cancel(false);
+                    currentRequest = null;
+                    currentRequestStartNanos = 0;
+                }
 
-        taskStatusFetcher.stop();
+                taskStatusFetcher.stop();
 
-        // The remote task is likely to get a delete from the PageBufferClient first.
-        // We send an additional delete anyway to get the final TaskInfo
-        HttpUriBuilder uriBuilder = getHttpUriBuilder(getTaskStatus());
-        Request.Builder requestBuilder = setContentTypeHeaders(binaryTransportEnabled, prepareDelete());
-        if (taskInfoThriftTransportEnabled) {
-            requestBuilder = ThriftRequestUtils.prepareThriftDelete(Protocol.BINARY);
-        }
-        Request request = requestBuilder
-                .setUri(uriBuilder.build())
-                .build();
+                // The remote task is likely to get a delete from the PageBufferClient first.
+                // We send an additional delete anyway to get the final TaskInfo
+                HttpUriBuilder uriBuilder = getHttpUriBuilder(getTaskStatus());
+                Request.Builder requestBuilder = setContentTypeHeaders(binaryTransportEnabled, prepareDelete());
+                if (taskInfoThriftTransportEnabled) {
+                    requestBuilder = ThriftRequestUtils.prepareThriftDelete(Protocol.BINARY);
+                }
+                Request request = requestBuilder
+                        .setUri(uriBuilder.build())
+                        .build();
 
-        scheduleAsyncCleanupRequest(createCleanupBackoff(), request, "cleanup");
+                scheduleAsyncCleanupRequest(createCleanupBackoff(), request, "cleanup");
+            }
+        });
     }
 
     @Override
