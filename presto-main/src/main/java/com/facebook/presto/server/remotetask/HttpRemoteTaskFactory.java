@@ -56,16 +56,23 @@ import org.weakref.jmx.Nested;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 public class HttpRemoteTaskFactory
@@ -101,6 +108,12 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
+    private final ConcurrentHashMap<TaskId, ExecutorService> activeTaskExecutor = new ConcurrentHashMap<>();
+    private final BlockingQueue<ExecutorService> availableTaskExecutors = new LinkedBlockingQueue<>();
+    private final AtomicInteger numberOfExistingExecutorService = new AtomicInteger(0);
+    private final Queue<HttpRemoteTask> blockedTasks = new ConcurrentLinkedQueue<>();
+    //TODO: use configurator to set this value
+    private final int maxAllowedTaskExecutorService = 1000;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -199,12 +212,28 @@ public class HttpRemoteTaskFactory
         return taskUpdateRequestSize.getCount();
     }
 
+    @Managed
+    public int getRunningTaskExecutorCount()
+    {
+        return numberOfExistingExecutorService.get();
+    }
+
     @PreDestroy
     public void stop()
     {
         coreExecutor.shutdownNow();
         updateScheduledExecutor.shutdownNow();
         errorScheduledExecutor.shutdownNow();
+
+        for (ExecutorService executorService : activeTaskExecutor.values()) {
+            executorService.shutdownNow();
+        }
+        activeTaskExecutor.clear();
+
+        for (ExecutorService executorService : availableTaskExecutors) {
+            executorService.shutdownNow();
+        }
+        availableTaskExecutors.clear();
     }
 
     @Override
@@ -220,7 +249,7 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
-        return new HttpRemoteTask(
+        HttpRemoteTask remoteTask = new HttpRemoteTask(
                 session,
                 taskId,
                 node.getNodeIdentifier(),
@@ -231,6 +260,8 @@ public class HttpRemoteTaskFactory
                 outputBuffers,
                 httpClient,
                 executor,
+                null,
+                () -> releaseTaskExecutor(taskId),
                 updateScheduledExecutor,
                 errorScheduledExecutor,
                 maxErrorDuration,
@@ -258,5 +289,38 @@ public class HttpRemoteTaskFactory
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker);
+
+        ExecutorService singleThreadExecutor = availableTaskExecutors.poll();
+        if (singleThreadExecutor == null && numberOfExistingExecutorService.get() < maxAllowedTaskExecutorService) {
+            singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
+            numberOfExistingExecutorService.incrementAndGet();
+        }
+
+        if (singleThreadExecutor != null) {
+            activeTaskExecutor.put(taskId, singleThreadExecutor);
+            remoteTask.setTaskExecutorService(singleThreadExecutor);
+            remoteTask.startInitialization();
+        }
+        else {
+            blockedTasks.offer(remoteTask);
+        }
+
+        return remoteTask;
+    }
+
+    private void releaseTaskExecutor(TaskId taskId)
+    {
+        ExecutorService executorService = activeTaskExecutor.remove(taskId);
+        if (executorService != null) {
+            HttpRemoteTask remoteTask = blockedTasks.poll();
+            if (remoteTask != null) {
+                activeTaskExecutor.put(remoteTask.getTaskId(), executorService);
+                remoteTask.setTaskExecutorService(executorService);
+                remoteTask.startInitialization();
+            }
+            else {
+                availableTaskExecutors.offer(executorService);
+            }
+        }
     }
 }
