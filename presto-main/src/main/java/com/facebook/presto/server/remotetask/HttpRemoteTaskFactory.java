@@ -19,6 +19,7 @@ import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
+import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.stats.DecayCounter;
 import com.facebook.airlift.stats.ExponentialDecay;
 import com.facebook.drift.codec.ThriftCodec;
@@ -56,21 +57,28 @@ import org.weakref.jmx.Nested;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class HttpRemoteTaskFactory
         implements RemoteTaskFactory
 {
+    private static final Logger log = Logger.get(HttpRemoteTaskFactory.class);
     private final HttpClient httpClient;
     private final LocationFactory locationFactory;
     private final Codec<TaskStatus> taskStatusCodec;
@@ -101,6 +109,11 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
+    private final ConcurrentHashMap<TaskId, ExecutorService> activeTaskExecutor = new ConcurrentHashMap<>();
+    //TODO: use config file to set this value
+    private final AtomicInteger maxAllowedTaskExecutor = new AtomicInteger(1000);
+    private final ScheduledExecutorService cleanUpExecutor;
+    private static final Duration CLEAN_UP_INTERVAL = Duration.valueOf("2s");
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -184,6 +197,8 @@ public class HttpRemoteTaskFactory
         this.updateScheduledExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("task-info-update-scheduler-%s"));
         this.errorScheduledExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("remote-task-error-delay-%s"));
         this.taskUpdateRequestSize = new DecayCounter(ExponentialDecay.oneMinute());
+        this.cleanUpExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("task-executor-cleanup-%s"));
+        this.cleanUpExecutor.scheduleWithFixedDelay(this::cleanUpStoppedExecutor, CLEAN_UP_INTERVAL.toMillis(), CLEAN_UP_INTERVAL.toMillis(), MILLISECONDS);
     }
 
     @Managed
@@ -199,12 +214,25 @@ public class HttpRemoteTaskFactory
         return taskUpdateRequestSize.getCount();
     }
 
+    @Managed
+    public int getMaxAllowedExecutorCount()
+    {
+        return maxAllowedTaskExecutor.get();
+    }
+
     @PreDestroy
     public void stop()
     {
+        cleanUpExecutor.shutdownNow();
+
         coreExecutor.shutdownNow();
         updateScheduledExecutor.shutdownNow();
         errorScheduledExecutor.shutdownNow();
+
+        for (ExecutorService executorService : activeTaskExecutor.values()) {
+            executorService.shutdownNow();
+        }
+        activeTaskExecutor.clear();
     }
 
     @Override
@@ -220,6 +248,20 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
+        while (maxAllowedTaskExecutor.get() < 1) {
+            try {
+                Thread.sleep(10);
+            }
+            catch (InterruptedException e) {
+                log.warn(e, "interrupted while waiting for executor to run");
+            }
+        }
+        if (!maxAllowedTaskExecutor.compareAndSet(maxAllowedTaskExecutor.get(), maxAllowedTaskExecutor.get() - 1)) {
+            return createRemoteTask(session, taskId, node, fragment, initialSplits, outputBuffers, nodeStatsTracker, summarizeTaskInfo, tableWriteInfo, schedulerStatsTracker);
+        }
+
+        ExecutorService singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
+        activeTaskExecutor.put(taskId, singleThreadExecutor);
         return new HttpRemoteTask(
                 session,
                 taskId,
@@ -231,6 +273,7 @@ public class HttpRemoteTaskFactory
                 outputBuffers,
                 httpClient,
                 executor,
+                singleThreadExecutor,
                 updateScheduledExecutor,
                 errorScheduledExecutor,
                 maxErrorDuration,
@@ -258,5 +301,27 @@ public class HttpRemoteTaskFactory
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker);
+    }
+
+    private void cleanUpStoppedExecutor()
+    {
+        try {
+            Iterator<Map.Entry<TaskId, ExecutorService>> iterator = activeTaskExecutor.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<TaskId, ExecutorService> entry = iterator.next();
+                ExecutorService executorService = entry.getValue();
+                TaskId taskId = entry.getKey();
+
+                if (executorService.isShutdown() || executorService.isTerminated()) {
+                    log.debug("clean up stopped executor for task %s", taskId);
+                    iterator.remove();
+                    executorService.shutdownNow();
+                    maxAllowedTaskExecutor.incrementAndGet();
+                }
+            }
+        }
+        catch (Exception e) {
+            log.warn(e, "error cleaning up stopped executor");
+        }
     }
 }
