@@ -56,10 +56,14 @@ import org.weakref.jmx.Nested;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
@@ -101,6 +105,10 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
+    private final ConcurrentHashMap<TaskId, Thread> activeTaskThreads = new ConcurrentHashMap<>();
+    private final BlockingQueue<Thread> availableThreads = new LinkedBlockingQueue<>();
+    private final AtomicInteger threadCounter = new AtomicInteger();
+    private final int maxAllowedThreads;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -139,6 +147,10 @@ public class HttpRemoteTaskFactory
         this.coreExecutor = newCachedThreadPool(daemonThreadsNamed("remote-task-callback-%s"));
         this.executor = new BoundedExecutor(coreExecutor, config.getRemoteTaskMaxCallbackThreads());
         this.executorMBean = new ThreadPoolExecutorMBean((ThreadPoolExecutor) coreExecutor);
+
+        this.maxAllowedThreads = config.getRemoteTaskMaxCallbackThreads();
+        createNewThreadIfNeeded();
+
         this.stats = requireNonNull(stats, "stats is null");
         requireNonNull(communicationConfig, "communicationConfig is null");
         binaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
@@ -205,6 +217,9 @@ public class HttpRemoteTaskFactory
         coreExecutor.shutdownNow();
         updateScheduledExecutor.shutdownNow();
         errorScheduledExecutor.shutdownNow();
+
+        availableThreads.clear();
+        activeTaskThreads.clear();
     }
 
     @Override
@@ -220,6 +235,7 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
+        Thread taskThread = getTaskThread(taskId);
         return new HttpRemoteTask(
                 session,
                 taskId,
@@ -231,6 +247,8 @@ public class HttpRemoteTaskFactory
                 outputBuffers,
                 httpClient,
                 executor,
+                taskThread,
+                () -> releaseTaskThread(taskId),
                 updateScheduledExecutor,
                 errorScheduledExecutor,
                 maxErrorDuration,
@@ -258,5 +276,31 @@ public class HttpRemoteTaskFactory
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker);
+    }
+
+    private Thread getTaskThread(TaskId taskId)
+    {
+        Thread existingThread = activeTaskThreads.get(taskId);
+        return existingThread;
+    }
+
+    private void createNewThreadIfNeeded()
+    {
+        int currentThreadCount = threadCounter.get();
+        if (currentThreadCount < maxAllowedThreads) {
+            if (threadCounter.compareAndSet(currentThreadCount, currentThreadCount + 1)) {
+                Thread newThread = new Thread(null, "remote-task-callback-" + currentThreadCount);
+                newThread.setDaemon(true);
+                availableThreads.offer(newThread);
+            }
+        }
+    }
+
+    private void releaseTaskThread(TaskId taskId)
+    {
+        Thread thread = activeTaskThreads.remove(taskId);
+        if (thread != null) {
+            availableThreads.offer(thread);
+        }
     }
 }
