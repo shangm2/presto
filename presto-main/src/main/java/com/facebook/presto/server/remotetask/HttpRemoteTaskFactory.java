@@ -19,7 +19,6 @@ import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
-import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.stats.DecayCounter;
 import com.facebook.airlift.stats.ExponentialDecay;
 import com.facebook.drift.codec.ThriftCodec;
@@ -57,28 +56,21 @@ import org.weakref.jmx.Nested;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
 import static java.lang.Math.toIntExact;
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 public class HttpRemoteTaskFactory
         implements RemoteTaskFactory
 {
-    private static final Logger log = Logger.get(HttpRemoteTaskFactory.class);
     private final HttpClient httpClient;
     private final LocationFactory locationFactory;
     private final Codec<TaskStatus> taskStatusCodec;
@@ -109,10 +101,6 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
-    private final ConcurrentHashMap<TaskId, ExecutorService> activeTaskExecutor = new ConcurrentHashMap<>();
-    private final BlockingQueue<ExecutorService> availableTaskExecutors = new LinkedBlockingQueue<>();
-    private final AtomicInteger numberOfExistingExecutorService = new AtomicInteger(0);
-    private final int maxAllowedThreads;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -151,7 +139,6 @@ public class HttpRemoteTaskFactory
         this.coreExecutor = newCachedThreadPool(daemonThreadsNamed("remote-task-callback-%s"));
         this.executor = new BoundedExecutor(coreExecutor, config.getRemoteTaskMaxCallbackThreads());
         this.executorMBean = new ThreadPoolExecutorMBean((ThreadPoolExecutor) coreExecutor);
-        this.maxAllowedThreads = config.getRemoteTaskMaxCallbackThreads();
         this.stats = requireNonNull(stats, "stats is null");
         requireNonNull(communicationConfig, "communicationConfig is null");
         binaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
@@ -218,16 +205,6 @@ public class HttpRemoteTaskFactory
         coreExecutor.shutdownNow();
         updateScheduledExecutor.shutdownNow();
         errorScheduledExecutor.shutdownNow();
-
-        for (ExecutorService executorService : activeTaskExecutor.values()) {
-            executorService.shutdownNow();
-        }
-        activeTaskExecutor.clear();
-
-        for (ExecutorService executorService : availableTaskExecutors) {
-            executorService.shutdownNow();
-        }
-        availableTaskExecutors.clear();
     }
 
     @Override
@@ -243,23 +220,6 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
-        ExecutorService singleThreadExecutor = availableTaskExecutors.poll();
-        if (singleThreadExecutor == null) {
-            if (numberOfExistingExecutorService.get() < maxAllowedThreads) {
-                singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
-                numberOfExistingExecutorService.incrementAndGet();
-            }
-            else {
-                try {
-                    singleThreadExecutor = availableTaskExecutors.take();
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.info(format("Thread was interrupted while waiting for an available executor: %s", e.getMessage()));
-                }
-            }
-        }
-        activeTaskExecutor.put(taskId, singleThreadExecutor);
         return new HttpRemoteTask(
                 session,
                 taskId,
@@ -271,7 +231,6 @@ public class HttpRemoteTaskFactory
                 outputBuffers,
                 httpClient,
                 executor,
-                singleThreadExecutor,
                 updateScheduledExecutor,
                 errorScheduledExecutor,
                 maxErrorDuration,
