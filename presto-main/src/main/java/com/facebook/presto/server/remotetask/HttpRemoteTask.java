@@ -1016,6 +1016,7 @@ public final class HttpRemoteTask
                 try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
                     TaskStatus taskStatus = getTaskStatus();
                     if (taskStatus.getState().isDone()) {
+                        releaseExecutorService.run();
                         return;
                     }
 
