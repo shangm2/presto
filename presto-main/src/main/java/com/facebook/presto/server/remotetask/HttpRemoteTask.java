@@ -135,7 +135,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.util.concurrent.Futures.addCallback;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Math.addExact;
 import static java.lang.String.format;
@@ -712,17 +711,25 @@ public final class HttpRemoteTask
     @Override
     public ListenableFuture<?> whenSplitQueueHasSpace(long weightThreshold)
     {
-        if (whenSplitQueueHasSpaceThreshold.isPresent()) {
-            checkArgument(weightThreshold == whenSplitQueueHasSpaceThreshold.getAsLong(), "Multiple split queue space notification thresholds not supported");
-        }
-        else {
-            whenSplitQueueHasSpaceThreshold = OptionalLong.of(weightThreshold);
-            updateSplitQueueSpace();
-        }
-        if (splitQueueHasSpace) {
-            return immediateFuture(null);
-        }
-        return whenSplitQueueHasSpace.createNewListener();
+        SettableFuture<ListenableFuture<?>> future = SettableFuture.create();
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                if (whenSplitQueueHasSpaceThreshold.isPresent()) {
+                    checkArgument(weightThreshold == whenSplitQueueHasSpaceThreshold.getAsLong(), "Multiple split queue space notification thresholds not supported");
+                }
+                else {
+                    whenSplitQueueHasSpaceThreshold = OptionalLong.of(weightThreshold);
+                    updateSplitQueueSpace();
+                }
+                if (splitQueueHasSpace) {
+                    future.set(null);
+                }
+                else {
+                    future.set(whenSplitQueueHasSpace.createNewListener());
+                }
+            }
+        });
+        return future;
     }
 
     private void updateSplitQueueSpace()
@@ -975,7 +982,7 @@ public final class HttpRemoteTask
         return format("TaskUpdate size of %s has exceeded the limit of %s", taskUpdateSize.toString(), this.maxTaskUpdateDataSize.toString());
     }
 
-    private synchronized List<TaskSource> getSources()
+    private List<TaskSource> getSources()
     {
         return Stream.concat(tableScanPlanNodeIds.stream(), remoteSourcePlanNodeIds.stream())
                 .map(this::getSource)
@@ -983,7 +990,7 @@ public final class HttpRemoteTask
                 .collect(toImmutableList());
     }
 
-    private synchronized TaskSource getSource(PlanNodeId planNodeId)
+    private TaskSource getSource(PlanNodeId planNodeId)
     {
         Set<ScheduledSplit> splits = pendingSplits.get(planNodeId);
         boolean pendingNoMoreSplits = Boolean.TRUE.equals(this.noMoreSplits.get(planNodeId));
