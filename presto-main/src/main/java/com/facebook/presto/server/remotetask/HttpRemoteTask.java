@@ -235,6 +235,7 @@ public final class HttpRemoteTask
     private final SchedulerStatsTracker schedulerStatsTracker;
 
     private final ExecutorService taskExecutorService;
+    private final Runnable releaseExecutorService;
 
     public HttpRemoteTask(
             Session session,
@@ -248,6 +249,7 @@ public final class HttpRemoteTask
             HttpClient httpClient,
             Executor executor,
             ExecutorService taskExecutorService,
+            Runnable releaseExecutorService,
             ScheduledExecutorService updateScheduledExecutor,
             ScheduledExecutorService errorScheduledExecutor,
             Duration maxErrorDuration,
@@ -302,6 +304,7 @@ public final class HttpRemoteTask
         requireNonNull(taskUpdateRequestSize, "taskUpdateRequestSize cannot be null");
         requireNonNull(schedulerStatsTracker, "schedulerStatsTracker is null");
         requireNonNull(taskExecutorService, "taskExecutorService is null");
+        requireNonNull(releaseExecutorService, "releaseExecutorService is null");
 
         try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
             this.taskId = taskId;
@@ -314,6 +317,7 @@ public final class HttpRemoteTask
             this.httpClient = httpClient;
             this.executor = executor;
             this.taskExecutorService = taskExecutorService;
+            this.releaseExecutorService = releaseExecutorService;
             this.errorScheduledExecutor = errorScheduledExecutor;
             this.summarizeTaskInfo = summarizeTaskInfo;
             this.taskInfoCodec = taskInfoCodec;
@@ -1075,6 +1079,7 @@ public final class HttpRemoteTask
         taskExecutorService.submit(() -> {
             synchronized (HttpRemoteTask.this) {
                 if (getTaskStatus().getState().isDone()) {
+                    releaseExecutorService.run();
                     return;
                 }
 
@@ -1138,6 +1143,7 @@ public final class HttpRemoteTask
                     new BaseResponseFutureCallback(action, request, cleanupBackoff),
                     executor);
         }
+        releaseExecutorService.run();
     }
 
     /**

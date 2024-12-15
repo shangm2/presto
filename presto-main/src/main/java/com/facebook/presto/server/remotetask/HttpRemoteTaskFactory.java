@@ -260,6 +260,7 @@ public class HttpRemoteTaskFactory
                 httpClient,
                 executor,
                 singleThreadExecutor,
+                () -> releaseTaskExecutor(taskId),
                 updateScheduledExecutor,
                 errorScheduledExecutor,
                 maxErrorDuration,
@@ -287,5 +288,13 @@ public class HttpRemoteTaskFactory
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker);
+    }
+
+    private void releaseTaskExecutor(TaskId taskId)
+    {
+        ExecutorService executorService = activeTaskExecutor.remove(taskId);
+        if (executorService != null) {
+            availableTaskExecutors.offer(executorService);
+        }
     }
 }
