@@ -470,80 +470,96 @@ public final class HttpRemoteTask
     }
 
     @Override
-    public synchronized void addSplits(Multimap<PlanNodeId, Split> splitsBySource)
+    public void addSplits(Multimap<PlanNodeId, Split> splitsBySource)
     {
-        requireNonNull(splitsBySource, "splitsBySource is null");
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                requireNonNull(splitsBySource, "splitsBySource is null");
 
-        // only add pending split if not done
-        if (getTaskStatus().getState().isDone()) {
-            return;
-        }
+                // only add pending split if not done
+                if (getTaskStatus().getState().isDone()) {
+                    return;
+                }
 
-        boolean needsUpdate = false;
-        for (Entry<PlanNodeId, Collection<Split>> entry : splitsBySource.asMap().entrySet()) {
-            PlanNodeId sourceId = entry.getKey();
-            Collection<Split> splits = entry.getValue();
-            boolean isTableScanSource = tableScanPlanNodeIds.contains(sourceId);
+                boolean needsUpdate = false;
+                for (Entry<PlanNodeId, Collection<Split>> entry : splitsBySource.asMap().entrySet()) {
+                    PlanNodeId sourceId = entry.getKey();
+                    Collection<Split> splits = entry.getValue();
+                    boolean isTableScanSource = tableScanPlanNodeIds.contains(sourceId);
 
-            checkState(!noMoreSplits.containsKey(sourceId), "noMoreSplits has already been set for %s", sourceId);
-            int added = 0;
-            long addedWeight = 0;
-            for (Split split : splits) {
-                if (pendingSplits.put(sourceId, new ScheduledSplit(nextSplitId.getAndIncrement(), sourceId, split))) {
-                    if (isTableScanSource) {
-                        added++;
-                        addedWeight = addExact(addedWeight, split.getSplitWeight().getRawValue());
+                    checkState(!noMoreSplits.containsKey(sourceId), "noMoreSplits has already been set for %s", sourceId);
+                    int added = 0;
+                    long addedWeight = 0;
+                    for (Split split : splits) {
+                        if (pendingSplits.put(sourceId, new ScheduledSplit(nextSplitId.getAndIncrement(), sourceId, split))) {
+                            if (isTableScanSource) {
+                                added++;
+                                addedWeight = addExact(addedWeight, split.getSplitWeight().getRawValue());
+                            }
+                        }
                     }
+                    if (isTableScanSource) {
+                        pendingSourceSplitCount += added;
+                        pendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, addedWeight);
+                        updateTaskStats();
+                    }
+                    needsUpdate = true;
+                }
+                updateSplitQueueSpace();
+
+                if (needsUpdate) {
+                    this.needsUpdate.set(true);
+                    scheduleUpdate();
                 }
             }
-            if (isTableScanSource) {
-                pendingSourceSplitCount += added;
-                pendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, addedWeight);
-                updateTaskStats();
+        });
+    }
+
+    @Override
+    public void noMoreSplits(PlanNodeId sourceId)
+    {
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                if (noMoreSplits.containsKey(sourceId)) {
+                    return;
+                }
+
+                noMoreSplits.put(sourceId, true);
+                needsUpdate.set(true);
+                scheduleUpdate();
             }
-            needsUpdate = true;
-        }
-        updateSplitQueueSpace();
-
-        if (needsUpdate) {
-            this.needsUpdate.set(true);
-            scheduleUpdate();
-        }
+        });
     }
 
     @Override
-    public synchronized void noMoreSplits(PlanNodeId sourceId)
+    public void noMoreSplits(PlanNodeId sourceId, Lifespan lifespan)
     {
-        if (noMoreSplits.containsKey(sourceId)) {
-            return;
-        }
-
-        noMoreSplits.put(sourceId, true);
-        needsUpdate.set(true);
-        scheduleUpdate();
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                if (pendingNoMoreSplitsForLifespan.put(sourceId, lifespan)) {
+                    needsUpdate.set(true);
+                    scheduleUpdate();
+                }
+            }
+        });
     }
 
     @Override
-    public synchronized void noMoreSplits(PlanNodeId sourceId, Lifespan lifespan)
+    public void setOutputBuffers(OutputBuffers newOutputBuffers)
     {
-        if (pendingNoMoreSplitsForLifespan.put(sourceId, lifespan)) {
-            needsUpdate.set(true);
-            scheduleUpdate();
-        }
-    }
+        taskExecutorService.submit(() -> {
+            synchronized (HttpRemoteTask.this) {
+                if (getTaskStatus().getState().isDone()) {
+                    return;
+                }
 
-    @Override
-    public synchronized void setOutputBuffers(OutputBuffers newOutputBuffers)
-    {
-        if (getTaskStatus().getState().isDone()) {
-            return;
-        }
-
-        if (newOutputBuffers.getVersion() > outputBuffers.get().getVersion()) {
-            outputBuffers.set(newOutputBuffers);
-            needsUpdate.set(true);
-            scheduleUpdate();
-        }
+                if (newOutputBuffers.getVersion() > outputBuffers.get().getVersion()) {
+                    outputBuffers.set(newOutputBuffers);
+                    needsUpdate.set(true);
+                    scheduleUpdate();
+                }
+            }
+        });
     }
 
     @Override
