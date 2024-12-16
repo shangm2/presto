@@ -475,7 +475,7 @@ public final class HttpRemoteTask
     @Override
     public void addSplits(Multimap<PlanNodeId, Split> splitsBySource)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             requireNonNull(splitsBySource, "splitsBySource is null");
 
             // only add pending split if not done
@@ -519,7 +519,7 @@ public final class HttpRemoteTask
     @Override
     public void noMoreSplits(PlanNodeId sourceId)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             if (noMoreSplits.containsKey(sourceId)) {
                 return;
             }
@@ -533,7 +533,7 @@ public final class HttpRemoteTask
     @Override
     public void noMoreSplits(PlanNodeId sourceId, Lifespan lifespan)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             if (pendingNoMoreSplitsForLifespan.put(sourceId, lifespan)) {
                 needsUpdate.set(true);
                 scheduleUpdate();
@@ -544,7 +544,7 @@ public final class HttpRemoteTask
     @Override
     public void setOutputBuffers(OutputBuffers newOutputBuffers)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             if (getTaskStatus().getState().isDone()) {
                 return;
             }
@@ -728,13 +728,13 @@ public final class HttpRemoteTask
 
     private void updateSplitQueueSpace()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             // Must check whether the unacknowledged split count threshold is reached even without listeners registered yet
             splitQueueHasSpace = getUnacknowledgedPartitionedSplitCount() < maxUnacknowledgedSplits &&
                     (!whenSplitQueueHasSpaceThreshold.isPresent() || getQueuedPartitionedSplitsWeight() < whenSplitQueueHasSpaceThreshold.getAsLong());
             // Only trigger notifications if a listener might be registered
             if (splitQueueHasSpace && whenSplitQueueHasSpaceThreshold.isPresent()) {
-                whenSplitQueueHasSpace.complete(null, executor);
+                whenSplitQueueHasSpace.complete(null, taskExecutorService);
             }
         });
     }
@@ -756,7 +756,7 @@ public final class HttpRemoteTask
 
     private void processTaskUpdate(TaskInfo newValue, List<TaskSource> sources)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             //Setting the flag as false since TaskUpdateRequest is not on thrift yet.
             //Once it is converted to thrift we can use the isThrift enabled flag here.
             updateTaskInfo(newValue, false);
@@ -865,15 +865,15 @@ public final class HttpRemoteTask
 
     private void scheduleUpdate()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             taskUpdateTimeline.add(System.nanoTime());
-            executor.execute(this::sendUpdate);
+            sendUpdate();
         });
     }
 
     private void sendUpdate()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             TaskStatus taskStatus = getTaskStatus();
             // don't update if the task hasn't been started yet or if it is already finished
             if (!started.get() || !needsUpdate.get() || taskStatus.getState().isDone()) {
@@ -888,7 +888,7 @@ public final class HttpRemoteTask
             // if throttled due to error, asynchronously wait for timeout and try again
             ListenableFuture<?> errorRateLimit = updateErrorTracker.acquireRequestPermit();
             if (!errorRateLimit.isDone()) {
-                errorRateLimit.addListener(this::sendUpdate, executor);
+                errorRateLimit.addListener(this::sendUpdate, taskExecutorService);
                 return;
             }
 
@@ -993,7 +993,7 @@ public final class HttpRemoteTask
     @Override
     public void cancel()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
                 TaskStatus taskStatus = getTaskStatus();
                 if (taskStatus.getState().isDone()) {
@@ -1016,7 +1016,7 @@ public final class HttpRemoteTask
 
     private void cleanUpTask()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             checkState(getTaskStatus().getState().isDone(), "attempt to clean up a task that is not done yet");
 
             // clear pending splits to free memory
@@ -1025,7 +1025,7 @@ public final class HttpRemoteTask
             pendingSourceSplitsWeight = 0;
             updateTaskStats();
             splitQueueHasSpace = true;
-            whenSplitQueueHasSpace.complete(null, executor);
+            whenSplitQueueHasSpace.complete(null, taskExecutorService);
 
             // cancel pending request
             if (currentRequest != null) {
@@ -1055,7 +1055,7 @@ public final class HttpRemoteTask
     @Override
     public void abort()
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             if (getTaskStatus().getState().isDone()) {
                 releaseExecutorService.run();
                 return;
@@ -1067,7 +1067,7 @@ public final class HttpRemoteTask
 
     private void abort(TaskStatus status)
     {
-        taskExecutorService.submit(() -> {
+        taskExecutorService.execute(() -> {
             checkState(status.getState().isDone(), "cannot abort task with an incomplete status");
 
             try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
