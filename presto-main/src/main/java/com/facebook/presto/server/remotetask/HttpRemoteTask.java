@@ -958,7 +958,7 @@ public final class HttpRemoteTask
             Futures.addCallback(
                     future,
                     new SimpleHttpResponseHandler<>(new UpdateResponseHandler(sources), request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR),
-                    executor);
+                    taskExecutorService);
         });
     }
 
@@ -1187,19 +1187,19 @@ public final class HttpRemoteTask
                 try {
                     long oldestTaskUpdateTime = 0;
                     long currentRequestStartNanos;
-                    synchronized (HttpRemoteTask.this) {
-                        currentRequest = null;
-                        sendPlan.set(value.isNeedsPlan());
-                        currentRequestStartNanos = HttpRemoteTask.this.currentRequestStartNanos;
-                        if (!taskUpdateTimeline.isEmpty()) {
-                            oldestTaskUpdateTime = taskUpdateTimeline.getLong(0);
-                        }
-                        int deliveredUpdates = taskUpdateTimeline.size();
-                        while (deliveredUpdates > 0 && taskUpdateTimeline.getLong(deliveredUpdates - 1) > currentRequestLastTaskUpdate) {
-                            deliveredUpdates--;
-                        }
-                        taskUpdateTimeline.removeElements(0, deliveredUpdates);
+
+                    currentRequest = null;
+                    sendPlan.set(value.isNeedsPlan());
+                    currentRequestStartNanos = HttpRemoteTask.this.currentRequestStartNanos;
+                    if (!taskUpdateTimeline.isEmpty()) {
+                        oldestTaskUpdateTime = taskUpdateTimeline.getLong(0);
                     }
+                    int deliveredUpdates = taskUpdateTimeline.size();
+                    while (deliveredUpdates > 0 && taskUpdateTimeline.getLong(deliveredUpdates - 1) > currentRequestLastTaskUpdate) {
+                        deliveredUpdates--;
+                    }
+                    taskUpdateTimeline.removeElements(0, deliveredUpdates);
+
                     updateStats(currentRequestStartNanos);
                     processTaskUpdate(value, sources);
                     updateErrorTracker.requestSucceeded();
@@ -1219,10 +1219,10 @@ public final class HttpRemoteTask
             try (SetThreadName ignored = new SetThreadName("UpdateResponseHandler-%s", taskId)) {
                 try {
                     long currentRequestStartNanos;
-                    synchronized (HttpRemoteTask.this) {
-                        currentRequest = null;
-                        currentRequestStartNanos = HttpRemoteTask.this.currentRequestStartNanos;
-                    }
+
+                    currentRequest = null;
+                    currentRequestStartNanos = HttpRemoteTask.this.currentRequestStartNanos;
+
                     updateStats(currentRequestStartNanos);
 
                     // on failure assume we need to update again
