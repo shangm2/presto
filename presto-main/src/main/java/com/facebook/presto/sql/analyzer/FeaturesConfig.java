@@ -238,6 +238,7 @@ public class FeaturesConfig
     private String nativeExecutionExecutablePath = "./presto_server";
     private String nativeExecutionProgramArguments = "";
     private boolean nativeExecutionProcessReuseEnabled = true;
+    private boolean nativeEnforceJoinBuildInputPartition = true;
     private boolean randomizeOuterJoinNullKey;
     private RandomizeOuterJoinNullKeyStrategy randomizeOuterJoinNullKeyStrategy = RandomizeOuterJoinNullKeyStrategy.DISABLED;
     private ShardedJoinStrategy shardedJoinStrategy = ShardedJoinStrategy.DISABLED;
@@ -283,11 +284,13 @@ public class FeaturesConfig
     private boolean useHistograms;
 
     private boolean isInlineProjectionsOnValuesEnabled;
+    private boolean includeValuesNodeInConnectorOptimizer = true;
 
     private boolean eagerPlanValidationEnabled;
     private int eagerPlanValidationThreadPoolSize = 20;
 
     private boolean prestoSparkExecutionEnvironment;
+    private boolean singleNodeExecutionEnabled;
 
     public enum PartitioningPrecisionStrategy
     {
@@ -2316,6 +2319,19 @@ public class FeaturesConfig
         return this.nativeExecutionProcessReuseEnabled;
     }
 
+    @Config("native-enforce-join-build-input-partition")
+    @ConfigDescription("Enforce that the join build input is partitioned on join key")
+    public FeaturesConfig setNativeEnforceJoinBuildInputPartition(boolean nativeEnforceJoinBuildInputPartition)
+    {
+        this.nativeEnforceJoinBuildInputPartition = nativeEnforceJoinBuildInputPartition;
+        return this;
+    }
+
+    public boolean isNativeEnforceJoinBuildInputPartition()
+    {
+        return this.nativeEnforceJoinBuildInputPartition;
+    }
+
     public boolean isRandomizeOuterJoinNullKeyEnabled()
     {
         return randomizeOuterJoinNullKey;
@@ -2810,6 +2826,19 @@ public class FeaturesConfig
         return this;
     }
 
+    public boolean isIncludeValuesNodeInConnectorOptimizer()
+    {
+        return includeValuesNodeInConnectorOptimizer;
+    }
+
+    @Config("optimizer.include-values-node-in-connector-optimizer")
+    @ConfigDescription("Include values node in connector optimizer")
+    public FeaturesConfig setIncludeValuesNodeInConnectorOptimizer(boolean includeValuesNodeInConnectorOptimizer)
+    {
+        this.includeValuesNodeInConnectorOptimizer = includeValuesNodeInConnectorOptimizer;
+        return this;
+    }
+
     @Config("eager-plan-validation-enabled")
     @ConfigDescription("Enable eager building and validation of logical plan before queueing")
     public FeaturesConfig setEagerPlanValidationEnabled(boolean eagerPlanValidationEnabled)
@@ -2845,6 +2874,19 @@ public class FeaturesConfig
     public FeaturesConfig setPrestoSparkExecutionEnvironment(boolean prestoSparkExecutionEnvironment)
     {
         this.prestoSparkExecutionEnvironment = prestoSparkExecutionEnvironment;
+        return this;
+    }
+
+    public boolean isSingleNodeExecutionEnabled()
+    {
+        return singleNodeExecutionEnabled;
+    }
+
+    @Config("single-node-execution-enabled")
+    @ConfigDescription("Enable single node execution")
+    public FeaturesConfig setSingleNodeExecutionEnabled(boolean singleNodeExecutionEnabled)
+    {
+        this.singleNodeExecutionEnabled = singleNodeExecutionEnabled;
         return this;
     }
 }

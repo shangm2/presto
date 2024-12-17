@@ -233,7 +233,10 @@ class PrestoServer {
   std::shared_ptr<CoordinatorDiscoverer> coordinatorDiscoverer_;
 
   // Executor for background writing into SSD cache.
-  std::unique_ptr<folly::IOThreadPoolExecutor> cacheExecutor_;
+  std::unique_ptr<folly::CPUThreadPoolExecutor> cacheExecutor_;
+
+  // Executor for async execution for connectors.
+  std::unique_ptr<folly::CPUThreadPoolExecutor> connectorCpuExecutor_;
 
   // Executor for async IO for connectors.
   std::unique_ptr<folly::IOThreadPoolExecutor> connectorIoExecutor_;
@@ -268,6 +271,7 @@ class PrestoServer {
   std::unique_ptr<Announcer> announcer_;
   std::unique_ptr<PeriodicHeartbeatManager> heartbeatManager_;
   std::shared_ptr<velox::memory::MemoryPool> pool_;
+  std::shared_ptr<velox::memory::MemoryPool> nativeWorkerPool_;
   std::unique_ptr<TaskManager> taskManager_;
   std::unique_ptr<TaskResource> taskResource_;
   std::atomic<NodeState> nodeState_{NodeState::kActive};

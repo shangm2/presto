@@ -28,6 +28,7 @@ import com.facebook.presto.spi.WarningCollector;
 import com.facebook.presto.spi.connector.ConnectorNodePartitioningProvider;
 import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.Assignments;
+import com.facebook.presto.spi.plan.DeleteNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.EquiJoinClause;
 import com.facebook.presto.spi.plan.FilterNode;
@@ -115,6 +116,7 @@ import static com.facebook.presto.SystemSessionProperties.isPreferDistributedUni
 import static com.facebook.presto.SystemSessionProperties.isPrestoSparkAssignBucketToPartitionForPartitionedTableWriteEnabled;
 import static com.facebook.presto.SystemSessionProperties.isRedistributeWrites;
 import static com.facebook.presto.SystemSessionProperties.isScaleWriters;
+import static com.facebook.presto.SystemSessionProperties.isSingleNodeExecutionEnabled;
 import static com.facebook.presto.SystemSessionProperties.isUseStreamingExchangeForMarkDistinctEnabled;
 import static com.facebook.presto.SystemSessionProperties.preferStreamingOperators;
 import static com.facebook.presto.expressions.LogicalRowExpressions.TRUE_CONSTANT;
@@ -170,11 +172,20 @@ public class AddExchanges
     }
 
     @Override
+    public boolean isEnabled(Session session)
+    {
+        return !isSingleNodeExecutionEnabled(session);
+    }
+
+    @Override
     public PlanOptimizerResult optimize(PlanNode plan, Session session, TypeProvider types, VariableAllocator variableAllocator, PlanNodeIdAllocator idAllocator, WarningCollector warningCollector)
     {
-        PlanWithProperties result = new Rewriter(idAllocator, variableAllocator, session, partitioningProviderManager, nativeExecution).accept(plan, PreferredProperties.any());
-        boolean optimizerTriggered = PlanNodeSearcher.searchFrom(result.getNode()).where(node -> node instanceof ExchangeNode && ((ExchangeNode) node).getScope().isRemote()).findFirst().isPresent();
-        return PlanOptimizerResult.optimizerResult(result.getNode(), optimizerTriggered);
+        if (isEnabled(session)) {
+            PlanWithProperties result = new Rewriter(idAllocator, variableAllocator, session, partitioningProviderManager, nativeExecution).accept(plan, PreferredProperties.any());
+            boolean optimizerTriggered = PlanNodeSearcher.searchFrom(result.getNode()).where(node -> node instanceof ExchangeNode && ((ExchangeNode) node).getScope().isRemote()).findFirst().isPresent();
+            return PlanOptimizerResult.optimizerResult(result.getNode(), optimizerTriggered);
+        }
+        return PlanOptimizerResult.optimizerResult(plan, false);
     }
 
     private class Rewriter
@@ -529,7 +540,82 @@ public class AddExchanges
         }
 
         @Override
+        public PlanWithProperties visitDelete(DeleteNode node, PreferredProperties preferredProperties)
+        {
+            if (!node.getInputDistribution().isPresent()) {
+                return visitPlan(node, preferredProperties);
+            }
+            DeleteNode.InputDistribution inputDistribution = node.getInputDistribution().get();
+            List<LocalProperty<VariableReferenceExpression>> desiredProperties = new ArrayList<>();
+            if (!inputDistribution.getPartitionBy().isEmpty()) {
+                desiredProperties.add(new GroupingProperty<>(inputDistribution.getPartitionBy()));
+            }
+            inputDistribution.getOrderingScheme().ifPresent(orderingScheme ->
+                    orderingScheme.getOrderByVariables().stream()
+                            .map(variable -> new SortingProperty<>(variable, orderingScheme.getOrdering(variable)))
+                            .forEach(desiredProperties::add));
+
+            PlanWithProperties child = planChild(
+                    node,
+                    PreferredProperties.partitionedWithLocal(ImmutableSet.copyOf(inputDistribution.getPartitionBy()), desiredProperties)
+                            .mergeWithParent(preferredProperties, !isExactPartitioningPreferred(session)));
+
+            if (!isStreamPartitionedOn(child.getProperties(), inputDistribution.getPartitionBy()) &&
+                    !isNodePartitionedOn(child.getProperties(), inputDistribution.getPartitionBy())) {
+                checkState(!inputDistribution.getPartitionBy().isEmpty());
+                child = withDerivedProperties(
+                        partitionedExchange(
+                                idAllocator.getNextId(),
+                                selectExchangeScopeForPartitionedRemoteExchange(child.getNode(), false),
+                                child.getNode(),
+                                createPartitioning(inputDistribution.getPartitionBy()),
+                                Optional.empty()),
+                        child.getProperties());
+            }
+
+            return rebaseAndDeriveProperties(node, child);
+        }
+
+        @Override
         public PlanWithProperties visitSort(SortNode node, PreferredProperties preferredProperties)
+        {
+            if (!node.getPartitionBy().isEmpty()) {
+                return planSortWithPartition(node, preferredProperties);
+            }
+            return planSortWithoutPartition(node, preferredProperties);
+        }
+
+        private PlanWithProperties planSortWithPartition(SortNode node, PreferredProperties preferredProperties)
+        {
+            List<LocalProperty<VariableReferenceExpression>> desiredProperties = new ArrayList<>();
+            checkArgument(!node.getPartitionBy().isEmpty());
+            desiredProperties.add(new GroupingProperty<>(node.getPartitionBy()));
+
+            node.getOrderingScheme().getOrderByVariables().stream()
+                    .map(variable -> new SortingProperty<>(variable, node.getOrderingScheme().getOrdering(variable)))
+                    .forEach(desiredProperties::add);
+
+            PlanWithProperties child = planChild(
+                    node,
+                    PreferredProperties.partitionedWithLocal(ImmutableSet.copyOf(node.getPartitionBy()), desiredProperties)
+                            .mergeWithParent(preferredProperties, !isExactPartitioningPreferred(session)));
+
+            if (!isStreamPartitionedOn(child.getProperties(), node.getPartitionBy()) &&
+                    !isNodePartitionedOn(child.getProperties(), node.getPartitionBy())) {
+                child = withDerivedProperties(
+                        partitionedExchange(
+                                idAllocator.getNextId(),
+                                selectExchangeScopeForPartitionedRemoteExchange(child.getNode(), false),
+                                child.getNode(),
+                                createPartitioning(node.getPartitionBy()),
+                                Optional.empty()),
+                        child.getProperties());
+            }
+
+            return rebaseAndDeriveProperties(node, child);
+        }
+
+        private PlanWithProperties planSortWithoutPartition(SortNode node, PreferredProperties preferredProperties)
         {
             PlanWithProperties child = planChild(node, PreferredProperties.undistributed());
 
@@ -561,7 +647,8 @@ public class AddExchanges
                                         idAllocator.getNextId(),
                                         source,
                                         node.getOrderingScheme(),
-                                        true),
+                                        true,
+                                        node.getPartitionBy()),
                                 node.getOrderingScheme()),
                         child.getProperties());
             }

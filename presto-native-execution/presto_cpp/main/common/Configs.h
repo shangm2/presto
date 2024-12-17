@@ -214,6 +214,14 @@ class SystemConfig : public ConfigBase {
       "https-client-cert-key-path"};
 
   /// Floating point number used in calculating how many threads we would use
+  /// for CPU executor for connectors mainly for async operators:
+  /// hw_concurrency x multiplier.
+  /// If 0.0 then connector CPU executor would not be created.
+  /// 0.0 is default.
+  static constexpr std::string_view kConnectorNumCpuThreadsHwMultiplier{
+      "connector.num-cpu-threads-hw-multiplier"};
+
+  /// Floating point number used in calculating how many threads we would use
   /// for IO executor for connectors mainly to do preload/prefetch:
   /// hw_concurrency x multiplier.
   /// If 0.0 then connector preload/prefetch is disabled.
@@ -262,6 +270,12 @@ class SystemConfig : public ConfigBase {
   /// underlying file system.
   static constexpr std::string_view kSpillerFileCreateConfig{
       "spiller.file-create-config"};
+
+  /// Config used to create spill directories. This config is provided to
+  /// underlying file system and the config is free form. The form should be
+  /// defined by the underlying file system.
+  static constexpr std::string_view kSpillerDirectoryCreateConfig{
+      "spiller.directory-create-config"};
 
   static constexpr std::string_view kSpillerSpillPath{
       "experimental.spiller-spill-path"};
@@ -718,6 +732,8 @@ class SystemConfig : public ConfigBase {
 
   double exchangeHttpClientNumCpuThreadsHwMultiplier() const;
 
+  double connectorNumCpuThreadsHwMultiplier() const;
+
   double connectorNumIoThreadsHwMultiplier() const;
 
   double driverNumCpuThreadsHwMultiplier() const;
@@ -733,6 +749,8 @@ class SystemConfig : public ConfigBase {
   double spillerNumCpuThreadsHwMultiplier() const;
 
   std::string spillerFileCreateConfig() const;
+
+  std::string spillerDirectoryCreateConfig() const;
 
   folly::Optional<std::string> spillerSpillPath() const;
 

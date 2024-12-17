@@ -47,6 +47,7 @@ import static com.facebook.presto.SystemSessionProperties.getExchangeMaterializa
 import static com.facebook.presto.SystemSessionProperties.getQueryMaxStageCount;
 import static com.facebook.presto.SystemSessionProperties.isForceSingleNodeOutput;
 import static com.facebook.presto.SystemSessionProperties.isRecoverableGroupedExecutionEnabled;
+import static com.facebook.presto.SystemSessionProperties.isSingleNodeExecutionEnabled;
 import static com.facebook.presto.spi.StandardErrorCode.QUERY_HAS_TOO_MANY_STAGES;
 import static com.facebook.presto.spi.StandardWarningCode.TOO_MANY_STAGES;
 import static com.facebook.presto.sql.planner.SystemPartitioningHandle.SOURCE_DISTRIBUTION;
@@ -79,7 +80,7 @@ public class PlanFragmenterUtils
      * @param metadata
      * @param nodePartitioningManager
      * @param session
-     * @param forceSingleNode
+     * @param noExchange
      * @param warningCollector
      * @return the final SubPlan for execution
      */
@@ -89,13 +90,13 @@ public class PlanFragmenterUtils
             Metadata metadata,
             NodePartitioningManager nodePartitioningManager,
             Session session,
-            boolean forceSingleNode,
+            boolean noExchange,
             WarningCollector warningCollector,
             PartitioningHandle partitioningHandle)
     {
         subPlan = reassignPartitioningHandleIfNecessary(metadata, session, subPlan, partitioningHandle);
-        if (!forceSingleNode) {
-            // grouped execution is not supported for SINGLE_DISTRIBUTION
+        if (!noExchange && !isSingleNodeExecutionEnabled(session)) {
+            // grouped execution is not supported for SINGLE_DISTRIBUTION or SINGLE_NODE_EXECUTION_ENABLED
             subPlan = analyzeGroupedExecution(session, subPlan, false, metadata, nodePartitioningManager);
         }
 

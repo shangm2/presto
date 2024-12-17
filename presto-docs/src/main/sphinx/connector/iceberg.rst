@@ -224,6 +224,11 @@ Property Name                                        Description
                                                      ``iceberg.rest.auth.oauth2.credential``.
                                                      Example: ``PRINCIPAL_ROLE:ALL``
 
+``iceberg.rest.nested.namespace.enabled``            In REST Catalogs, tables are grouped into namespaces, that can be
+                                                     nested. But if a large number of recursive namespaces result in
+                                                     lower performance, querying nested namespaces can be disabled.
+                                                     Defaults to ``true``.
+
 ``iceberg.rest.session.type``                        The session type to use when communicating with the REST catalog.
                                                      Available values are ``NONE`` or ``USER`` (default: ``NONE``).
 
@@ -1208,6 +1213,15 @@ Table properties can be modified for an Iceberg table using an ALTER TABLE SET P
 For example, to set `commit_retries` to 6 for the table `iceberg.web.page_views_v2`, use::
 
     ALTER TABLE iceberg.web.page_views_v2 SET PROPERTIES (commit_retries = 6);
+
+ALTER VIEW
+^^^^^^^^^^
+
+Alter view operations to alter the name of an existing view to a new name is supported in the Iceberg connector.
+
+.. code-block:: sql
+
+    ALTER VIEW iceberg.web.page_views RENAME TO iceberg.web.page_new_views;
 
 TRUNCATE
 ^^^^^^^^

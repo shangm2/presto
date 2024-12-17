@@ -105,11 +105,13 @@ void updateVeloxConnectorConfigs(
     // is
     //       not set                             retain cache
     //       SOFT_AFFINITY                       retain cache
+    //       HARD_AFFINITY                       retain cache
     //       NO_PREFERENCE                       do not retain cache
     // If queryDataCacheEnabledDefault is false, when `node_selection_strategy`
     // is
     //       not set                             do not retain cache
     //       SOFT_AFFINITY                       retain cache
+    //       HARD_AFFINITY                       retain cache
     //       NO_PREFERENCE                       do not retain cache
     connectorConfig.emplace(
         connector::hive::HiveConfig::kCacheNoRetentionSession,
@@ -117,7 +119,9 @@ void updateVeloxConnectorConfigs(
     auto it = connectorConfig.find("node_selection_strategy");
     if (it != connectorConfig.end()) {
       connectorConfig[connector::hive::HiveConfig::kCacheNoRetentionSession] =
-          it->second == "SOFT_AFFINITY" ? "false" : "true";
+          (it->second != "SOFT_AFFINITY" && it->second != "HARD_AFFINITY")
+          ? "true"
+          : "false";
     }
   }
 }
@@ -213,9 +217,17 @@ QueryContextManager::toVeloxConfigs(
   // Use base velox query config as the starting point and add Presto session
   // properties on top of it.
   auto configs = BaseVeloxQueryConfig::instance()->values();
+  std::optional<std::string> traceFragmentId;
+  std::optional<std::string> traceShardId;
   for (const auto& it : session.systemProperties) {
-    configs[sessionProperties_.toVeloxConfig(it.first)] = it.second;
-    sessionProperties_.updateVeloxConfig(it.first, it.second);
+    if (it.first == SessionProperties::kQueryTraceFragmentId) {
+      traceFragmentId = it.second;
+    } else if (it.first == SessionProperties::kQueryTraceShardId) {
+      traceShardId = it.second;
+    } else {
+      configs[sessionProperties_.toVeloxConfig(it.first)] = it.second;
+      sessionProperties_.updateVeloxConfig(it.first, it.second);
+    }
   }
 
   // If there's a timeZoneKey, convert to timezone name and add to the
@@ -225,6 +237,16 @@ QueryContextManager::toVeloxConfigs(
         velox::core::QueryConfig::kSessionTimezone,
         velox::tz::getTimeZoneName(session.timeZoneKey));
   }
+
+  // Construct query tracing regex and pass to Velox config.
+  // It replaces the given native_query_trace_task_reg_exp if also set.
+  if (traceFragmentId.has_value() || traceShardId.has_value()) {
+    configs.emplace(
+        velox::core::QueryConfig::kQueryTraceTaskRegExp,
+        ".*\\." + traceFragmentId.value_or(".*") + "\\..*\\." +
+            traceShardId.value_or(".*") + "\\..*");
+  }
+
   updateFromSystemConfigs(configs);
   return configs;
 }

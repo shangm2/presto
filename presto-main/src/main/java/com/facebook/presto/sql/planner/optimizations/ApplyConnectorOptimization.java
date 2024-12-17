@@ -23,17 +23,22 @@ import com.facebook.presto.spi.plan.AggregationNode;
 import com.facebook.presto.spi.plan.CteConsumerNode;
 import com.facebook.presto.spi.plan.CteProducerNode;
 import com.facebook.presto.spi.plan.CteReferenceNode;
+import com.facebook.presto.spi.plan.DeleteNode;
 import com.facebook.presto.spi.plan.DistinctLimitNode;
 import com.facebook.presto.spi.plan.ExceptNode;
 import com.facebook.presto.spi.plan.FilterNode;
 import com.facebook.presto.spi.plan.IntersectNode;
+import com.facebook.presto.spi.plan.JoinNode;
 import com.facebook.presto.spi.plan.LimitNode;
 import com.facebook.presto.spi.plan.MarkDistinctNode;
 import com.facebook.presto.spi.plan.PlanNode;
 import com.facebook.presto.spi.plan.PlanNodeIdAllocator;
 import com.facebook.presto.spi.plan.ProjectNode;
+import com.facebook.presto.spi.plan.SemiJoinNode;
 import com.facebook.presto.spi.plan.SortNode;
+import com.facebook.presto.spi.plan.TableFinishNode;
 import com.facebook.presto.spi.plan.TableScanNode;
+import com.facebook.presto.spi.plan.TableWriterNode;
 import com.facebook.presto.spi.plan.TopNNode;
 import com.facebook.presto.spi.plan.UnionNode;
 import com.facebook.presto.spi.plan.ValuesNode;
@@ -52,11 +57,13 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 
+import static com.facebook.presto.SystemSessionProperties.isIncludeValuesNodeInConnectorOptimizer;
 import static com.facebook.presto.common.RuntimeUnit.NANO;
 import static com.facebook.presto.sql.OptimizerRuntimeTrackUtil.getOptimizerNameForLog;
 import static com.facebook.presto.sql.OptimizerRuntimeTrackUtil.trackOptimizerRuntime;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
 
 public class ApplyConnectorOptimization
@@ -78,7 +85,12 @@ public class ApplyConnectorOptimization
             MarkDistinctNode.class,
             UnionNode.class,
             IntersectNode.class,
-            ExceptNode.class);
+            ExceptNode.class,
+            SemiJoinNode.class,
+            JoinNode.class,
+            TableWriterNode.class,
+            TableFinishNode.class,
+            DeleteNode.class);
 
     // for a leaf node that does not belong to any connector (e.g., ValuesNode)
     private static final ConnectorId EMPTY_CONNECTOR_ID = new ConnectorId("$internal$" + ApplyConnectorOptimization.class + "_CONNECTOR");
@@ -134,9 +146,9 @@ public class ApplyConnectorOptimization
                 //    * The subtree with root `node` is a closure.
                 //    * `node` has no parent, or the subtree with root as `node`'s parent is not a closure.
                 ConnectorPlanNodeContext context = contextMap.get(node);
-                if (!context.isClosure(connectorId) ||
+                if (!context.isClosure(connectorId, session) ||
                         !context.getParent().isPresent() ||
-                        contextMap.get(context.getParent().get()).isClosure(connectorId)) {
+                        contextMap.get(context.getParent().get()).isClosure(connectorId, session)) {
                     continue;
                 }
 
@@ -283,10 +295,12 @@ public class ApplyConnectorOptimization
             return reachablePlanNodeTypes;
         }
 
-        boolean isClosure(ConnectorId connectorId)
+        boolean isClosure(ConnectorId connectorId, Session session)
         {
             // check if all children can reach the only connector
-            if (reachableConnectors.size() != 1 || !reachableConnectors.contains(connectorId)) {
+            boolean includeValuesNode = isIncludeValuesNodeInConnectorOptimizer(session);
+            Set<ConnectorId> connectorIds = includeValuesNode ? reachableConnectors.stream().filter(x -> !x.equals(EMPTY_CONNECTOR_ID)).collect(toImmutableSet()) : reachableConnectors;
+            if (connectorIds.size() != 1 || !connectorIds.contains(connectorId)) {
                 return false;
             }
 

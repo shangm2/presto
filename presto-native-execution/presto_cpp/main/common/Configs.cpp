@@ -155,6 +155,7 @@ SystemConfig::SystemConfig() {
           NONE_PROP(kHttpsClientCertAndKeyPath),
           NUM_PROP(kExchangeHttpClientNumIoThreadsHwMultiplier, 1.0),
           NUM_PROP(kExchangeHttpClientNumCpuThreadsHwMultiplier, 1.0),
+          NUM_PROP(kConnectorNumCpuThreadsHwMultiplier, 0.0),
           NUM_PROP(kConnectorNumIoThreadsHwMultiplier, 1.0),
           NUM_PROP(kDriverNumCpuThreadsHwMultiplier, 4.0),
           BOOL_PROP(kDriverThreadsBatchSchedulingEnabled, false),
@@ -164,6 +165,7 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kDriverNumStuckOperatorsToDetachWorker, 8),
           NUM_PROP(kSpillerNumCpuThreadsHwMultiplier, 1.0),
           STR_PROP(kSpillerFileCreateConfig, ""),
+          STR_PROP(kSpillerDirectoryCreateConfig, ""),
           NONE_PROP(kSpillerSpillPath),
           NUM_PROP(kShutdownOnsetSec, 10),
           NUM_PROP(kSystemMemoryGb, 40),
@@ -374,6 +376,10 @@ double SystemConfig::exchangeHttpClientNumCpuThreadsHwMultiplier() const {
       .value();
 }
 
+double SystemConfig::connectorNumCpuThreadsHwMultiplier() const {
+  return optionalProperty<double>(kConnectorNumCpuThreadsHwMultiplier).value();
+}
+
 double SystemConfig::connectorNumIoThreadsHwMultiplier() const {
   return optionalProperty<double>(kConnectorNumIoThreadsHwMultiplier).value();
 }
@@ -407,6 +413,10 @@ double SystemConfig::spillerNumCpuThreadsHwMultiplier() const {
 
 std::string SystemConfig::spillerFileCreateConfig() const {
   return optionalProperty<std::string>(kSpillerFileCreateConfig).value();
+}
+
+std::string SystemConfig::spillerDirectoryCreateConfig() const {
+  return optionalProperty<std::string>(kSpillerDirectoryCreateConfig).value();
 }
 
 folly::Optional<std::string> SystemConfig::spillerSpillPath() const {

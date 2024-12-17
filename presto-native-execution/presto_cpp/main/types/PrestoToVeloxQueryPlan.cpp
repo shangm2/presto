@@ -355,6 +355,7 @@ std::shared_ptr<core::LocalPartitionNode> buildLocalSystemPartitionNode(
     return std::make_shared<core::LocalPartitionNode>(
         node->id,
         type,
+        false,
         std::make_shared<HashPartitionFunctionSpec>(outputType, keyChannels),
         std::move(sourceNodes));
   }
@@ -363,6 +364,7 @@ std::shared_ptr<core::LocalPartitionNode> buildLocalSystemPartitionNode(
     return std::make_shared<core::LocalPartitionNode>(
         node->id,
         type,
+        false,
         std::make_shared<RoundRobinPartitionFunctionSpec>(),
         std::move(sourceNodes));
   }
@@ -455,7 +457,11 @@ core::PlanNodePtr VeloxQueryPlanConverterBase::toVeloxQueryPlan(
     return core::LocalPartitionNode::gather(node->id, std::move(sourceNodes));
   }
   return std::make_shared<core::LocalPartitionNode>(
-      node->id, type, std::shared_ptr(std::move(spec)), std::move(sourceNodes));
+      node->id,
+      type,
+      false,
+      std::shared_ptr(std::move(spec)),
+      std::move(sourceNodes));
 }
 
 namespace {
@@ -842,27 +848,7 @@ void VeloxQueryPlanConverterBase::toAggregations(
         auto sqlFunction =
             std::dynamic_pointer_cast<protocol::SqlFunctionHandle>(
                 prestoAggregation.functionHandle)) {
-      const auto& functionId = sqlFunction->functionId;
-
-      // functionId format is function-name;arg-type1;arg-type2;...
-      // For example: foo;INTEGER;VARCHAR.
-      auto start = functionId.find(";");
-      if (start != std::string::npos) {
-        for (;;) {
-          auto pos = functionId.find(";", start + 1);
-          if (pos == std::string::npos) {
-            auto argumentType = functionId.substr(start + 1);
-            aggregate.rawInputTypes.push_back(
-                stringToType(argumentType, typeParser_));
-            break;
-          }
-
-          auto argumentType = functionId.substr(start + 1, pos - start - 1);
-          aggregate.rawInputTypes.push_back(
-              stringToType(argumentType, typeParser_));
-          pos = start + 1;
-        }
-      }
+      parseSqlFunctionHandle(sqlFunction, aggregate.rawInputTypes, typeParser_);
     } else {
       VELOX_USER_FAIL(
           "Unsupported aggregate function handle: {}",
@@ -1846,7 +1832,9 @@ core::PlanFragment VeloxQueryPlanConverterBase::toVeloxQueryPlan(
       case protocol::SystemPartitioning::FIXED: {
         switch (systemPartitioningHandle->function) {
           case protocol::SystemPartitionFunction::ROUND_ROBIN: {
-            auto numPartitions = partitioningScheme.bucketToPartition->size();
+            auto numPartitions = partitioningScheme.bucketToPartition
+                ? partitioningScheme.bucketToPartition->size()
+                : 1;
 
             if (numPartitions == 1) {
               planFragment.planNode = core::PartitionedOutputNode::single(
@@ -1870,7 +1858,9 @@ core::PlanFragment VeloxQueryPlanConverterBase::toVeloxQueryPlan(
             return planFragment;
           }
           case protocol::SystemPartitionFunction::HASH: {
-            auto numPartitions = partitioningScheme.bucketToPartition->size();
+            auto numPartitions = partitioningScheme.bucketToPartition
+                ? partitioningScheme.bucketToPartition->size()
+                : 1;
 
             if (numPartitions == 1) {
               planFragment.planNode = core::PartitionedOutputNode::single(
@@ -2105,5 +2095,31 @@ void registerPrestoPlanNodeSerDe() {
       "ShuffleWriteNode", presto::operators::ShuffleWriteNode::create);
   registry.Register(
       "BroadcastWriteNode", presto::operators::BroadcastWriteNode::create);
+}
+
+void parseSqlFunctionHandle(
+    const std::shared_ptr<protocol::SqlFunctionHandle>& sqlFunction,
+    std::vector<velox::TypePtr>& rawInputTypes,
+    TypeParser& typeParser) {
+  const auto& functionId = sqlFunction->functionId;
+  // functionId format is function-name;arg-type1;arg-type2;...
+  // For example: foo;INTEGER;VARCHAR.
+  auto start = functionId.find(";");
+  if (start != std::string::npos) {
+    for (;;) {
+      auto pos = functionId.find(";", start + 1);
+      if (pos == std::string::npos) {
+        auto argumentType = functionId.substr(start + 1);
+        if (!argumentType.empty()) {
+          rawInputTypes.push_back(stringToType(argumentType, typeParser));
+        }
+        break;
+      }
+      auto argumentType = functionId.substr(start + 1, pos - start - 1);
+      VELOX_CHECK(!argumentType.empty());
+      rawInputTypes.push_back(stringToType(argumentType, typeParser));
+      start = pos;
+    }
+  }
 }
 } // namespace facebook::presto

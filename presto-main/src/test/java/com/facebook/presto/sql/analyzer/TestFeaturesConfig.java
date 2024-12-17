@@ -203,6 +203,7 @@ public class TestFeaturesConfig
                 .setNativeExecutionExecutablePath("./presto_server")
                 .setNativeExecutionProgramArguments("")
                 .setNativeExecutionProcessReuseEnabled(true)
+                .setNativeEnforceJoinBuildInputPartition(true)
                 .setRandomizeOuterJoinNullKeyEnabled(false)
                 .setRandomizeOuterJoinNullKeyStrategy(RandomizeOuterJoinNullKeyStrategy.DISABLED)
                 .setShardedJoinStrategy(FeaturesConfig.ShardedJoinStrategy.DISABLED)
@@ -244,9 +245,11 @@ public class TestFeaturesConfig
                 .setRemoveCrossJoinWithSingleConstantRow(true)
                 .setUseHistograms(false)
                 .setInlineProjectionsOnValues(false)
+                .setIncludeValuesNodeInConnectorOptimizer(true)
                 .setEagerPlanValidationEnabled(false)
                 .setEagerPlanValidationThreadPoolSize(20)
-                .setPrestoSparkExecutionEnvironment(false));
+                .setPrestoSparkExecutionEnvironment(false)
+                .setSingleNodeExecutionEnabled(false));
     }
 
     @Test
@@ -398,6 +401,7 @@ public class TestFeaturesConfig
                 .put("native-execution-executable-path", "/bin/echo")
                 .put("native-execution-program-arguments", "--v 1")
                 .put("native-execution-process-reuse-enabled", "false")
+                .put("native-enforce-join-build-input-partition", "false")
                 .put("optimizer.randomize-outer-join-null-key", "true")
                 .put("optimizer.randomize-outer-join-null-key-strategy", "key_from_outer_join")
                 .put("optimizer.sharded-join-strategy", "cost_based")
@@ -439,9 +443,11 @@ public class TestFeaturesConfig
                 .put("optimizer.remove-cross-join-with-single-constant-row", "false")
                 .put("optimizer.use-histograms", "true")
                 .put("optimizer.inline-projections-on-values", "true")
+                .put("optimizer.include-values-node-in-connector-optimizer", "false")
                 .put("eager-plan-validation-enabled", "true")
                 .put("eager-plan-validation-thread-pool-size", "2")
                 .put("presto-spark-execution-environment", "true")
+                .put("single-node-execution-enabled", "true")
                 .build();
 
         FeaturesConfig expected = new FeaturesConfig()
@@ -591,6 +597,7 @@ public class TestFeaturesConfig
                 .setNativeExecutionExecutablePath("/bin/echo")
                 .setNativeExecutionProgramArguments("--v 1")
                 .setNativeExecutionProcessReuseEnabled(false)
+                .setNativeEnforceJoinBuildInputPartition(false)
                 .setRandomizeOuterJoinNullKeyEnabled(true)
                 .setRandomizeOuterJoinNullKeyStrategy(RandomizeOuterJoinNullKeyStrategy.KEY_FROM_OUTER_JOIN)
                 .setShardedJoinStrategy(FeaturesConfig.ShardedJoinStrategy.COST_BASED)
@@ -632,9 +639,11 @@ public class TestFeaturesConfig
                 .setRemoveCrossJoinWithSingleConstantRow(false)
                 .setUseHistograms(true)
                 .setInlineProjectionsOnValues(true)
+                .setIncludeValuesNodeInConnectorOptimizer(false)
                 .setEagerPlanValidationEnabled(true)
                 .setEagerPlanValidationThreadPoolSize(2)
-                .setPrestoSparkExecutionEnvironment(true);
+                .setPrestoSparkExecutionEnvironment(true)
+                .setSingleNodeExecutionEnabled(true);
         assertFullMapping(properties, expected);
     }
 
