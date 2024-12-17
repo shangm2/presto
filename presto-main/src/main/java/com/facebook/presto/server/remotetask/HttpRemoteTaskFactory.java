@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
 import static java.lang.Math.toIntExact;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -250,6 +251,7 @@ public class HttpRemoteTaskFactory
     {
         while (maxAllowedTaskExecutor.get() < 1) {
             try {
+                log.info(format("waiting for executor assignment for task %s", taskId));
                 Thread.sleep(10);
             }
             catch (InterruptedException e) {

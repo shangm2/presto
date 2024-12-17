@@ -724,6 +724,9 @@ public final class HttpRemoteTask
 
     private void updateSplitQueueSpace()
     {
+        if (taskExecutorService.isShutdown() || taskExecutorService.isTerminated()) {
+            return;
+        }
         taskExecutorService.execute(() -> {
             // Must check whether the unacknowledged split count threshold is reached even without listeners registered yet
             splitQueueHasSpace = getUnacknowledgedPartitionedSplitCount() < maxUnacknowledgedSplits &&
