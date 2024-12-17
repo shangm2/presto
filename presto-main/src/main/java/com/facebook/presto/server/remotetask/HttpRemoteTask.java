@@ -997,7 +997,7 @@ public final class HttpRemoteTask
             try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
                 TaskStatus taskStatus = getTaskStatus();
                 if (taskStatus.getState().isDone()) {
-                    log.debug("shutting down the executor for task: %", taskId);
+                    log.debug("shutting down the executor for task: %s", taskId);
                     taskExecutorService.shutdownNow();
                     return;
                 }
@@ -1065,7 +1065,7 @@ public final class HttpRemoteTask
         }
         taskExecutorService.execute(() -> {
             if (getTaskStatus().getState().isDone()) {
-                log.debug("shutting down the executor for task: %", taskId);
+                log.debug("shutting down the executor for task: %s", taskId);
                 taskExecutorService.shutdownNow();
                 return;
             }
@@ -1130,7 +1130,7 @@ public final class HttpRemoteTask
                     new BaseResponseFutureCallback(action, request, cleanupBackoff),
                     executor);
         }
-        log.debug("shutting down the executor for task: %", taskId);
+        log.debug("shutting down the executor for task: %s", taskId);
         taskExecutorService.shutdownNow();
     }
 
