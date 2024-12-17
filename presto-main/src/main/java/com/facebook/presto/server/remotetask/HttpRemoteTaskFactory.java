@@ -57,11 +57,9 @@ import org.weakref.jmx.Nested;
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -109,9 +107,8 @@ public class HttpRemoteTaskFactory
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
     private final ConcurrentHashMap<TaskId, ExecutorService> activeTaskExecutor = new ConcurrentHashMap<>();
-    private final BlockingQueue<ExecutorService> availableTaskExecutors = new LinkedBlockingQueue<>();
-    private final AtomicInteger numberOfExistingExecutorService = new AtomicInteger(0);
-    private final int maxAllowedThreads;
+    //TODO: use config file to set this value
+    private final AtomicInteger maxAllowedTaskExecutor = new AtomicInteger(1000);
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -150,7 +147,6 @@ public class HttpRemoteTaskFactory
         this.coreExecutor = newCachedThreadPool(daemonThreadsNamed("remote-task-callback-%s"));
         this.executor = new BoundedExecutor(coreExecutor, config.getRemoteTaskMaxCallbackThreads());
         this.executorMBean = new ThreadPoolExecutorMBean((ThreadPoolExecutor) coreExecutor);
-        this.maxAllowedThreads = config.getRemoteTaskMaxCallbackThreads();
         this.stats = requireNonNull(stats, "stats is null");
         requireNonNull(communicationConfig, "communicationConfig is null");
         binaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
@@ -222,11 +218,6 @@ public class HttpRemoteTaskFactory
             executorService.shutdownNow();
         }
         activeTaskExecutor.clear();
-
-        for (ExecutorService executorService : availableTaskExecutors) {
-            executorService.shutdownNow();
-        }
-        availableTaskExecutors.clear();
     }
 
     @Override
@@ -242,12 +233,21 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
-        ExecutorService singleThreadExecutor = availableTaskExecutors.poll();
-        if (singleThreadExecutor == null) {
-            singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
-            numberOfExistingExecutorService.incrementAndGet();
+        while (maxAllowedTaskExecutor.get() < 1) {
+            try {
+                Thread.sleep(10);
+            }
+            catch (InterruptedException e) {
+                log.warn(e, "interruped while waiting for a executor to run");
+            }
         }
+        if (!maxAllowedTaskExecutor.compareAndSet(maxAllowedTaskExecutor.get(), maxAllowedTaskExecutor.get() - 1)) {
+            return createRemoteTask(session, taskId, node, fragment, initialSplits, outputBuffers, nodeStatsTracker, summarizeTaskInfo, tableWriteInfo, schedulerStatsTracker);
+        }
+
+        ExecutorService singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
         activeTaskExecutor.put(taskId, singleThreadExecutor);
+
         return new HttpRemoteTask(
                 session,
                 taskId,
@@ -294,7 +294,8 @@ public class HttpRemoteTaskFactory
     {
         ExecutorService executorService = activeTaskExecutor.remove(taskId);
         if (executorService != null) {
-            availableTaskExecutors.offer(executorService);
+            executorService.shutdownNow();
+            maxAllowedTaskExecutor.incrementAndGet();
         }
     }
 }
