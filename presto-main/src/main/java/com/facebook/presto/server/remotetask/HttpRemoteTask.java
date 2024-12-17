@@ -735,6 +735,7 @@ public final class HttpRemoteTask
             // Only trigger notifications if a listener might be registered
             if (splitQueueHasSpace && whenSplitQueueHasSpaceThreshold.isPresent()) {
                 whenSplitQueueHasSpace.complete(null, taskExecutorService);
+                whenSplitQueueHasSpace.complete(null, executor);
             }
         });
     }
@@ -1026,6 +1027,7 @@ public final class HttpRemoteTask
             updateTaskStats();
             splitQueueHasSpace = true;
             whenSplitQueueHasSpace.complete(null, taskExecutorService);
+            whenSplitQueueHasSpace.complete(null, executor);
 
             // cancel pending request
             if (currentRequest != null) {
