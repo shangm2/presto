@@ -251,7 +251,7 @@ public class HttpRemoteTaskFactory
     {
         while (maxAllowedTaskExecutor.get() < 1) {
             try {
-                log.info(format("waiting for executor assignment for task %s", taskId));
+                log.debug(format("waiting for executor assignment for task %s", taskId));
                 Thread.sleep(10);
             }
             catch (InterruptedException e) {
@@ -264,6 +264,7 @@ public class HttpRemoteTaskFactory
 
         ExecutorService singleThreadExecutor = newSingleThreadExecutor(daemonThreadsNamed("remote-task-executor-%s"));
         activeTaskExecutor.put(taskId, singleThreadExecutor);
+        log.debug(format("httpremotetask created for task %s", taskId));
         return new HttpRemoteTask(
                 session,
                 taskId,
@@ -308,6 +309,7 @@ public class HttpRemoteTaskFactory
     private void cleanUpStoppedExecutor()
     {
         try {
+            log.debug("start cleaning up stopped executor at: %s", System.nanoTime());
             Iterator<Map.Entry<TaskId, ExecutorService>> iterator = activeTaskExecutor.entrySet().iterator();
             while (iterator.hasNext()) {
                 Map.Entry<TaskId, ExecutorService> entry = iterator.next();
