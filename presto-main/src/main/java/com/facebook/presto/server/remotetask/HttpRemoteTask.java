@@ -339,19 +339,20 @@ public final class HttpRemoteTask
 
             for (Entry<PlanNodeId, Split> entry : requireNonNull(initialSplits, "initialSplits is null").entries()) {
                 ScheduledSplit scheduledSplit = new ScheduledSplit(nextSplitId.getAndIncrement(), entry.getKey(), entry.getValue());
-                pendingSplits.put(entry.getKey(), scheduledSplit);
+                Set<ScheduledSplit> planNodeSplits = pendingSplits.computeIfAbsent(planNodeId, k -> ConcurrentHashMap.newKeySet());
+                planNodeSplits.add(scheduledSplit);
             }
-            int pendingSourceSplitCount = 0;
-            long pendingSourceSplitsWeight = 0;
+            int initialPendingSourceSplitCount = 0;
+            long initialPendingSourceSplitsWeight = 0;
             for (PlanNodeId planNodeId : planFragment.getTableScanSchedulingOrder()) {
                 Collection<Split> tableScanSplits = initialSplits.get(planNodeId);
                 if (tableScanSplits != null && !tableScanSplits.isEmpty()) {
-                    pendingSourceSplitCount += tableScanSplits.size();
-                    pendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, SplitWeight.rawValueSum(tableScanSplits, Split::getSplitWeight));
+                    initialPendingSourceSplitCount += tableScanSplits.size();
+                    initialPendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, SplitWeight.rawValueSum(tableScanSplits, Split::getSplitWeight));
                 }
             }
-            this.pendingSourceSplitCount = pendingSourceSplitCount;
-            this.pendingSourceSplitsWeight = pendingSourceSplitsWeight;
+            this.pendingSourceSplitCount.set(initialPendingSourceSplitCount);
+            this.pendingSourceSplitsWeight.set(initialPendingSourceSplitsWeight);
 
             List<BufferInfo> bufferStates = outputBuffers.getBuffers()
                     .keySet().stream()
