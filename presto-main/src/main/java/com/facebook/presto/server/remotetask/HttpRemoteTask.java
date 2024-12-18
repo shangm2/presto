@@ -339,7 +339,7 @@ public final class HttpRemoteTask
 
             for (Entry<PlanNodeId, Split> entry : requireNonNull(initialSplits, "initialSplits is null").entries()) {
                 ScheduledSplit scheduledSplit = new ScheduledSplit(nextSplitId.getAndIncrement(), entry.getKey(), entry.getValue());
-                Set<ScheduledSplit> planNodeSplits = pendingSplits.computeIfAbsent(planNodeId, k -> ConcurrentHashMap.newKeySet());
+                Set<ScheduledSplit> planNodeSplits = pendingSplits.computeIfAbsent(entry.getKey(), k -> ConcurrentHashMap.newKeySet());
                 planNodeSplits.add(scheduledSplit);
             }
             int initialPendingSourceSplitCount = 0;
@@ -348,7 +348,7 @@ public final class HttpRemoteTask
                 Collection<Split> tableScanSplits = initialSplits.get(planNodeId);
                 if (tableScanSplits != null && !tableScanSplits.isEmpty()) {
                     initialPendingSourceSplitCount += tableScanSplits.size();
-                    initialPendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, SplitWeight.rawValueSum(tableScanSplits, Split::getSplitWeight));
+                    initialPendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight.get(), SplitWeight.rawValueSum(tableScanSplits, Split::getSplitWeight));
                 }
             }
             this.pendingSourceSplitCount.set(initialPendingSourceSplitCount);
