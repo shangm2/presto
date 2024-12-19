@@ -50,12 +50,16 @@ import com.facebook.presto.spi.plan.PlanNodeId;
 import com.facebook.presto.sql.planner.PlanFragment;
 import com.google.common.collect.Multimap;
 import io.airlift.units.Duration;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.weakref.jmx.Managed;
 import org.weakref.jmx.Nested;
 
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -101,6 +105,9 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
+
+    private final EventLoopGroup eventLoopGroup;
+    private final ConcurrentHashMap<TaskId, EventLoop> taskEventLoopMap = new ConcurrentHashMap<>();
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -184,6 +191,9 @@ public class HttpRemoteTaskFactory
         this.updateScheduledExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("task-info-update-scheduler-%s"));
         this.errorScheduledExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("remote-task-error-delay-%s"));
         this.taskUpdateRequestSize = new DecayCounter(ExponentialDecay.oneMinute());
+
+        // TODO: use config file to set this value
+        this.eventLoopGroup = new NioEventLoopGroup(1000);
     }
 
     @Managed
@@ -220,7 +230,9 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
-        return new HttpRemoteTask(
+        EventLoop taskEventLoop = taskEventLoopMap.computeIfAbsent(taskId, k -> eventLoopGroup.next());
+
+        HttpRemoteTask remoteTask = new HttpRemoteTask(
                 session,
                 taskId,
                 node.getNodeIdentifier(),
@@ -257,6 +269,15 @@ public class HttpRemoteTaskFactory
                 taskUpdateRequestSize,
                 handleResolver,
                 connectorTypeSerdeManager,
-                schedulerStatsTracker);
+                schedulerStatsTracker,
+                taskEventLoop
+        );
+
+        remoteTask.addStateChangeListener(taskStatus -> {
+            if (taskStatus.getState().isDone()) {
+                taskEventLoopMap.remove(taskId);
+            }
+        });
+        return remoteTask;
     }
 }

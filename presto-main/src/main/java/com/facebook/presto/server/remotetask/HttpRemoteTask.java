@@ -77,6 +77,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.sun.management.ThreadMXBean;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import io.netty.channel.EventLoop;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.joda.time.DateTime;
 
@@ -86,14 +87,13 @@ import javax.annotation.concurrent.GuardedBy;
 import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -188,7 +188,7 @@ public final class HttpRemoteTask
     @GuardedBy("this")
     // The keys of this map represent all plan nodes that have "no more splits".
     // The boolean value of each entry represents whether the "no more splits" notification is pending delivery to workers.
-    private final Map<PlanNodeId, Boolean> noMoreSplits = new HashMap<>();
+    private final ConcurrentHashMap<PlanNodeId, Boolean> noMoreSplits = new ConcurrentHashMap<>();
     @GuardedBy("this")
     private final AtomicReference<OutputBuffers> outputBuffers = new AtomicReference<>();
     private final FutureStateChange<?> whenSplitQueueHasSpace = new FutureStateChange<>();
@@ -234,6 +234,8 @@ public final class HttpRemoteTask
     private final DecayCounter taskUpdateRequestSize;
     private final SchedulerStatsTracker schedulerStatsTracker;
 
+    private final EventLoop taskEventLoop;
+
     public HttpRemoteTask(
             Session session,
             TaskId taskId,
@@ -271,7 +273,8 @@ public final class HttpRemoteTask
             DecayCounter taskUpdateRequestSize,
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager,
-            SchedulerStatsTracker schedulerStatsTracker)
+            SchedulerStatsTracker schedulerStatsTracker,
+            EventLoop taskEventLoop)
     {
         requireNonNull(session, "session is null");
         requireNonNull(taskId, "taskId is null");
@@ -298,6 +301,7 @@ public final class HttpRemoteTask
         requireNonNull(connectorTypeSerdeManager, "connectorTypeSerdeManager is null");
         requireNonNull(taskUpdateRequestSize, "taskUpdateRequestSize cannot be null");
         requireNonNull(schedulerStatsTracker, "schedulerStatsTracker is null");
+        requireNonNull(taskEventLoop, "taskEventLoop is null");
 
         try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
             this.taskId = taskId;
@@ -410,6 +414,7 @@ public final class HttpRemoteTask
                 }
             });
 
+            this.taskEventLoop = taskEventLoop;
             updateTaskStats();
             updateSplitQueueSpace();
         }
@@ -464,66 +469,72 @@ public final class HttpRemoteTask
     }
 
     @Override
-    public synchronized void addSplits(Multimap<PlanNodeId, Split> splitsBySource)
+    public void addSplits(Multimap<PlanNodeId, Split> splitsBySource)
     {
-        requireNonNull(splitsBySource, "splitsBySource is null");
+        taskEventLoop.execute(() -> {
+            requireNonNull(splitsBySource, "splitsBySource is null");
 
-        // only add pending split if not done
-        if (getTaskStatus().getState().isDone()) {
-            return;
-        }
+            // only add pending split if not done
+            if (getTaskStatus().getState().isDone()) {
+                return;
+            }
 
-        boolean needsUpdate = false;
-        for (Entry<PlanNodeId, Collection<Split>> entry : splitsBySource.asMap().entrySet()) {
-            PlanNodeId sourceId = entry.getKey();
-            Collection<Split> splits = entry.getValue();
-            boolean isTableScanSource = tableScanPlanNodeIds.contains(sourceId);
+            boolean needsUpdate = false;
+            for (Entry<PlanNodeId, Collection<Split>> entry : splitsBySource.asMap().entrySet()) {
+                PlanNodeId sourceId = entry.getKey();
+                Collection<Split> splits = entry.getValue();
+                boolean isTableScanSource = tableScanPlanNodeIds.contains(sourceId);
 
-            checkState(!noMoreSplits.containsKey(sourceId), "noMoreSplits has already been set for %s", sourceId);
-            int added = 0;
-            long addedWeight = 0;
-            for (Split split : splits) {
-                if (pendingSplits.put(sourceId, new ScheduledSplit(nextSplitId.getAndIncrement(), sourceId, split))) {
-                    if (isTableScanSource) {
-                        added++;
-                        addedWeight = addExact(addedWeight, split.getSplitWeight().getRawValue());
+                checkState(!noMoreSplits.containsKey(sourceId), "noMoreSplits has already been set for %s", sourceId);
+                int added = 0;
+                long addedWeight = 0;
+                for (Split split : splits) {
+                    if (pendingSplits.put(sourceId, new ScheduledSplit(nextSplitId.getAndIncrement(), sourceId, split))) {
+                        if (isTableScanSource) {
+                            added++;
+                            addedWeight = addExact(addedWeight, split.getSplitWeight().getRawValue());
+                        }
                     }
                 }
+                if (isTableScanSource) {
+                    pendingSourceSplitCount += added;
+                    pendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, addedWeight);
+                    updateTaskStats();
+                }
+                needsUpdate = true;
             }
-            if (isTableScanSource) {
-                pendingSourceSplitCount += added;
-                pendingSourceSplitsWeight = addExact(pendingSourceSplitsWeight, addedWeight);
-                updateTaskStats();
-            }
-            needsUpdate = true;
-        }
-        updateSplitQueueSpace();
+            updateSplitQueueSpace();
 
-        if (needsUpdate) {
-            this.needsUpdate.set(true);
-            scheduleUpdate();
-        }
+            if (needsUpdate) {
+                this.needsUpdate.set(true);
+                scheduleUpdate();
+            }
+        });
     }
 
     @Override
-    public synchronized void noMoreSplits(PlanNodeId sourceId)
+    public void noMoreSplits(PlanNodeId sourceId)
     {
-        if (noMoreSplits.containsKey(sourceId)) {
-            return;
-        }
+        taskEventLoop.execute(() -> {
+            if (noMoreSplits.containsKey(sourceId)) {
+                return;
+            }
 
-        noMoreSplits.put(sourceId, true);
-        needsUpdate.set(true);
-        scheduleUpdate();
-    }
-
-    @Override
-    public synchronized void noMoreSplits(PlanNodeId sourceId, Lifespan lifespan)
-    {
-        if (pendingNoMoreSplitsForLifespan.put(sourceId, lifespan)) {
+            noMoreSplits.put(sourceId, true);
             needsUpdate.set(true);
             scheduleUpdate();
-        }
+        });
+    }
+
+    @Override
+    public void noMoreSplits(PlanNodeId sourceId, Lifespan lifespan)
+    {
+        taskEventLoop.execute(() -> {
+            if (pendingNoMoreSplitsForLifespan.put(sourceId, lifespan)) {
+                needsUpdate.set(true);
+                scheduleUpdate();
+            }
+        });
     }
 
     @Override
