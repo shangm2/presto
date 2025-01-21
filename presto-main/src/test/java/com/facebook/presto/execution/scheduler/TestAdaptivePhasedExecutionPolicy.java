@@ -53,6 +53,7 @@ import com.facebook.presto.util.FinalizerService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import io.netty.channel.DefaultEventLoop;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
@@ -73,7 +74,6 @@ import static com.facebook.presto.sql.planner.plan.ExchangeNode.Type.REPARTITION
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static org.testng.Assert.assertTrue;
 
@@ -124,9 +124,9 @@ public class TestAdaptivePhasedExecutionPolicy
                 .mapToObj(stage -> getStageExecutionAndScheduler(stage, getRemoteSourcePlanNode(new PlanFragmentId(stage))))
                 .collect(toImmutableList());
         return ImmutableList.<StageExecutionAndScheduler>builder()
-            .add(getStageExecutionAndScheduler(0, node))
-            .addAll(exchanges)
-            .build();
+                .add(getStageExecutionAndScheduler(0, node))
+                .addAll(exchanges)
+                .build();
     }
 
     private StageExecutionAndScheduler getStageExecutionAndScheduler(int stage, PlanNode fragementNode)
@@ -140,10 +140,9 @@ public class TestAdaptivePhasedExecutionPolicy
                 TEST_SESSION,
                 true,
                 new NodeTaskMap(new FinalizerService()),
-                newDirectExecutorService(),
                 new NoOpFailureDetector(),
                 new SplitSchedulerStats(),
-                new TableWriteInfo(Optional.empty(), Optional.empty(), Optional.empty()));
+                new TableWriteInfo(Optional.empty(), Optional.empty(), Optional.empty()), new DefaultEventLoop());
         StageLinkage stageLinkage = new StageLinkage(fragmentId, (id, tasks, noMoreExchangeLocations) -> {}, ImmutableSet.of());
         StageScheduler stageScheduler = new FixedCountScheduler(stageExecution, ImmutableList.of());
         StageExecutionAndScheduler scheduler = new StageExecutionAndScheduler(stageExecution, stageLinkage, stageScheduler);

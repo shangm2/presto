@@ -13,12 +13,14 @@
  */
 package com.facebook.presto.execution.scheduler;
 
-import com.facebook.presto.execution.RemoteTask;
 import com.facebook.presto.execution.SqlStageExecution;
 import com.facebook.presto.execution.TaskStatus;
 import com.facebook.presto.execution.scheduler.nodeSelection.NodeSelector;
 import com.facebook.presto.metadata.InternalNode;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.DataSize;
 
@@ -84,13 +86,13 @@ public class ScaledWriterScheduler
     @Override
     public ScheduleResult schedule()
     {
-        List<RemoteTask> writers = scheduleTasks(getNewTaskCount());
+        List<ListenableFuture<?>> writers = scheduleTasks(getNewTaskCount());
 
         future.set(null);
         future = SettableFuture.create();
         executor.schedule(() -> future.set(null), 200, MILLISECONDS);
 
-        return ScheduleResult.blocked(done.get(), writers, future, WRITER_SCALING, 0);
+        return ScheduleResult.blocked(done.get(), ImmutableSet.of(), Futures.allAsList(writers), WRITER_SCALING, 0);
     }
 
     private int getNewTaskCount()
@@ -128,7 +130,7 @@ public class ScaledWriterScheduler
         return 0;
     }
 
-    private List<RemoteTask> scheduleTasks(int count)
+    private List<ListenableFuture<?>> scheduleTasks(int count)
     {
         if (count == 0) {
             return ImmutableList.of();
@@ -138,13 +140,14 @@ public class ScaledWriterScheduler
 
         checkCondition(!scheduledNodes.isEmpty() || !nodes.isEmpty(), NO_NODES_AVAILABLE, "No nodes available to run query");
 
-        ImmutableList.Builder<RemoteTask> tasks = ImmutableList.builder();
+        ImmutableList.Builder<ListenableFuture<?>> tasks = ImmutableList.builder();
         for (InternalNode node : nodes) {
-            Optional<RemoteTask> remoteTask = stage.scheduleTask(node, scheduledNodes.size());
-            remoteTask.ifPresent(task -> {
-                tasks.add(task);
-                scheduledNodes.add(node);
-            });
+            ListenableFuture<?> futureTask = stage.scheduleTask(node, scheduledNodes.size());
+            if (futureTask == null) {
+                continue;
+            }
+            tasks.add(futureTask);
+            scheduledNodes.add(node);
         }
 
         return tasks.build();

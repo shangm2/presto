@@ -13,16 +13,19 @@
  */
 package com.facebook.presto.execution.scheduler;
 
-import com.facebook.presto.execution.RemoteTask;
 import com.facebook.presto.execution.SqlStageExecution;
 import com.facebook.presto.metadata.InternalNode;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
+import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReason.WAITING_FOR_TASK_CREATION;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.util.concurrent.Futures.allAsList;
 import static java.util.Objects.requireNonNull;
 
 public class FixedCountScheduler
@@ -30,7 +33,7 @@ public class FixedCountScheduler
 {
     public interface TaskScheduler
     {
-        Optional<RemoteTask> scheduleTask(InternalNode node, int partition);
+        ListenableFuture<?> scheduleTask(InternalNode node, int partition);
     }
 
     private final TaskScheduler taskScheduler;
@@ -53,14 +56,13 @@ public class FixedCountScheduler
     @Override
     public ScheduleResult schedule()
     {
-        List<RemoteTask> newTasks = IntStream.range(0, partitionToNode.size())
+        List<ListenableFuture<?>> newTasks = IntStream.range(0, partitionToNode.size())
                 .mapToObj(partition -> taskScheduler.scheduleTask(partitionToNode.get(partition), partition))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                .filter(Objects::nonNull)
                 .collect(toImmutableList());
 
         // no need to call stage.transitionToSchedulingSplits() since there is no table splits
 
-        return ScheduleResult.nonBlocked(true, newTasks, 0);
+        return ScheduleResult.blocked(true, ImmutableSet.of(), allAsList(newTasks), WAITING_FOR_TASK_CREATION, 0);
     }
 }

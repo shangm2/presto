@@ -62,6 +62,8 @@ public class ScheduleResult
          * Waiting for the completion of CTE materialization by the table writer.
          */
         WAITING_FOR_CTE_MATERIALIZATION,
+
+        WAITING_FOR_TASK_CREATION,
         /**/;
 
         public BlockedReason combineWith(BlockedReason other)
@@ -78,6 +80,8 @@ public class ScheduleResult
                     return other == WAITING_FOR_SOURCE || other == NO_ACTIVE_DRIVER_GROUP ? WAITING_FOR_SOURCE : MIXED_SPLIT_QUEUES_FULL_AND_WAITING_FOR_SOURCE;
                 case MIXED_SPLIT_QUEUES_FULL_AND_WAITING_FOR_SOURCE:
                     return MIXED_SPLIT_QUEUES_FULL_AND_WAITING_FOR_SOURCE;
+                case WAITING_FOR_TASK_CREATION:
+                    throw new IllegalArgumentException("cannot be combined");
                 default:
                     throw new IllegalArgumentException("Unknown blocked reason: " + other);
             }

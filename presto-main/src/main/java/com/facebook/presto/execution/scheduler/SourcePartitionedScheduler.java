@@ -31,6 +31,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import io.netty.channel.EventLoop;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReas
 import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReason.NO_ACTIVE_DRIVER_GROUP;
 import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReason.SPLIT_QUEUES_FULL;
 import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReason.WAITING_FOR_SOURCE;
+import static com.facebook.presto.execution.scheduler.ScheduleResult.BlockedReason.WAITING_FOR_TASK_CREATION;
 import static com.facebook.presto.spi.SplitContext.NON_CACHEABLE;
 import static com.facebook.presto.spi.connector.NotPartitionedPartitionHandle.NOT_PARTITIONED;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -99,14 +101,15 @@ public class SourcePartitionedScheduler
     private State state = State.INITIALIZED;
 
     private SettableFuture<?> whenFinishedOrNewLifespanAdded = SettableFuture.create();
-
+    
     private SourcePartitionedScheduler(
             SqlStageExecution stage,
             PlanNodeId partitionedNode,
             SplitSource splitSource,
             SplitPlacementPolicy splitPlacementPolicy,
             int splitBatchSize,
-            boolean groupedExecution)
+            boolean groupedExecution,
+            EventLoop eventLoop)
     {
         this.stage = requireNonNull(stage, "stage is null");
         this.partitionedNode = requireNonNull(partitionedNode, "partitionedNode is null");
@@ -116,6 +119,7 @@ public class SourcePartitionedScheduler
         checkArgument(splitBatchSize > 0, "splitBatchSize must be at least one");
         this.splitBatchSize = splitBatchSize;
         this.groupedExecution = groupedExecution;
+        this.eventLoop = requireNonNull(eventLoop, "eventLoop is null");
     }
 
     public PlanNodeId getPlanNodeId()
@@ -137,10 +141,11 @@ public class SourcePartitionedScheduler
             SplitPlacementPolicy splitPlacementPolicy,
             int splitBatchSize)
     {
-        SourcePartitionedScheduler sourcePartitionedScheduler = new SourcePartitionedScheduler(stage, partitionedNode, splitSource, splitPlacementPolicy, splitBatchSize, false);
+        SourcePartitionedScheduler sourcePartitionedScheduler = new SourcePartitionedScheduler(stage, partitionedNode, splitSource, splitPlacementPolicy, splitBatchSize, false, eventLoop);
         sourcePartitionedScheduler.startLifespan(Lifespan.taskWide(), NOT_PARTITIONED);
 
-        return new StageScheduler() {
+        return new StageScheduler()
+        {
             @Override
             public ScheduleResult schedule()
             {
@@ -174,9 +179,10 @@ public class SourcePartitionedScheduler
             SplitSource splitSource,
             SplitPlacementPolicy splitPlacementPolicy,
             int splitBatchSize,
-            boolean groupedExecution)
+            boolean groupedExecution,
+            EventLoop eventLoop)
     {
-        return new SourcePartitionedScheduler(stage, partitionedNode, splitSource, splitPlacementPolicy, splitBatchSize, groupedExecution);
+        return new SourcePartitionedScheduler(stage, partitionedNode, splitSource, splitPlacementPolicy, splitBatchSize, groupedExecution, eventLoop);
     }
 
     @Override
@@ -347,7 +353,7 @@ public class SourcePartitionedScheduler
         }
 
         if (anyNotBlocked) {
-            return ScheduleResult.nonBlocked(false, overallNewTasks.build(), overallSplitAssignmentCount);
+            return ScheduleResult.blocked(false, ImmutableSet.of(), allAsList(overallNewTasks.build()), WAITING_FOR_TASK_CREATION, overallSplitAssignmentCount);
         }
 
         if (anyBlockedOnPlacements) {
@@ -446,9 +452,9 @@ public class SourcePartitionedScheduler
         whenFinishedOrNewLifespanAdded.set(null);
     }
 
-    private Set<RemoteTask> assignSplits(Multimap<InternalNode, Split> splitAssignment, Multimap<InternalNode, Lifespan> noMoreSplitsNotification)
+    private Set<ListenableFuture<RemoteTask>> assignSplits(Multimap<InternalNode, Split> splitAssignment, Multimap<InternalNode, Lifespan> noMoreSplitsNotification)
     {
-        ImmutableSet.Builder<RemoteTask> newTasks = ImmutableSet.builder();
+        ImmutableSet.Builder<ListenableFuture<RemoteTask>> newTasks = ImmutableSet.builder();
 
         ImmutableSet<InternalNode> nodes = ImmutableSet.<InternalNode>builder()
                 .addAll(splitAssignment.keySet())
@@ -464,7 +470,7 @@ public class SourcePartitionedScheduler
                 noMoreSplits.putAll(partitionedNode, noMoreSplitsNotification.get(node));
             }
 
-            newTasks.addAll(stage.scheduleSplits(
+            newTasks.add(stage.scheduleSplits(
                     node,
                     splits,
                     noMoreSplits.build()));
@@ -472,7 +478,7 @@ public class SourcePartitionedScheduler
         return newTasks.build();
     }
 
-    private Set<RemoteTask> finalizeTaskCreationIfNecessary()
+    private Set<ListenableFuture<RemoteTask>> finalizeTaskCreationIfNecessary()
     {
         // only lock down tasks if there is a sub stage that could block waiting for this stage to create all tasks
         if (stage.getFragment().isLeaf()) {
@@ -482,13 +488,13 @@ public class SourcePartitionedScheduler
         splitPlacementPolicy.lockDownNodes();
 
         Set<InternalNode> scheduledNodes = stage.getScheduledNodes();
-        Set<RemoteTask> newTasks = splitPlacementPolicy.getActiveNodes().stream()
+        Set<ListenableFuture<RemoteTask>> newTasks = splitPlacementPolicy.getActiveNodes().stream()
                 .filter(node -> !scheduledNodes.contains(node))
-                .flatMap(node -> stage.scheduleSplits(node, ImmutableMultimap.of(), ImmutableMultimap.of()).stream())
+                .map(node -> stage.scheduleSplits(node, ImmutableMultimap.of(), ImmutableMultimap.of()))
                 .collect(toImmutableSet());
 
         // notify listeners that we have scheduled all tasks so they can set no more buffers or exchange splits
-        stage.transitionToFinishedTaskScheduling();
+        Futures.allAsList(newTasks).addListener(stage::transitionToFinishedTaskScheduling, eventLoop);
 
         return newTasks;
     }

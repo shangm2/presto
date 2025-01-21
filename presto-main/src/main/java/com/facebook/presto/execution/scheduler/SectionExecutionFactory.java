@@ -51,7 +51,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.netty.channel.DefaultEventLoopGroup;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
 
+import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
 import java.util.ArrayList;
@@ -109,6 +114,9 @@ public class SectionExecutionFactory
     private final int splitBatchSize;
     private final boolean isEnableWorkerIsolation;
 
+    private final EventLoopGroup eventLoopGroup = new DefaultEventLoopGroup(Runtime.getRuntime().availableProcessors(),
+            new ThreadFactoryBuilder().setNameFormat("stage-event-loop-%s").setDaemon(true).build());
+
     @Inject
     public SectionExecutionFactory(
             Metadata metadata,
@@ -156,6 +164,12 @@ public class SectionExecutionFactory
         this.nodeScheduler = requireNonNull(nodeScheduler, "nodeScheduler is null");
         this.splitBatchSize = splitBatchSize;
         this.isEnableWorkerIsolation = isEnableWorkerIsolation;
+    }
+
+    @PreDestroy
+    public void stop()
+    {
+        eventLoopGroup.shutdownGracefully();
     }
 
     /**
@@ -214,6 +228,7 @@ public class SectionExecutionFactory
 
         PlanFragmentId fragmentId = plan.getFragment().getId();
         StageId stageId = new StageId(session.getQueryId(), fragmentId.getId());
+        EventLoop stageEventLoop = eventLoopGroup.next();
         SqlStageExecution stageExecution = createSqlStageExecution(
                 new StageExecutionId(stageId, attemptId),
                 plan.getFragment(),
@@ -221,10 +236,10 @@ public class SectionExecutionFactory
                 session,
                 summarizeTaskInfo,
                 nodeTaskMap,
-                executor,
                 failureDetector,
                 schedulerStats,
-                tableWriteInfo);
+                tableWriteInfo,
+                stageEventLoop);
 
         PartitioningHandle partitioningHandle = plan.getFragment().getPartitioning();
         List<RemoteSourceNode> remoteSourceNodes = plan.getFragment().getRemoteSourceNodes();

@@ -23,6 +23,7 @@ import com.facebook.presto.operator.BlockedReason;
 import com.facebook.presto.operator.TaskStats;
 import com.facebook.presto.util.Failures;
 import com.google.common.collect.ImmutableList;
+import io.netty.channel.EventLoop;
 import org.joda.time.DateTime;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -32,7 +33,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -94,20 +94,23 @@ public class StageExecutionStateMachine
 
     private final RuntimeStats runtimeStats = new RuntimeStats();
 
+    private final EventLoop eventLoop;
+
     public StageExecutionStateMachine(
             StageExecutionId stageExecutionId,
-            ExecutorService executor,
+            EventLoop eventloop,
             SplitSchedulerStats schedulerStats,
             boolean containsTableScans)
     {
         this.stageExecutionId = requireNonNull(stageExecutionId, "stageId is null");
+        this.eventLoop = requireNonNull(eventloop, "eventLoop is null");
         this.scheduledStats = requireNonNull(schedulerStats, "schedulerStats is null");
         this.containsTableScans = containsTableScans;
 
-        state = new StateMachine<>("stage execution " + stageExecutionId, executor, PLANNED, TERMINAL_STAGE_STATES);
+        state = new StateMachine<>("stage execution " + stageExecutionId, eventloop, PLANNED, TERMINAL_STAGE_STATES);
         state.addStateChangeListener(state -> log.debug("Stage Execution %s is %s", stageExecutionId, state));
 
-        finalInfo = new StateMachine<>("final stage execution " + stageExecutionId, executor, Optional.empty());
+        finalInfo = new StateMachine<>("final stage execution " + stageExecutionId, eventloop, Optional.empty());
     }
 
     public StageExecutionId getStageExecutionId()
@@ -130,22 +133,22 @@ public class StageExecutionStateMachine
         state.addStateChangeListener(stateChangeListener);
     }
 
-    public synchronized boolean transitionToScheduling()
+    public boolean transitionToScheduling()
     {
         return state.compareAndSet(PLANNED, SCHEDULING);
     }
 
-    public synchronized boolean transitionToFinishedTaskScheduling()
+    public boolean transitionToFinishedTaskScheduling()
     {
         return state.compareAndSet(SCHEDULING, FINISHED_TASK_SCHEDULING);
     }
 
-    public synchronized boolean transitionToSchedulingSplits()
+    public boolean transitionToSchedulingSplits()
     {
         return state.setIf(SCHEDULING_SPLITS, currentState -> currentState == PLANNED || currentState == SCHEDULING || currentState == FINISHED_TASK_SCHEDULING);
     }
 
-    public synchronized boolean transitionToScheduled()
+    public boolean transitionToScheduled()
     {
         schedulingComplete.compareAndSet(null, DateTime.now());
         return state.setIf(SCHEDULED, currentState -> currentState == PLANNED || currentState == SCHEDULING || currentState == FINISHED_TASK_SCHEDULING || currentState == SCHEDULING_SPLITS);

@@ -33,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Streams;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.netty.channel.EventLoop;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -76,6 +77,8 @@ public class FixedSourcePartitionedScheduler
 
     private final CTEMaterializationTracker cteMaterializationTracker;
 
+    private final EventLoop stageEventLoop;
+
     @GuardedBy("this")
     private boolean closed;
 
@@ -97,8 +100,10 @@ public class FixedSourcePartitionedScheduler
         requireNonNull(bucketNodeMap, "bucketNodeMap is null");
         checkArgument(!requireNonNull(nodes, "nodes is null").isEmpty(), "nodes is empty");
         requireNonNull(partitionHandles, "partitionHandles is null");
-        this.cteMaterializationTracker = cteMaterializationTracker;
+        requireNonNull(stageEventLoop, "stageEventLoop is null");
 
+        this.cteMaterializationTracker = cteMaterializationTracker;
+        this.stageEventLoop = stageEventLoop;
         this.stage = stage;
         this.nodes = ImmutableList.copyOf(nodes);
         this.partitionHandles = ImmutableList.copyOf(partitionHandles);
@@ -131,7 +136,8 @@ public class FixedSourcePartitionedScheduler
                     splitSource,
                     splitPlacementPolicy,
                     Math.max(splitBatchSize / concurrentLifespans, 1),
-                    groupedExecutionForScanNode);
+                    groupedExecutionForScanNode,
+                    stageEventLoop);
 
             if (stageExecutionDescriptor.isStageGroupedExecution() && !groupedExecutionForScanNode) {
                 sourceScheduler = new AsGroupedSourceScheduler(sourceScheduler);
@@ -208,8 +214,8 @@ public class FixedSourcePartitionedScheduler
         // schedule a task on every node in the distribution
         if (!scheduledTasks) {
             newTasks = Streams.mapWithIndex(
-                    nodes.stream(),
-                    (node, id) -> stage.scheduleTask(node, toIntExact(id)))
+                            nodes.stream(),
+                            (node, id) -> stage.scheduleTask(node, toIntExact(id)))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(toImmutableList());
