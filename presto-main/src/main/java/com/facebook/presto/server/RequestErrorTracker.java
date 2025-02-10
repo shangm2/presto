@@ -15,8 +15,7 @@ package com.facebook.presto.server;
 
 import com.facebook.airlift.event.client.ServiceUnavailableException;
 import com.facebook.airlift.log.Logger;
-import com.facebook.presto.common.RuntimeStats;
-import com.facebook.presto.common.RuntimeUnit;
+import com.facebook.airlift.stats.CounterStat;
 import com.facebook.presto.execution.TaskId;
 import com.facebook.presto.server.remotetask.Backoff;
 import com.facebook.presto.spi.ErrorCodeSupplier;
@@ -41,7 +40,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
 
-import static com.facebook.presto.common.RuntimeMetricName.MAX_REQUEST_QUEUED_TASK_FAILURES;
 import static com.facebook.presto.spi.HostAddress.fromUri;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.TOO_MANY_REQUESTS_FAILED;
@@ -66,9 +64,14 @@ public class RequestErrorTracker
 
     private final Queue<Throwable> errorsSinceLastSuccess = new ConcurrentLinkedQueue<>();
 
-    private final Optional<RuntimeStats> runtimeStats;
+    private final Optional<CounterStat> taskFailuresFromFailedConnection;
 
-    public RequestErrorTracker(Object id, URI uri, ErrorCodeSupplier errorCode, String nodeErrorMessage, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription, Optional<RuntimeStats> runtimeStats)
+    public RequestErrorTracker(Object id, URI uri, ErrorCodeSupplier errorCode, String nodeErrorMessage, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription)
+    {
+        this(id, uri, errorCode, nodeErrorMessage, maxErrorDuration, scheduledExecutor, jobDescription, Optional.empty());
+    }
+
+    public RequestErrorTracker(Object id, URI uri, ErrorCodeSupplier errorCode, String nodeErrorMessage, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription, Optional<CounterStat> taskFailuresFromFailedConnection)
     {
         this.id = requireNonNull(id, "id is null");
         this.uri = requireNonNull(uri, "uri is null");
@@ -77,7 +80,7 @@ public class RequestErrorTracker
         this.scheduledExecutor = requireNonNull(scheduledExecutor, "scheduledExecutor is null");
         this.backoff = new Backoff(requireNonNull(maxErrorDuration, "maxErrorDuration is null"));
         this.jobDescription = requireNonNull(jobDescription, "jobDescription is null");
-        this.runtimeStats = requireNonNull(runtimeStats, "runtimeStats is null");
+        this.taskFailuresFromFailedConnection = requireNonNull(taskFailuresFromFailedConnection, "taskFailuresFromFailedConnection is null");
     }
 
     public static RequestErrorTracker taskRequestErrorTracker(TaskId taskId, URI taskUri, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription)
@@ -85,9 +88,9 @@ public class RequestErrorTracker
         return new RequestErrorTracker(taskId, taskUri, REMOTE_TASK_ERROR, WORKER_NODE_ERROR, maxErrorDuration, scheduledExecutor, jobDescription, Optional.empty());
     }
 
-    public static RequestErrorTracker taskRequestErrorTracker(TaskId taskId, URI taskUri, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription, Optional<RuntimeStats> runtimeStats)
+    public static RequestErrorTracker taskRequestErrorTracker(TaskId taskId, URI taskUri, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription, Optional<CounterStat> taskFailuresFromFailedConnection)
     {
-        return new RequestErrorTracker(taskId, taskUri, REMOTE_TASK_ERROR, WORKER_NODE_ERROR, maxErrorDuration, scheduledExecutor, jobDescription, runtimeStats);
+        return new RequestErrorTracker(taskId, taskUri, REMOTE_TASK_ERROR, WORKER_NODE_ERROR, maxErrorDuration, scheduledExecutor, jobDescription, taskFailuresFromFailedConnection);
     }
 
     public ListenableFuture<?> acquireRequestPermit()
@@ -136,8 +139,7 @@ public class RequestErrorTracker
             if (!reason.getMessage().contains("Max requests queued per destination")) {
                 throw new PrestoException(errorCode, reason);
             }
-
-            runtimeStats.ifPresent(stats -> stats.addMetricValue(MAX_REQUEST_QUEUED_TASK_FAILURES, RuntimeUnit.NONE, 1));
+            taskFailuresFromFailedConnection.ifPresent(failure -> failure.update(1));
         }
 
         // log failure message

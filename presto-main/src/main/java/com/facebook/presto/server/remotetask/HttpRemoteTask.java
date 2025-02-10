@@ -25,6 +25,7 @@ import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
 import com.facebook.airlift.log.Logger;
+import com.facebook.airlift.stats.CounterStat;
 import com.facebook.airlift.stats.DecayCounter;
 import com.facebook.drift.transport.netty.codec.Protocol;
 import com.facebook.presto.Session;
@@ -264,6 +265,7 @@ public final class HttpRemoteTask
             MetadataManager metadataManager,
             QueryManager queryManager,
             DecayCounter taskUpdateRequestSize,
+            CounterStat taskFailuresFromFailedConnection,
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager,
             SchedulerStatsTracker schedulerStatsTracker,
@@ -300,6 +302,7 @@ public final class HttpRemoteTask
                 metadataManager,
                 queryManager,
                 taskUpdateRequestSize,
+                taskFailuresFromFailedConnection,
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker,
@@ -339,6 +342,7 @@ public final class HttpRemoteTask
             MetadataManager metadataManager,
             QueryManager queryManager,
             DecayCounter taskUpdateRequestSize,
+            CounterStat taskFailuresFromFailedConnection,
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager,
             SchedulerStatsTracker schedulerStatsTracker,
@@ -367,6 +371,7 @@ public final class HttpRemoteTask
         requireNonNull(handleResolver, "handleResolver is null");
         requireNonNull(connectorTypeSerdeManager, "connectorTypeSerdeManager is null");
         requireNonNull(taskUpdateRequestSize, "taskUpdateRequestSize cannot be null");
+        requireNonNull(taskFailuresFromFailedConnection, "taskFailuresFromFailedConnection is null");
         requireNonNull(schedulerStatsTracker, "schedulerStatsTracker is null");
         requireNonNull(taskEventLoop, "taskEventLoop is null");
 
@@ -442,7 +447,8 @@ public final class HttpRemoteTask
                 stats,
                 binaryTransportEnabled,
                 thriftTransportEnabled,
-                thriftProtocol);
+                thriftProtocol,
+                taskFailuresFromFailedConnection);
 
         this.taskInfoFetcher = new TaskInfoFetcher(
                 this::failTask,

@@ -14,11 +14,11 @@
 package com.facebook.presto.server.remotetask;
 
 import com.facebook.airlift.http.client.HttpClient;
-import com.facebook.airlift.http.client.jetty.ConnectionStats;
 import com.facebook.airlift.http.client.jetty.JettyHttpClient;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
+import com.facebook.airlift.stats.CounterStat;
 import com.facebook.airlift.stats.DecayCounter;
 import com.facebook.airlift.stats.ExponentialDecay;
 import com.facebook.drift.codec.ThriftCodec;
@@ -59,6 +59,7 @@ import javax.annotation.PreDestroy;
 import javax.inject.Inject;
 
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
+import static java.lang.Math.max;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 
@@ -90,6 +91,8 @@ public class HttpRemoteTaskFactory
     private final MetadataManager metadataManager;
     private final QueryManager queryManager;
     private final DecayCounter taskUpdateRequestSize;
+
+    private final CounterStat taskFailuresFromFailedConnection;
 
     private final EventLoopGroup eventLoopGroup = new SafeEventLoopGroup(Runtime.getRuntime().availableProcessors(),
             new ThreadFactoryBuilder().setNameFormat("task-event-loop-%s").setDaemon(true).build());
@@ -170,10 +173,7 @@ public class HttpRemoteTaskFactory
         this.queryManager = queryManager;
 
         this.taskUpdateRequestSize = new DecayCounter(ExponentialDecay.oneMinute());
-
-        if (httpClient instanceof JettyHttpClient) {
-            ConnectionStats connectionStats = ((JettyHttpClient) httpClient).getConnectionStats();
-        }
+        this.taskFailuresFromFailedConnection = new CounterStat();
     }
 
     @Managed
@@ -183,10 +183,16 @@ public class HttpRemoteTaskFactory
     }
 
     @Managed
+    public long getTaskFailuresFromFailedConnectionCount()
+    {
+        return max(taskFailuresFromFailedConnection.getTotalCount(), 0);
+    }
+
+    @Managed
     public long getOpenConnectionCount()
     {
         if (httpClient instanceof JettyHttpClient) {
-            return ((JettyHttpClient) httpClient).getConnectionStats().getOpenConnectionCount();
+            return max(((JettyHttpClient) httpClient).getConnectionStats().getOpenConnectionCount(), 0);
         }
         return 0;
     }
@@ -195,7 +201,7 @@ public class HttpRemoteTaskFactory
     public long getTotalConnectionCount()
     {
         if (httpClient instanceof JettyHttpClient) {
-            return ((JettyHttpClient) httpClient).getConnectionStats().getTotalConnectionCount();
+            return max(((JettyHttpClient) httpClient).getConnectionStats().getTotalConnectionCount(), 0);
         }
         return 0;
     }
@@ -204,7 +210,7 @@ public class HttpRemoteTaskFactory
     public long getMaxConnectionPerDestinationCount()
     {
         if (httpClient instanceof JettyHttpClient) {
-            return ((JettyHttpClient) httpClient).getActiveConnectionsPerDestination().getMax();
+            return max(((JettyHttpClient) httpClient).getActiveConnectionsPerDestination().getMax(), 0);
         }
         return 0;
     }
@@ -260,6 +266,7 @@ public class HttpRemoteTaskFactory
                 metadataManager,
                 queryManager,
                 taskUpdateRequestSize,
+                taskFailuresFromFailedConnection,
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker,
