@@ -36,6 +36,7 @@ import java.util.Set;
 import static com.facebook.presto.execution.StageExecutionState.RUNNING;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
+import static io.airlift.units.DataSize.succinctBytes;
 import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
@@ -62,10 +63,10 @@ public class StageExecutionStats
 
     private final double cumulativeUserMemory;
     private final double cumulativeTotalMemory;
-    private final DataSize userMemoryReservation;
-    private final DataSize totalMemoryReservation;
-    private final DataSize peakUserMemoryReservation;
-    private final DataSize peakNodeTotalMemoryReservation;
+    private final long userMemoryReservationInBytes;
+    private final long totalMemoryReservationInBytes;
+    private final long peakUserMemoryReservationInBytes;
+    private final long peakNodeTotalMemoryReservationInBytes;
 
     private final Duration totalScheduledTime;
     private final Duration totalCpuTime;
@@ -74,19 +75,19 @@ public class StageExecutionStats
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
-    private final DataSize totalAllocation;
+    private final long totalAllocationInBytes;
 
-    private final DataSize rawInputDataSize;
+    private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
 
-    private final DataSize processedInputDataSize;
+    private final long processedInputDataSizeInBytes;
     private final long processedInputPositions;
 
-    private final DataSize bufferedDataSize;
-    private final DataSize outputDataSize;
+    private final long bufferedDataSizeInBytes;
+    private final long outputDataSizeInBytes;
     private final long outputPositions;
 
-    private final DataSize physicalWrittenDataSize;
+    private final long physicalWrittenDataSizeInBytes;
 
     private final StageGcStatistics gcInfo;
 
@@ -176,10 +177,10 @@ public class StageExecutionStats
         this.cumulativeUserMemory = cumulativeUserMemory;
         checkArgument(cumulativeTotalMemory >= 0, "cumulativeTotalMemory is negative");
         this.cumulativeTotalMemory = cumulativeTotalMemory;
-        this.userMemoryReservation = requireNonNull(userMemoryReservation, "userMemoryReservation is null");
-        this.totalMemoryReservation = requireNonNull(totalMemoryReservation, "totalMemoryReservation is null");
-        this.peakUserMemoryReservation = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null");
-        this.peakNodeTotalMemoryReservation = requireNonNull(peakNodeTotalMemoryReservation, "peakNodeTotalMemoryReservation is null");
+        this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
+        this.totalMemoryReservationInBytes = requireNonNull(totalMemoryReservation, "totalMemoryReservation is null").toBytes();
+        this.peakUserMemoryReservationInBytes = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null").toBytes();
+        this.peakNodeTotalMemoryReservationInBytes = requireNonNull(peakNodeTotalMemoryReservation, "peakNodeTotalMemoryReservation is null").toBytes();
 
         this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
         this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
@@ -188,22 +189,22 @@ public class StageExecutionStats
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
-        this.totalAllocation = requireNonNull(totalAllocation, "totalAllocation is null");
+        this.totalAllocationInBytes = requireNonNull(totalAllocation, "totalAllocation is null").toBytes();
 
-        this.rawInputDataSize = requireNonNull(rawInputDataSize, "rawInputDataSize is null");
+        this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         checkArgument(rawInputPositions >= 0, "rawInputPositions is negative");
         this.rawInputPositions = rawInputPositions;
 
-        this.processedInputDataSize = requireNonNull(processedInputDataSize, "processedInputDataSize is null");
+        this.processedInputDataSizeInBytes = requireNonNull(processedInputDataSize, "processedInputDataSize is null").toBytes();
         checkArgument(processedInputPositions >= 0, "processedInputPositions is negative");
         this.processedInputPositions = processedInputPositions;
 
-        this.bufferedDataSize = requireNonNull(bufferedDataSize, "bufferedDataSize is null");
-        this.outputDataSize = requireNonNull(outputDataSize, "outputDataSize is null");
+        this.bufferedDataSizeInBytes = requireNonNull(bufferedDataSize, "bufferedDataSize is null").toBytes();
+        this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         checkArgument(outputPositions >= 0, "outputPositions is negative");
         this.outputPositions = outputPositions;
 
-        this.physicalWrittenDataSize = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null");
+        this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
         this.gcInfo = requireNonNull(gcInfo, "gcInfo is null");
 
@@ -298,25 +299,25 @@ public class StageExecutionStats
     @JsonProperty
     public DataSize getUserMemoryReservation()
     {
-        return userMemoryReservation;
+        return succinctBytes(userMemoryReservationInBytes);
     }
 
     @JsonProperty
     public DataSize getTotalMemoryReservation()
     {
-        return totalMemoryReservation;
+        return succinctBytes(totalMemoryReservationInBytes);
     }
 
     @JsonProperty
     public DataSize getPeakUserMemoryReservation()
     {
-        return peakUserMemoryReservation;
+        return succinctBytes(peakUserMemoryReservationInBytes);
     }
 
     @JsonProperty
     public DataSize getPeakNodeTotalMemoryReservation()
     {
-        return peakNodeTotalMemoryReservation;
+        return succinctBytes(peakNodeTotalMemoryReservationInBytes);
     }
 
     @JsonProperty
@@ -358,13 +359,13 @@ public class StageExecutionStats
     @JsonProperty
     public DataSize getTotalAllocation()
     {
-        return totalAllocation;
+        return succinctBytes(totalAllocationInBytes);
     }
 
     @JsonProperty
     public DataSize getRawInputDataSize()
     {
-        return rawInputDataSize;
+        return succinctBytes(rawInputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -376,7 +377,7 @@ public class StageExecutionStats
     @JsonProperty
     public DataSize getProcessedInputDataSize()
     {
-        return processedInputDataSize;
+        return succinctBytes(processedInputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -388,13 +389,13 @@ public class StageExecutionStats
     @JsonProperty
     public DataSize getBufferedDataSize()
     {
-        return bufferedDataSize;
+        return succinctBytes(bufferedDataSizeInBytes);
     }
 
     @JsonProperty
     public DataSize getOutputDataSize()
     {
-        return outputDataSize;
+        return succinctBytes(outputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -406,7 +407,7 @@ public class StageExecutionStats
     @JsonProperty
     public DataSize getPhysicalWrittenDataSize()
     {
-        return physicalWrittenDataSize;
+        return succinctBytes(physicalWrittenDataSizeInBytes);
     }
 
     @JsonProperty
@@ -442,17 +443,17 @@ public class StageExecutionStats
                 queuedDrivers,
                 runningDrivers,
                 completedDrivers,
-                rawInputDataSize,
+                rawInputDataSizeInBytes,
                 rawInputPositions,
                 cumulativeUserMemory,
                 cumulativeTotalMemory,
-                userMemoryReservation,
-                totalMemoryReservation,
+                userMemoryReservationInBytes,
+                totalMemoryReservationInBytes,
                 totalCpuTime,
                 totalScheduledTime,
                 fullyBlocked,
                 blockedReasons,
-                totalAllocation,
+                totalAllocationInBytes,
                 progressPercentage);
     }
 

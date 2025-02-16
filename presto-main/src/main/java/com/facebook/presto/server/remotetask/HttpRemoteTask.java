@@ -129,6 +129,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.util.concurrent.Futures.addCallback;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static io.airlift.units.DataSize.succinctBytes;
 import static java.lang.Math.addExact;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -220,9 +221,8 @@ public final class HttpRemoteTask
     private final Protocol thriftProtocol;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
     private final HandleResolver handleResolver;
-    private final int maxTaskUpdateSizeInBytes;
+    private final long maxTaskUpdateDataSizeInBytes;
     private final int maxUnacknowledgedSplits;
-    private final DataSize maxTaskUpdateDataSize;
 
     private final TableWriteInfo tableWriteInfo;
 
@@ -398,8 +398,7 @@ public final class HttpRemoteTask
         this.connectorTypeSerdeManager = connectorTypeSerdeManager;
         this.handleResolver = handleResolver;
         this.tableWriteInfo = tableWriteInfo;
-        this.maxTaskUpdateSizeInBytes = maxTaskUpdateSizeInBytes;
-        this.maxTaskUpdateDataSize = DataSize.succinctBytes(this.maxTaskUpdateSizeInBytes);
+        this.maxTaskUpdateDataSizeInBytes = maxTaskUpdateSizeInBytes;
         this.maxUnacknowledgedSplits = getMaxUnacknowledgedSplitsPerTask(session);
         checkArgument(maxUnacknowledgedSplits > 0, "maxUnacknowledgedSplits must be > 0, found: %s", maxUnacknowledgedSplits);
 
@@ -988,7 +987,7 @@ public final class HttpRemoteTask
             byte[] taskUpdateRequestJson = taskUpdateRequestCodec.toBytes(updateRequest);
             schedulerStatsTracker.recordTaskUpdateSerializedCpuTime(THREAD_MX_BEAN.getCurrentThreadCpuTime() - serializeStartCpuTimeNanos);
 
-            if (taskUpdateRequestJson.length > maxTaskUpdateSizeInBytes) {
+            if (taskUpdateRequestJson.length > maxTaskUpdateDataSizeInBytes) {
                 failTask(new PrestoException(EXCEEDED_TASK_UPDATE_SIZE_LIMIT, getExceededTaskUpdateSizeMessage(taskUpdateRequestJson)));
                 return;
             }
@@ -1043,8 +1042,8 @@ public final class HttpRemoteTask
 
     private String getExceededTaskUpdateSizeMessage(byte[] taskUpdateRequestJson)
     {
-        DataSize taskUpdateSize = DataSize.succinctBytes(taskUpdateRequestJson.length);
-        return format("TaskUpdate size of %s has exceeded the limit of %s", taskUpdateSize.toString(), this.maxTaskUpdateDataSize.toString());
+        DataSize taskUpdateSize = succinctBytes(taskUpdateRequestJson.length);
+        return format("TaskUpdate size of %s has exceeded the limit of %s", taskUpdateSize.toString(), succinctBytes(this.maxTaskUpdateDataSizeInBytes).toString());
     }
 
     private List<TaskSource> getSources()

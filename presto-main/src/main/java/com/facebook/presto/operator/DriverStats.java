@@ -32,7 +32,7 @@ import javax.annotation.concurrent.Immutable;
 import java.util.List;
 import java.util.Set;
 
-import static io.airlift.units.DataSize.Unit.BYTE;
+import static io.airlift.units.DataSize.succinctBytes;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -49,9 +49,9 @@ public class DriverStats
     private final Duration queuedTime;
     private final Duration elapsedTime;
 
-    private final DataSize userMemoryReservation;
-    private final DataSize revocableMemoryReservation;
-    private final DataSize systemMemoryReservation;
+    private final long userMemoryReservationInBytes;
+    private final long revocableMemoryReservationInBytes;
+    private final long systemMemoryReservationInBytes;
 
     private final Duration totalScheduledTime;
     private final Duration totalCpuTime;
@@ -59,19 +59,19 @@ public class DriverStats
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
-    private final DataSize totalAllocation;
+    private final long totalAllocationInBytes;
 
-    private final DataSize rawInputDataSize;
+    private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
     private final Duration rawInputReadTime;
 
-    private final DataSize processedInputDataSize;
+    private final long processedInputDataSizeInBytes;
     private final long processedInputPositions;
 
-    private final DataSize outputDataSize;
+    private final long outputDataSizeInBytes;
     private final long outputPositions;
 
-    private final DataSize physicalWrittenDataSize;
+    private final long physicalWrittenDataSizeInBytes;
 
     private final List<OperatorStats> operatorStats;
 
@@ -85,9 +85,9 @@ public class DriverStats
         this.queuedTime = new Duration(0, MILLISECONDS);
         this.elapsedTime = new Duration(0, MILLISECONDS);
 
-        this.userMemoryReservation = new DataSize(0, BYTE);
-        this.revocableMemoryReservation = new DataSize(0, BYTE);
-        this.systemMemoryReservation = new DataSize(0, BYTE);
+        this.userMemoryReservationInBytes = 0L;
+        this.revocableMemoryReservationInBytes = 0L;
+        this.systemMemoryReservationInBytes = 0L;
 
         this.totalScheduledTime = new Duration(0, MILLISECONDS);
         this.totalCpuTime = new Duration(0, MILLISECONDS);
@@ -95,19 +95,19 @@ public class DriverStats
         this.fullyBlocked = false;
         this.blockedReasons = ImmutableSet.of();
 
-        this.totalAllocation = new DataSize(0, BYTE);
+        this.totalAllocationInBytes = 0L;
 
-        this.rawInputDataSize = new DataSize(0, BYTE);
+        this.rawInputDataSizeInBytes = 0L;
         this.rawInputPositions = 0;
         this.rawInputReadTime = new Duration(0, MILLISECONDS);
 
-        this.processedInputDataSize = new DataSize(0, BYTE);
+        this.processedInputDataSizeInBytes = 0L;
         this.processedInputPositions = 0;
 
-        this.outputDataSize = new DataSize(0, BYTE);
+        this.outputDataSizeInBytes = 0L;
         this.outputPositions = 0;
 
-        this.physicalWrittenDataSize = new DataSize(0, BYTE);
+        this.physicalWrittenDataSizeInBytes = 0L;
 
         this.operatorStats = ImmutableList.of();
     }
@@ -157,9 +157,9 @@ public class DriverStats
         this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
         this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
 
-        this.userMemoryReservation = requireNonNull(userMemoryReservation, "userMemoryReservation is null");
-        this.revocableMemoryReservation = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null");
-        this.systemMemoryReservation = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null");
+        this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
+        this.revocableMemoryReservationInBytes = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null").toBytes();
+        this.systemMemoryReservationInBytes = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null").toBytes();
 
         this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
         this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
@@ -167,22 +167,22 @@ public class DriverStats
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
-        this.totalAllocation = requireNonNull(totalAllocation, "totalAllocation is null");
+        this.totalAllocationInBytes = requireNonNull(totalAllocation, "totalAllocation is null").toBytes();
 
-        this.rawInputDataSize = requireNonNull(rawInputDataSize, "rawInputDataSize is null");
+        this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         Preconditions.checkArgument(rawInputPositions >= 0, "rawInputPositions is negative");
         this.rawInputPositions = rawInputPositions;
         this.rawInputReadTime = requireNonNull(rawInputReadTime, "rawInputReadTime is null");
 
-        this.processedInputDataSize = requireNonNull(processedInputDataSize, "processedInputDataSize is null");
+        this.processedInputDataSizeInBytes = requireNonNull(processedInputDataSize, "processedInputDataSize is null").toBytes();
         Preconditions.checkArgument(processedInputPositions >= 0, "processedInputPositions is negative");
         this.processedInputPositions = processedInputPositions;
 
-        this.outputDataSize = requireNonNull(outputDataSize, "outputDataSize is null");
+        this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         Preconditions.checkArgument(outputPositions >= 0, "outputPositions is negative");
         this.outputPositions = outputPositions;
 
-        this.physicalWrittenDataSize = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null");
+        this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
         this.operatorStats = ImmutableList.copyOf(requireNonNull(operatorStats, "operatorStats is null"));
     }
@@ -235,21 +235,21 @@ public class DriverStats
     @ThriftField(7)
     public DataSize getUserMemoryReservation()
     {
-        return userMemoryReservation;
+        return succinctBytes(userMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(8)
     public DataSize getRevocableMemoryReservation()
     {
-        return revocableMemoryReservation;
+        return succinctBytes(revocableMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(9)
     public DataSize getSystemMemoryReservation()
     {
-        return systemMemoryReservation;
+        return succinctBytes(systemMemoryReservationInBytes);
     }
 
     @JsonProperty
@@ -291,14 +291,14 @@ public class DriverStats
     @ThriftField(15)
     public DataSize getTotalAllocation()
     {
-        return totalAllocation;
+        return succinctBytes(totalAllocationInBytes);
     }
 
     @JsonProperty
     @ThriftField(16)
     public DataSize getRawInputDataSize()
     {
-        return rawInputDataSize;
+        return succinctBytes(rawInputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -319,7 +319,7 @@ public class DriverStats
     @ThriftField(19)
     public DataSize getProcessedInputDataSize()
     {
-        return processedInputDataSize;
+        return succinctBytes(processedInputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -333,7 +333,7 @@ public class DriverStats
     @ThriftField(21)
     public DataSize getOutputDataSize()
     {
-        return outputDataSize;
+        return succinctBytes(outputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -347,7 +347,7 @@ public class DriverStats
     @ThriftField(23)
     public DataSize getPhysicalWrittenDataSize()
     {
-        return physicalWrittenDataSize;
+        return succinctBytes(physicalWrittenDataSizeInBytes);
     }
 
     @JsonProperty
