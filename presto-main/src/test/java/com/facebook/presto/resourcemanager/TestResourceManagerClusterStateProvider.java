@@ -121,6 +121,7 @@ public class TestResourceManagerClusterStateProvider
 
         assertQueryInfos(provider.getClusterQueries(), 0, 0);
     }
+
     @Test(timeOut = 15_000)
     public void testOutOfOrderUpdatesIgnored()
             throws Exception

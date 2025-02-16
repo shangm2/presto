@@ -67,11 +67,11 @@ public class MockQueryExecution
 
     @Override
     public void addStateChangeListener(StateMachine.StateChangeListener<QueryState> stateChangeListener)
-    { }
+    {}
 
     @Override
     public void addOutputInfoListener(Consumer<QueryOutputInfo> listener)
-    { }
+    {}
 
     @Override
     public Plan getQueryPlan()
@@ -140,15 +140,15 @@ public class MockQueryExecution
     }
 
     @Override
-    public DataSize getUserMemoryReservation()
+    public long getUserMemoryReservationInBytes()
     {
-        return null;
+        return 0L;
     }
 
     @Override
-    public DataSize getTotalMemoryReservation()
+    public long getTotalMemoryReservationInBytes()
     {
-        return null;
+        return 0L;
     }
 
     @Override
@@ -218,37 +218,37 @@ public class MockQueryExecution
 
     @Override
     public void pruneExpiredQueryInfo()
-    { }
+    {}
 
     @Override
     public void pruneFinishedQueryInfo()
-    { }
+    {}
 
     @Override
     public void setResourceGroupQueryLimits(ResourceGroupQueryLimits resourceGroupQueryLimits)
-    { }
+    {}
 
     @Override
     public void setMemoryPool(VersionedMemoryPoolId poolId)
-    { }
+    {}
 
     @Override
     public void start()
-    { }
+    {}
 
     @Override
     public void cancelQuery()
-    { }
+    {}
 
     @Override
     public void cancelStage(StageId stageId)
-    { }
+    {}
 
     @Override
     public void recordHeartbeat()
-    { }
+    {}
 
     @Override
     public void addFinalQueryInfoListener(StateMachine.StateChangeListener<QueryInfo> stateChangeListener)
-    { }
+    {}
 }

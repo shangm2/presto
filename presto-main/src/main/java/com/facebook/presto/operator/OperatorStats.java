@@ -54,26 +54,26 @@ public class OperatorStats
     private final long isBlockedCalls;
     private final Duration isBlockedWall;
     private final Duration isBlockedCpu;
-    private final DataSize isBlockedAllocation;
+    private final long isBlockedAllocation;
 
     private final long addInputCalls;
     private final Duration addInputWall;
     private final Duration addInputCpu;
-    private final DataSize addInputAllocation;
-    private final DataSize rawInputDataSize;
+    private final long addInputAllocationInBytes;
+    private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
-    private final DataSize inputDataSize;
+    private final long inputDataSizeInBytes;
     private final long inputPositions;
     private final double sumSquaredInputPositions;
 
     private final long getOutputCalls;
     private final Duration getOutputWall;
     private final Duration getOutputCpu;
-    private final DataSize getOutputAllocation;
-    private final DataSize outputDataSize;
+    private final long getOutputAllocationInBytes;
+    private final long outputDataSizeInBytes;
     private final long outputPositions;
 
-    private final DataSize physicalWrittenDataSize;
+    private final long physicalWrittenDataSizeInBytes;
 
     private final Duration additionalCpu;
     private final Duration blockedWall;
@@ -81,16 +81,16 @@ public class OperatorStats
     private final long finishCalls;
     private final Duration finishWall;
     private final Duration finishCpu;
-    private final DataSize finishAllocation;
+    private final long finishAllocationInBytes;
 
-    private final DataSize userMemoryReservation;
-    private final DataSize revocableMemoryReservation;
-    private final DataSize systemMemoryReservation;
-    private final DataSize peakUserMemoryReservation;
-    private final DataSize peakSystemMemoryReservation;
-    private final DataSize peakTotalMemoryReservation;
+    private final long userMemoryReservationInBytes;
+    private final long revocableMemoryReservationInBytes;
+    private final long systemMemoryReservationInBytes;
+    private final long peakUserMemoryReservationInBytes;
+    private final long peakSystemMemoryReservationInBytes;
+    private final long peakTotalMemoryReservationInBytes;
 
-    private final DataSize spilledDataSize;
+    private final long spilledDataSizeInBytes;
 
     private final Optional<BlockedReason> blockedReason;
 
@@ -185,15 +185,15 @@ public class OperatorStats
         this.isBlockedCalls = isBlockedCalls;
         this.isBlockedWall = requireNonNull(isBlockedWall, "isBlockedWall is null");
         this.isBlockedCpu = requireNonNull(isBlockedCpu, "isBlockedCpu is null");
-        this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null");
+        this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null").toBytes();
 
         this.addInputCalls = addInputCalls;
         this.addInputWall = requireNonNull(addInputWall, "addInputWall is null");
         this.addInputCpu = requireNonNull(addInputCpu, "addInputCpu is null");
-        this.addInputAllocation = requireNonNull(addInputAllocation, "addInputAllocation is null");
-        this.rawInputDataSize = requireNonNull(rawInputDataSize, "rawInputDataSize is null");
+        this.addInputAllocationInBytes = requireNonNull(addInputAllocation, "addInputAllocation is null").toBytes();
+        this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         this.rawInputPositions = requireNonNull(rawInputPositions, "rawInputPositions is null");
-        this.inputDataSize = requireNonNull(inputDataSize, "inputDataSize is null");
+        this.inputDataSizeInBytes = requireNonNull(inputDataSize, "inputDataSize is null").toBytes();
         checkArgument(inputPositions >= 0, "inputPositions is negative");
         this.inputPositions = inputPositions;
         this.sumSquaredInputPositions = sumSquaredInputPositions;
@@ -201,12 +201,12 @@ public class OperatorStats
         this.getOutputCalls = getOutputCalls;
         this.getOutputWall = requireNonNull(getOutputWall, "getOutputWall is null");
         this.getOutputCpu = requireNonNull(getOutputCpu, "getOutputCpu is null");
-        this.getOutputAllocation = requireNonNull(getOutputAllocation, "getOutputAllocation is null");
-        this.outputDataSize = requireNonNull(outputDataSize, "outputDataSize is null");
+        this.getOutputAllocationInBytes = requireNonNull(getOutputAllocation, "getOutputAllocation is null").toBytes();
+        this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         checkArgument(outputPositions >= 0, "outputPositions is negative");
         this.outputPositions = outputPositions;
 
-        this.physicalWrittenDataSize = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null");
+        this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
         this.additionalCpu = requireNonNull(additionalCpu, "additionalCpu is null");
         this.blockedWall = requireNonNull(blockedWall, "blockedWall is null");
@@ -214,17 +214,17 @@ public class OperatorStats
         this.finishCalls = finishCalls;
         this.finishWall = requireNonNull(finishWall, "finishWall is null");
         this.finishCpu = requireNonNull(finishCpu, "finishCpu is null");
-        this.finishAllocation = requireNonNull(finishAllocation, "finishAllocation is null");
+        this.finishAllocationInBytes = requireNonNull(finishAllocation, "finishAllocation is null").toBytes();
 
-        this.userMemoryReservation = requireNonNull(userMemoryReservation, "userMemoryReservation is null");
-        this.revocableMemoryReservation = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null");
-        this.systemMemoryReservation = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null");
+        this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
+        this.revocableMemoryReservationInBytes = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null").toBytes();
+        this.systemMemoryReservationInBytes = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null").toBytes();
 
-        this.peakUserMemoryReservation = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null");
-        this.peakSystemMemoryReservation = requireNonNull(peakSystemMemoryReservation, "peakSystemMemoryReservation is null");
-        this.peakTotalMemoryReservation = requireNonNull(peakTotalMemoryReservation, "peakTotalMemoryReservation is null");
+        this.peakUserMemoryReservationInBytes = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null").toBytes();
+        this.peakSystemMemoryReservationInBytes = requireNonNull(peakSystemMemoryReservation, "peakSystemMemoryReservation is null").toBytes();
+        this.peakTotalMemoryReservationInBytes = requireNonNull(peakTotalMemoryReservation, "peakTotalMemoryReservation is null").toBytes();
 
-        this.spilledDataSize = requireNonNull(spilledDataSize, "spilledDataSize is null");
+        this.spilledDataSizeInBytes = requireNonNull(spilledDataSize, "spilledDataSize is null").toBytes();
 
         this.runtimeStats = runtimeStats;
 
@@ -317,15 +317,15 @@ public class OperatorStats
         this.isBlockedCalls = isBlockedCalls;
         this.isBlockedWall = requireNonNull(isBlockedWall, "isBlockedWall is null");
         this.isBlockedCpu = requireNonNull(isBlockedCpu, "isBlockedCpu is null");
-        this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null");
+        this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null").toBytes();
 
         this.addInputCalls = addInputCalls;
         this.addInputWall = requireNonNull(addInputWall, "addInputWall is null");
         this.addInputCpu = requireNonNull(addInputCpu, "addInputCpu is null");
-        this.addInputAllocation = requireNonNull(addInputAllocation, "addInputAllocation is null");
-        this.rawInputDataSize = requireNonNull(rawInputDataSize, "rawInputDataSize is null");
+        this.addInputAllocationInBytes = requireNonNull(addInputAllocation, "addInputAllocation is null").toBytes();
+        this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         this.rawInputPositions = requireNonNull(rawInputPositions, "rawInputPositions is null");
-        this.inputDataSize = requireNonNull(inputDataSize, "inputDataSize is null");
+        this.inputDataSizeInBytes = requireNonNull(inputDataSize, "inputDataSize is null").toBytes();
         checkArgument(inputPositions >= 0, "inputPositions is negative");
         this.inputPositions = inputPositions;
         this.sumSquaredInputPositions = sumSquaredInputPositions;
@@ -333,12 +333,12 @@ public class OperatorStats
         this.getOutputCalls = getOutputCalls;
         this.getOutputWall = requireNonNull(getOutputWall, "getOutputWall is null");
         this.getOutputCpu = requireNonNull(getOutputCpu, "getOutputCpu is null");
-        this.getOutputAllocation = requireNonNull(getOutputAllocation, "getOutputAllocation is null");
-        this.outputDataSize = requireNonNull(outputDataSize, "outputDataSize is null");
+        this.getOutputAllocationInBytes = requireNonNull(getOutputAllocation, "getOutputAllocation is null").toBytes();
+        this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         checkArgument(outputPositions >= 0, "outputPositions is negative");
         this.outputPositions = outputPositions;
 
-        this.physicalWrittenDataSize = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null");
+        this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
         this.additionalCpu = requireNonNull(additionalCpu, "additionalCpu is null");
         this.blockedWall = requireNonNull(blockedWall, "blockedWall is null");
@@ -346,17 +346,17 @@ public class OperatorStats
         this.finishCalls = finishCalls;
         this.finishWall = requireNonNull(finishWall, "finishWall is null");
         this.finishCpu = requireNonNull(finishCpu, "finishCpu is null");
-        this.finishAllocation = requireNonNull(finishAllocation, "finishAllocation is null");
+        this.finishAllocationInBytes = requireNonNull(finishAllocation, "finishAllocation is null").toBytes();
 
-        this.userMemoryReservation = requireNonNull(userMemoryReservation, "userMemoryReservation is null");
-        this.revocableMemoryReservation = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null");
-        this.systemMemoryReservation = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null");
+        this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
+        this.revocableMemoryReservationInBytes = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null").toBytes();
+        this.systemMemoryReservationInBytes = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null").toBytes();
 
-        this.peakUserMemoryReservation = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null");
-        this.peakSystemMemoryReservation = requireNonNull(peakSystemMemoryReservation, "peakSystemMemoryReservation is null");
-        this.peakTotalMemoryReservation = requireNonNull(peakTotalMemoryReservation, "peakTotalMemoryReservation is null");
+        this.peakUserMemoryReservationInBytes = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null").toBytes();
+        this.peakSystemMemoryReservationInBytes = requireNonNull(peakSystemMemoryReservation, "peakSystemMemoryReservation is null").toBytes();
+        this.peakTotalMemoryReservationInBytes = requireNonNull(peakTotalMemoryReservation, "peakTotalMemoryReservation is null").toBytes();
 
-        this.spilledDataSize = requireNonNull(spilledDataSize, "spilledDataSize is null");
+        this.spilledDataSizeInBytes = requireNonNull(spilledDataSize, "spilledDataSize is null").toBytes();
 
         this.runtimeStats = runtimeStats;
 
@@ -446,14 +446,14 @@ public class OperatorStats
     @ThriftField(11)
     public DataSize getAddInputAllocation()
     {
-        return addInputAllocation;
+        return succinctBytes(addInputAllocationInBytes);
     }
 
     @JsonProperty
     @ThriftField(12)
     public DataSize getRawInputDataSize()
     {
-        return rawInputDataSize;
+        return succinctBytes(rawInputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -467,7 +467,7 @@ public class OperatorStats
     @ThriftField(14)
     public DataSize getInputDataSize()
     {
-        return inputDataSize;
+        return succinctBytes(inputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -509,14 +509,14 @@ public class OperatorStats
     @ThriftField(20)
     public DataSize getGetOutputAllocation()
     {
-        return getOutputAllocation;
+        return succinctBytes(getOutputAllocationInBytes);
     }
 
     @JsonProperty
     @ThriftField(21)
     public DataSize getOutputDataSize()
     {
-        return outputDataSize;
+        return succinctBytes(outputDataSizeInBytes);
     }
 
     @JsonProperty
@@ -530,7 +530,7 @@ public class OperatorStats
     @ThriftField(23)
     public DataSize getPhysicalWrittenDataSize()
     {
-        return physicalWrittenDataSize;
+        return succinctBytes(physicalWrittenDataSizeInBytes);
     }
 
     @JsonProperty
@@ -572,56 +572,56 @@ public class OperatorStats
     @ThriftField(29)
     public DataSize getFinishAllocation()
     {
-        return finishAllocation;
+        return succinctBytes(finishAllocationInBytes);
     }
 
     @JsonProperty
     @ThriftField(30)
     public DataSize getUserMemoryReservation()
     {
-        return userMemoryReservation;
+        return succinctBytes(userMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(31)
     public DataSize getRevocableMemoryReservation()
     {
-        return revocableMemoryReservation;
+        return succinctBytes(revocableMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(32)
     public DataSize getSystemMemoryReservation()
     {
-        return systemMemoryReservation;
+        return succinctBytes(systemMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(33)
     public DataSize getPeakUserMemoryReservation()
     {
-        return peakUserMemoryReservation;
+        return succinctBytes(peakUserMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(34)
     public DataSize getPeakSystemMemoryReservation()
     {
-        return peakSystemMemoryReservation;
+        return succinctBytes(peakSystemMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(35)
     public DataSize getPeakTotalMemoryReservation()
     {
-        return peakTotalMemoryReservation;
+        return succinctBytes(peakTotalMemoryReservationInBytes);
     }
 
     @JsonProperty
     @ThriftField(36)
     public DataSize getSpilledDataSize()
     {
-        return spilledDataSize;
+        return succinctBytes(spilledDataSizeInBytes);
     }
 
     @Nullable
@@ -714,7 +714,7 @@ public class OperatorStats
     @ThriftField(48)
     public DataSize getIsBlockedAllocation()
     {
-        return isBlockedAllocation;
+        return succinctBytes(isBlockedAllocation);
     }
 
     public static Optional<OperatorStats> merge(List<OperatorStats> operators)
@@ -951,36 +951,36 @@ public class OperatorStats
                 isBlockedCalls,
                 isBlockedWall,
                 isBlockedCpu,
-                isBlockedAllocation,
+                succinctBytes(isBlockedAllocation),
                 addInputCalls,
                 addInputWall,
                 addInputCpu,
-                addInputAllocation,
-                rawInputDataSize,
+                succinctBytes(addInputAllocationInBytes),
+                succinctBytes(rawInputDataSizeInBytes),
                 rawInputPositions,
-                inputDataSize,
+                succinctBytes(inputDataSizeInBytes),
                 inputPositions,
                 sumSquaredInputPositions,
                 getOutputCalls,
                 getOutputWall,
                 getOutputCpu,
-                getOutputAllocation,
-                outputDataSize,
+                succinctBytes(getOutputAllocationInBytes),
+                succinctBytes(outputDataSizeInBytes),
                 outputPositions,
-                physicalWrittenDataSize,
+                succinctBytes(physicalWrittenDataSizeInBytes),
                 additionalCpu,
                 blockedWall,
                 finishCalls,
                 finishWall,
                 finishCpu,
-                finishAllocation,
-                userMemoryReservation,
-                revocableMemoryReservation,
-                systemMemoryReservation,
-                peakUserMemoryReservation,
-                peakSystemMemoryReservation,
-                peakTotalMemoryReservation,
-                spilledDataSize,
+                succinctBytes(finishAllocationInBytes),
+                succinctBytes(userMemoryReservationInBytes),
+                succinctBytes(revocableMemoryReservationInBytes),
+                succinctBytes(systemMemoryReservationInBytes),
+                succinctBytes(peakUserMemoryReservationInBytes),
+                succinctBytes(peakSystemMemoryReservationInBytes),
+                succinctBytes(peakTotalMemoryReservationInBytes),
+                succinctBytes(spilledDataSizeInBytes),
                 blockedReason,
                 info,
                 runtimeStats,

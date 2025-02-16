@@ -255,19 +255,19 @@ public class StageExecutionStateMachine
 
         double cumulativeUserMemory = 0;
         double cumulativeTotalMemory = 0;
-        long userMemoryReservation = 0;
-        long totalMemoryReservation = 0;
+        long userMemoryReservationInBytes = 0;
+        long totalMemoryReservationInBytes = 0;
 
         long totalScheduledTime = 0;
         long totalCpuTime = 0;
 
-        long rawInputDataSize = 0;
+        long rawInputDataSizeInBytes = 0;
         long rawInputPositions = 0;
 
         boolean fullyBlocked = true;
         Set<BlockedReason> blockedReasons = new HashSet<>();
 
-        long totalAllocation = 0;
+        long totalAllocationInBytes = 0;
 
         for (TaskInfo taskInfo : taskInfos) {
             TaskState taskState = taskInfo.getTaskStatus().getState();
@@ -282,8 +282,8 @@ public class StageExecutionStateMachine
 
             long taskUserMemory = taskStats.getUserMemoryReservationInBytes();
             long taskSystemMemory = taskStats.getSystemMemoryReservationInBytes();
-            userMemoryReservation += taskUserMemory;
-            totalMemoryReservation += taskUserMemory + taskSystemMemory;
+            userMemoryReservationInBytes += taskUserMemory;
+            totalMemoryReservationInBytes += taskUserMemory + taskSystemMemory;
 
             totalScheduledTime += taskStats.getTotalScheduledTimeInNanos();
             totalCpuTime += taskStats.getTotalCpuTimeInNanos();
@@ -292,10 +292,10 @@ public class StageExecutionStateMachine
                 blockedReasons.addAll(taskStats.getBlockedReasons());
             }
 
-            totalAllocation += taskStats.getTotalAllocationInBytes();
+            totalAllocationInBytes += taskStats.getTotalAllocationInBytes();
 
             if (containsTableScans) {
-                rawInputDataSize += taskStats.getRawInputDataSizeInBytes();
+                rawInputDataSizeInBytes += taskStats.getRawInputDataSizeInBytes();
                 rawInputPositions += taskStats.getRawInputPositions();
             }
         }
@@ -313,13 +313,13 @@ public class StageExecutionStateMachine
                 runningDrivers,
                 completedDrivers,
 
-                succinctBytes(rawInputDataSize),
+                rawInputDataSizeInBytes,
                 rawInputPositions,
 
                 cumulativeUserMemory,
                 cumulativeTotalMemory,
-                succinctBytes(userMemoryReservation),
-                succinctBytes(totalMemoryReservation),
+                userMemoryReservationInBytes,
+                totalMemoryReservationInBytes,
 
                 succinctNanos(totalCpuTime),
                 succinctNanos(totalScheduledTime),
@@ -327,7 +327,7 @@ public class StageExecutionStateMachine
                 fullyBlocked,
                 blockedReasons,
 
-                succinctBytes(totalAllocation),
+                totalAllocationInBytes,
 
                 progressPercentage);
     }

@@ -32,6 +32,7 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
+import static io.airlift.units.DataSize.succinctBytes;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -59,24 +60,24 @@ public class BasicQueryStats
     private final int runningDrivers;
     private final int completedDrivers;
 
-    private final DataSize rawInputDataSize;
+    private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
 
     private final double cumulativeUserMemory;
     private final double cumulativeTotalMemory;
-    private final DataSize userMemoryReservation;
-    private final DataSize totalMemoryReservation;
-    private final DataSize peakUserMemoryReservation;
-    private final DataSize peakTotalMemoryReservation;
-    private final DataSize peakTaskTotalMemoryReservation;
-    private final DataSize peakNodeTotalMemoryReservation;
+    private final long userMemoryReservationInBytes;
+    private final long totalMemoryReservationInBytes;
+    private final long peakUserMemoryReservationInBytes;
+    private final long peakTotalMemoryReservationInBytes;
+    private final long peakTaskTotalMemoryReservationInBytes;
+    private final long peakNodeTotalMemoryReservationInBytes;
     private final Duration totalCpuTime;
     private final Duration totalScheduledTime;
 
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
-    private final DataSize totalAllocation;
+    private final long totalAllocationInBytes;
 
     private final OptionalDouble progressPercentage;
 
@@ -132,24 +133,24 @@ public class BasicQueryStats
         checkArgument(completedDrivers >= 0, "completedDrivers is negative");
         this.completedDrivers = completedDrivers;
 
-        this.rawInputDataSize = requireNonNull(rawInputDataSize);
+        this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         this.rawInputPositions = rawInputPositions;
 
         this.cumulativeUserMemory = cumulativeUserMemory;
         this.cumulativeTotalMemory = cumulativeTotalMemory;
-        this.userMemoryReservation = userMemoryReservation;
-        this.totalMemoryReservation = totalMemoryReservation;
-        this.peakUserMemoryReservation = peakUserMemoryReservation;
-        this.peakTotalMemoryReservation = peakTotalMemoryReservation;
-        this.peakTaskTotalMemoryReservation = peakTaskTotalMemoryReservation;
-        this.peakNodeTotalMemoryReservation = peakNodeTotalMemoryReservation;
+        this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "rawInputDataSize is null").toBytes();
+        this.totalMemoryReservationInBytes = requireNonNull(totalMemoryReservation, "rawInputDataSize is null").toBytes();
+        this.peakUserMemoryReservationInBytes = requireNonNull(peakUserMemoryReservation, "rawInputDataSize is null").toBytes();
+        this.peakTotalMemoryReservationInBytes = requireNonNull(peakTotalMemoryReservation, "rawInputDataSize is null").toBytes();
+        this.peakTaskTotalMemoryReservationInBytes = requireNonNull(peakTaskTotalMemoryReservation, "rawInputDataSize is null").toBytes();
+        this.peakNodeTotalMemoryReservationInBytes = requireNonNull(peakNodeTotalMemoryReservation, "rawInputDataSize is null").toBytes();
         this.totalCpuTime = totalCpuTime;
         this.totalScheduledTime = totalScheduledTime;
 
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
-        this.totalAllocation = requireNonNull(totalAllocation, "totalAllocation is null");
+        this.totalAllocationInBytes = requireNonNull(totalAllocation, "totalAllocation is null").toBytes();
 
         this.progressPercentage = requireNonNull(progressPercentage, "progressPercentage is null");
     }
@@ -287,7 +288,7 @@ public class BasicQueryStats
     @JsonProperty
     public DataSize getRawInputDataSize()
     {
-        return rawInputDataSize;
+        return succinctBytes(rawInputDataSizeInBytes);
     }
 
     @ThriftField(11)
@@ -308,14 +309,14 @@ public class BasicQueryStats
     @JsonProperty
     public DataSize getUserMemoryReservation()
     {
-        return userMemoryReservation;
+        return succinctBytes(userMemoryReservationInBytes);
     }
 
     @ThriftField(14)
     @JsonProperty
     public DataSize getTotalMemoryReservation()
     {
-        return totalMemoryReservation;
+        return succinctBytes(totalMemoryReservationInBytes);
     }
 
     @ThriftField(15)
@@ -328,28 +329,28 @@ public class BasicQueryStats
     @JsonProperty
     public DataSize getPeakUserMemoryReservation()
     {
-        return peakUserMemoryReservation;
+        return succinctBytes(peakUserMemoryReservationInBytes);
     }
 
     @ThriftField(17)
     @JsonProperty
     public DataSize getPeakTotalMemoryReservation()
     {
-        return peakTotalMemoryReservation;
+        return succinctBytes(peakTotalMemoryReservationInBytes);
     }
 
     @ThriftField(18)
     @JsonProperty
     public DataSize getPeakTaskTotalMemoryReservation()
     {
-        return peakTaskTotalMemoryReservation;
+        return succinctBytes(peakTaskTotalMemoryReservationInBytes);
     }
 
     @ThriftField(value = 19, name = "peakNodeTotalMemoryReservation")
     @JsonProperty
     public DataSize getPeakNodeTotalMemoryReservation()
     {
-        return peakNodeTotalMemoryReservation;
+        return succinctBytes(peakNodeTotalMemoryReservationInBytes);
     }
 
     @ThriftField(20)
@@ -384,7 +385,7 @@ public class BasicQueryStats
     @JsonProperty
     public DataSize getTotalAllocation()
     {
-        return totalAllocation;
+        return succinctBytes(totalAllocationInBytes);
     }
 
     @ThriftField(25)

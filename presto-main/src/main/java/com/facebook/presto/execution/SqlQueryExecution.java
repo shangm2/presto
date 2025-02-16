@@ -106,7 +106,6 @@ import static com.facebook.presto.util.AnalyzerUtil.getAnalyzerContext;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static io.airlift.units.DataSize.Unit.BYTE;
-import static io.airlift.units.DataSize.succinctBytes;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -291,7 +290,7 @@ public class SqlQueryExecution
      * If the query has finished executing, gets the value of the final query info's {@link QueryStats#getUserMemoryReservation()}
      */
     @Override
-    public DataSize getUserMemoryReservation()
+    public long getUserMemoryReservationInBytes()
     {
         // acquire reference to scheduler before checking finalQueryInfo, because
         // state change listener sets finalQueryInfo and then clears scheduler when
@@ -299,19 +298,19 @@ public class SqlQueryExecution
         SqlQuerySchedulerInterface scheduler = queryScheduler.get();
         Optional<QueryInfo> finalQueryInfo = stateMachine.getFinalQueryInfo();
         if (finalQueryInfo.isPresent()) {
-            return finalQueryInfo.get().getQueryStats().getUserMemoryReservation();
+            return finalQueryInfo.get().getQueryStats().getUserMemoryReservation().toBytes();
         }
         if (scheduler == null) {
-            return new DataSize(0, BYTE);
+            return 0L;
         }
-        return succinctBytes(scheduler.getUserMemoryReservation());
+        return scheduler.getUserMemoryReservation();
     }
 
     /**
      * Gets the current total memory reserved for this query
      */
     @Override
-    public DataSize getTotalMemoryReservation()
+    public long getTotalMemoryReservationInBytes()
     {
         // acquire reference to scheduler before checking finalQueryInfo, because
         // state change listener sets finalQueryInfo and then clears scheduler when
@@ -319,12 +318,12 @@ public class SqlQueryExecution
         SqlQuerySchedulerInterface scheduler = queryScheduler.get();
         Optional<QueryInfo> finalQueryInfo = stateMachine.getFinalQueryInfo();
         if (finalQueryInfo.isPresent()) {
-            return finalQueryInfo.get().getQueryStats().getTotalMemoryReservation();
+            return finalQueryInfo.get().getQueryStats().getTotalMemoryReservation().toBytes();
         }
         if (scheduler == null) {
-            return new DataSize(0, BYTE);
+            return 0L;
         }
-        return succinctBytes(scheduler.getTotalMemoryReservation());
+        return scheduler.getTotalMemoryReservation();
     }
 
     /**

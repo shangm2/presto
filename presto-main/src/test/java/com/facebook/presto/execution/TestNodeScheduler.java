@@ -94,6 +94,7 @@ import static com.facebook.presto.execution.scheduler.NodeSelectionHashStrategy.
 import static com.facebook.presto.spi.schedule.NodeSelectionStrategy.HARD_AFFINITY;
 import static com.facebook.presto.spi.schedule.NodeSelectionStrategy.NO_PREFERENCE;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static io.airlift.units.DataSize.succinctBytes;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -193,12 +194,12 @@ public class TestNodeScheduler
                     0,
                     0,
                     0,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
+                    succinctBytes(0),
+                    succinctBytes(0),
+                    succinctBytes(0),
+                    succinctBytes(0),
+                    succinctBytes(0),
+                    succinctBytes(0),
                     null,
                     null,
                     false,

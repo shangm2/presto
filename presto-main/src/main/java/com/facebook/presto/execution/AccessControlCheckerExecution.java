@@ -53,7 +53,6 @@ import static com.facebook.presto.util.AnalyzerUtil.getAnalyzerContext;
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-import static io.airlift.units.DataSize.Unit.BYTE;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
@@ -128,15 +127,15 @@ public class AccessControlCheckerExecution
     }
 
     @Override
-    public DataSize getUserMemoryReservation()
+    public long getUserMemoryReservationInBytes()
     {
-        return new DataSize(0, BYTE);
+        return 0L;
     }
 
     @Override
-    public DataSize getTotalMemoryReservation()
+    public long getTotalMemoryReservationInBytes()
     {
-        return new DataSize(0, BYTE);
+        return 0L;
     }
 
     @Override
