@@ -55,17 +55,17 @@ public class QueryStats
     private final DateTime lastHeartbeat;
     private final DateTime endTime;
 
-    private final Duration elapsedTime;
-    private final Duration waitingForPrerequisitesTime;
-    private final Duration queuedTime;
-    private final Duration resourceWaitingTime;
-    private final Duration semanticAnalyzingTime;
-    private final Duration columnAccessPermissionCheckingTime;
-    private final Duration dispatchingTime;
-    private final Duration executionTime;
-    private final Duration analysisTime;
-    private final Duration totalPlanningTime;
-    private final Duration finishingTime;
+    private final long elapsedTimeInMillis;
+    private final long waitingForPrerequisitesTimeInMillis;
+    private final long queuedTimeInMillis;
+    private final long resourceWaitingTimeInMillis;
+    private final long semanticAnalyzingTimeInMillis;
+    private final long columnAccessPermissionCheckingTimeInMillis;
+    private final long dispatchingTimeInMillis;
+    private final long executionTimeInMillis;
+    private final long analysisTimeInMillis;
+    private final long totalPlanningTimeInMillis;
+    private final long finishingTimeInMillis;
 
     private final int totalTasks;
     private final int runningTasks;
@@ -89,10 +89,10 @@ public class QueryStats
     private final long peakNodeTotalMemoryInBytes;
 
     private final boolean scheduled;
-    private final Duration totalScheduledTime;
-    private final Duration totalCpuTime;
-    private final Duration retriedCpuTime;
-    private final Duration totalBlockedTime;
+    private final long totalScheduledTimeInMillis;
+    private final long totalCpuTimeInMillis;
+    private final long retriedCpuTimeInMillis;
+    private final long totalBlockedTimeInMillis;
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
@@ -202,17 +202,17 @@ public class QueryStats
         this.lastHeartbeat = requireNonNull(lastHeartbeat, "lastHeartbeat is null");
         this.endTime = endTime;
 
-        this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
-        this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTime is null");
-        this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
-        this.resourceWaitingTime = requireNonNull(resourceWaitingTime, "resourceWaitingTime is null");
-        this.semanticAnalyzingTime = requireNonNull(semanticAnalyzingTime, "semanticAnalyzingTime is null");
-        this.columnAccessPermissionCheckingTime = requireNonNull(columnAccessPermissionCheckingTime, "columnAccessPermissionCheckingTime is null");
-        this.dispatchingTime = requireNonNull(dispatchingTime, "dispatchingTime is null");
-        this.executionTime = requireNonNull(executionTime, "executionTime is null");
-        this.analysisTime = requireNonNull(analysisTime, "analysisTime is null");
-        this.totalPlanningTime = requireNonNull(totalPlanningTime, "totalPlanningTime is null");
-        this.finishingTime = requireNonNull(finishingTime, "finishingTime is null");
+        this.elapsedTimeInMillis = requireNonNull(elapsedTime, "elapsedTime is null").toMillis();
+        this.waitingForPrerequisitesTimeInMillis = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTime is null").toMillis();
+        this.queuedTimeInMillis = requireNonNull(queuedTime, "queuedTime is null").toMillis();
+        this.resourceWaitingTimeInMillis = requireNonNull(resourceWaitingTime, "resourceWaitingTime is null").toMillis();
+        this.semanticAnalyzingTimeInMillis = requireNonNull(semanticAnalyzingTime, "semanticAnalyzingTime is null").toMillis();
+        this.columnAccessPermissionCheckingTimeInMillis = requireNonNull(columnAccessPermissionCheckingTime, "columnAccessPermissionCheckingTime is null").toMillis();
+        this.dispatchingTimeInMillis = requireNonNull(dispatchingTime, "dispatchingTime is null").toMillis();
+        this.executionTimeInMillis = requireNonNull(executionTime, "executionTime is null").toMillis();
+        this.analysisTimeInMillis = requireNonNull(analysisTime, "analysisTime is null").toMillis();
+        this.totalPlanningTimeInMillis = requireNonNull(totalPlanningTime, "totalPlanningTime is null").toMillis();
+        this.finishingTimeInMillis = requireNonNull(finishingTime, "finishingTime is null").toMillis();
 
         checkArgument(totalTasks >= 0, "totalTasks is negative");
         this.totalTasks = totalTasks;
@@ -245,10 +245,10 @@ public class QueryStats
         this.peakTaskUserMemoryInBytes = requireNonNull(peakTaskUserMemory, "peakTaskUserMemory is null").toBytes();
         this.peakNodeTotalMemoryInBytes = requireNonNull(peakNodeTotalMemory, "peakNodeTotalMemory is null").toBytes();
         this.scheduled = scheduled;
-        this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
-        this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
-        this.retriedCpuTime = requireNonNull(retriedCpuTime, "totalCpuTime is null");
-        this.totalBlockedTime = requireNonNull(totalBlockedTime, "totalBlockedTime is null");
+        this.totalScheduledTimeInMillis = requireNonNull(totalScheduledTime, "totalScheduledTime is null").toMillis();
+        this.totalCpuTimeInMillis = requireNonNull(totalCpuTime, "totalCpuTime is null").toMillis();
+        this.retriedCpuTimeInMillis = requireNonNull(retriedCpuTime, "totalCpuTime is null").toMillis();
+        this.totalBlockedTimeInMillis = requireNonNull(totalBlockedTime, "totalBlockedTime is null").toMillis();
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
@@ -594,67 +594,67 @@ public class QueryStats
     @JsonProperty
     public Duration getElapsedTime()
     {
-        return elapsedTime;
+        return succinctDuration(elapsedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getWaitingForPrerequisitesTime()
     {
-        return waitingForPrerequisitesTime;
+        return succinctDuration(waitingForPrerequisitesTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getResourceWaitingTime()
     {
-        return resourceWaitingTime;
+        return succinctDuration(resourceWaitingTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getSemanticAnalyzingTime()
     {
-        return semanticAnalyzingTime;
+        return succinctDuration(semanticAnalyzingTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getColumnAccessPermissionCheckingTime()
     {
-        return columnAccessPermissionCheckingTime;
+        return succinctDuration(columnAccessPermissionCheckingTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getDispatchingTime()
     {
-        return dispatchingTime;
+        return succinctDuration(dispatchingTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getQueuedTime()
     {
-        return queuedTime;
+        return succinctDuration(queuedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getExecutionTime()
     {
-        return executionTime;
+        return succinctDuration(executionTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getAnalysisTime()
     {
-        return analysisTime;
+        return succinctDuration(analysisTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getTotalPlanningTime()
     {
-        return totalPlanningTime;
+        return succinctDuration(totalPlanningTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getFinishingTime()
     {
-        return finishingTime;
+        return succinctDuration(finishingTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -774,25 +774,25 @@ public class QueryStats
     @JsonProperty
     public Duration getTotalScheduledTime()
     {
-        return totalScheduledTime;
+        return succinctDuration(totalScheduledTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getTotalCpuTime()
     {
-        return totalCpuTime;
+        return succinctDuration(totalCpuTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getRetriedCpuTime()
     {
-        return retriedCpuTime;
+        return succinctDuration(retriedCpuTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getTotalBlockedTime()
     {
-        return totalBlockedTime;
+        return succinctDuration(totalBlockedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty

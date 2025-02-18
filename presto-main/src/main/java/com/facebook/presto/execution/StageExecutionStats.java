@@ -37,8 +37,10 @@ import static com.facebook.presto.execution.StageExecutionState.RUNNING;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.succinctBytes;
+import static io.airlift.units.Duration.succinctDuration;
 import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @Immutable
@@ -68,10 +70,10 @@ public class StageExecutionStats
     private final long peakUserMemoryReservationInBytes;
     private final long peakNodeTotalMemoryReservationInBytes;
 
-    private final Duration totalScheduledTime;
-    private final Duration totalCpuTime;
-    private final Duration retriedCpuTime;
-    private final Duration totalBlockedTime;
+    private final long totalScheduledTimeInMillis;
+    private final long totalCpuTimeInMillis;
+    private final long retriedCpuTimeInMillis;
+    private final long totalBlockedTimeInMillis;
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
@@ -182,10 +184,10 @@ public class StageExecutionStats
         this.peakUserMemoryReservationInBytes = requireNonNull(peakUserMemoryReservation, "peakUserMemoryReservation is null").toBytes();
         this.peakNodeTotalMemoryReservationInBytes = requireNonNull(peakNodeTotalMemoryReservation, "peakNodeTotalMemoryReservation is null").toBytes();
 
-        this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
-        this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
-        this.retriedCpuTime = requireNonNull(retriedCpuTime, "retriedCpuTime is null");
-        this.totalBlockedTime = requireNonNull(totalBlockedTime, "totalBlockedTime is null");
+        this.totalScheduledTimeInMillis = requireNonNull(totalScheduledTime, "totalScheduledTime is null").toMillis();
+        this.totalCpuTimeInMillis = requireNonNull(totalCpuTime, "totalCpuTime is null").toMillis();
+        this.retriedCpuTimeInMillis = requireNonNull(retriedCpuTime, "retriedCpuTime is null").toMillis();
+        this.totalBlockedTimeInMillis = requireNonNull(totalBlockedTime, "totalBlockedTime is null").toMillis();
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
@@ -323,25 +325,25 @@ public class StageExecutionStats
     @JsonProperty
     public Duration getTotalScheduledTime()
     {
-        return totalScheduledTime;
+        return succinctDuration(totalScheduledTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getTotalCpuTime()
     {
-        return totalCpuTime;
+        return succinctDuration(totalCpuTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getRetriedCpuTime()
     {
-        return retriedCpuTime;
+        return succinctDuration(retriedCpuTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     public Duration getTotalBlockedTime()
     {
-        return totalBlockedTime;
+        return succinctDuration(totalBlockedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -449,8 +451,8 @@ public class StageExecutionStats
                 cumulativeTotalMemory,
                 userMemoryReservationInBytes,
                 totalMemoryReservationInBytes,
-                totalCpuTime,
-                totalScheduledTime,
+                totalCpuTimeInMillis,
+                totalScheduledTimeInMillis,
                 fullyBlocked,
                 blockedReasons,
                 totalAllocationInBytes,

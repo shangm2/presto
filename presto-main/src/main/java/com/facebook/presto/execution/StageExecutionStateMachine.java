@@ -68,6 +68,7 @@ import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @ThreadSafe
@@ -321,8 +322,8 @@ public class StageExecutionStateMachine
                 userMemoryReservationInBytes,
                 totalMemoryReservationInBytes,
 
-                succinctNanos(totalCpuTime),
-                succinctNanos(totalScheduledTime),
+                succinctNanos(totalCpuTime).roundTo(MILLISECONDS),
+                succinctNanos(totalScheduledTime).roundTo(MILLISECONDS),
 
                 fullyBlocked,
                 blockedReasons,

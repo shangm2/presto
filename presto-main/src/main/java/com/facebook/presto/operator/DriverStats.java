@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Set;
 
 import static io.airlift.units.DataSize.succinctBytes;
+import static io.airlift.units.Duration.succinctDuration;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -46,16 +47,16 @@ public class DriverStats
     private final DateTime startTime;
     private final DateTime endTime;
 
-    private final Duration queuedTime;
-    private final Duration elapsedTime;
+    private final long queuedTimeInMillis;
+    private final long elapsedTimeInMillis;
 
     private final long userMemoryReservationInBytes;
     private final long revocableMemoryReservationInBytes;
     private final long systemMemoryReservationInBytes;
 
-    private final Duration totalScheduledTime;
-    private final Duration totalCpuTime;
-    private final Duration totalBlockedTime;
+    private final long totalScheduledTimeInMillis;
+    private final long totalCpuTimeInMillis;
+    private final long totalBlockedTimeInMillis;
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
 
@@ -63,7 +64,7 @@ public class DriverStats
 
     private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
-    private final Duration rawInputReadTime;
+    private final long rawInputReadTimeInMillis;
 
     private final long processedInputDataSizeInBytes;
     private final long processedInputPositions;
@@ -82,16 +83,16 @@ public class DriverStats
         this.createTime = DateTime.now();
         this.startTime = null;
         this.endTime = null;
-        this.queuedTime = new Duration(0, MILLISECONDS);
-        this.elapsedTime = new Duration(0, MILLISECONDS);
+        this.queuedTimeInMillis = 0L;
+        this.elapsedTimeInMillis = 0L;
 
         this.userMemoryReservationInBytes = 0L;
         this.revocableMemoryReservationInBytes = 0L;
         this.systemMemoryReservationInBytes = 0L;
 
-        this.totalScheduledTime = new Duration(0, MILLISECONDS);
-        this.totalCpuTime = new Duration(0, MILLISECONDS);
-        this.totalBlockedTime = new Duration(0, MILLISECONDS);
+        this.totalScheduledTimeInMillis = 0L;
+        this.totalCpuTimeInMillis = 0L;
+        this.totalBlockedTimeInMillis = 0L;
         this.fullyBlocked = false;
         this.blockedReasons = ImmutableSet.of();
 
@@ -99,7 +100,7 @@ public class DriverStats
 
         this.rawInputDataSizeInBytes = 0L;
         this.rawInputPositions = 0;
-        this.rawInputReadTime = new Duration(0, MILLISECONDS);
+        this.rawInputReadTimeInMillis = 0L;
 
         this.processedInputDataSizeInBytes = 0L;
         this.processedInputPositions = 0;
@@ -154,16 +155,16 @@ public class DriverStats
         this.createTime = requireNonNull(createTime, "createTime is null");
         this.startTime = startTime;
         this.endTime = endTime;
-        this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
-        this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
+        this.queuedTimeInMillis = requireNonNull(queuedTime, "queuedTime is null").toMillis();
+        this.elapsedTimeInMillis = requireNonNull(elapsedTime, "elapsedTime is null").toMillis();
 
         this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
         this.revocableMemoryReservationInBytes = requireNonNull(revocableMemoryReservation, "revocableMemoryReservation is null").toBytes();
         this.systemMemoryReservationInBytes = requireNonNull(systemMemoryReservation, "systemMemoryReservation is null").toBytes();
 
-        this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
-        this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
-        this.totalBlockedTime = requireNonNull(totalBlockedTime, "totalBlockedTime is null");
+        this.totalScheduledTimeInMillis = requireNonNull(totalScheduledTime, "totalScheduledTime is null").toMillis();
+        this.totalCpuTimeInMillis = requireNonNull(totalCpuTime, "totalCpuTime is null").toMillis();
+        this.totalBlockedTimeInMillis = requireNonNull(totalBlockedTime, "totalBlockedTime is null").toMillis();
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
 
@@ -172,7 +173,7 @@ public class DriverStats
         this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         Preconditions.checkArgument(rawInputPositions >= 0, "rawInputPositions is negative");
         this.rawInputPositions = rawInputPositions;
-        this.rawInputReadTime = requireNonNull(rawInputReadTime, "rawInputReadTime is null");
+        this.rawInputReadTimeInMillis = requireNonNull(rawInputReadTime, "rawInputReadTime is null").toMillis();
 
         this.processedInputDataSizeInBytes = requireNonNull(processedInputDataSize, "processedInputDataSize is null").toBytes();
         Preconditions.checkArgument(processedInputPositions >= 0, "processedInputPositions is negative");
@@ -221,14 +222,14 @@ public class DriverStats
     @ThriftField(5)
     public Duration getQueuedTime()
     {
-        return queuedTime;
+        return succinctDuration(queuedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(6)
     public Duration getElapsedTime()
     {
-        return elapsedTime;
+        return succinctDuration(elapsedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -256,21 +257,21 @@ public class DriverStats
     @ThriftField(10)
     public Duration getTotalScheduledTime()
     {
-        return totalScheduledTime;
+        return succinctDuration(totalScheduledTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(11)
     public Duration getTotalCpuTime()
     {
-        return totalCpuTime;
+        return succinctDuration(totalCpuTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(12)
     public Duration getTotalBlockedTime()
     {
-        return totalBlockedTime;
+        return succinctDuration(totalBlockedTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -305,7 +306,7 @@ public class DriverStats
     @ThriftField(17)
     public Duration getRawInputReadTime()
     {
-        return rawInputReadTime;
+        return succinctDuration(rawInputReadTimeInMillis, MILLISECONDS);
     }
 
     @JsonProperty

@@ -33,6 +33,7 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.succinctBytes;
+import static io.airlift.units.Duration.succinctDuration;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -47,10 +48,10 @@ public class BasicQueryStats
     private final DateTime createTime;
     private final DateTime endTime;
 
-    private final Duration waitingForPrerequisitesTime;
-    private final Duration queuedTime;
-    private final Duration elapsedTime;
-    private final Duration executionTime;
+    private final long waitingForPrerequisitesTimeInMillis;
+    private final long queuedTimeInMillis;
+    private final long elapsedTimeInMillis;
+    private final long executionTimeInMillis;
 
     private final int runningTasks;
     private final int peakRunningTasks;
@@ -71,8 +72,8 @@ public class BasicQueryStats
     private final long peakTotalMemoryReservationInBytes;
     private final long peakTaskTotalMemoryReservationInBytes;
     private final long peakNodeTotalMemoryReservationInBytes;
-    private final Duration totalCpuTime;
-    private final Duration totalScheduledTime;
+    private final long totalCpuTimeInMillis;
+    private final long totalScheduledTimeInMillis;
 
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
@@ -116,10 +117,10 @@ public class BasicQueryStats
         this.createTime = createTime;
         this.endTime = endTime;
 
-        this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTimex is null");
-        this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
-        this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
-        this.executionTime = requireNonNull(executionTime, "executionTime is null");
+        this.waitingForPrerequisitesTimeInMillis = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTimex is null").toMillis();
+        this.queuedTimeInMillis = requireNonNull(queuedTime, "queuedTime is null").toMillis();
+        this.elapsedTimeInMillis = requireNonNull(elapsedTime, "elapsedTime is null").toMillis();
+        this.executionTimeInMillis = requireNonNull(executionTime, "executionTime is null").toMillis();
 
         this.runningTasks = runningTasks;
         this.peakRunningTasks = peakRunningTasks;
@@ -144,8 +145,8 @@ public class BasicQueryStats
         this.peakTotalMemoryReservationInBytes = requireNonNull(peakTotalMemoryReservation, "rawInputDataSize is null").toBytes();
         this.peakTaskTotalMemoryReservationInBytes = requireNonNull(peakTaskTotalMemoryReservation, "rawInputDataSize is null").toBytes();
         this.peakNodeTotalMemoryReservationInBytes = requireNonNull(peakNodeTotalMemoryReservation, "rawInputDataSize is null").toBytes();
-        this.totalCpuTime = totalCpuTime;
-        this.totalScheduledTime = totalScheduledTime;
+        this.totalCpuTimeInMillis = requireNonNull(totalCpuTime, "totalCpuTime is null").toMillis();
+        this.totalScheduledTimeInMillis = requireNonNull(totalScheduledTime, "totalScheduledTime is null").toMillis();
 
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
@@ -239,21 +240,21 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getQueuedTime()
     {
-        return queuedTime;
+        return succinctDuration(queuedTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(4)
     @JsonProperty
     public Duration getElapsedTime()
     {
-        return elapsedTime;
+        return succinctDuration(elapsedTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(5)
     @JsonProperty
     public Duration getExecutionTime()
     {
-        return executionTime;
+        return succinctDuration(executionTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(6)
@@ -357,14 +358,14 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getTotalCpuTime()
     {
-        return totalCpuTime;
+        return succinctDuration(totalCpuTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(21)
     @JsonProperty
     public Duration getTotalScheduledTime()
     {
-        return totalScheduledTime;
+        return succinctDuration(totalScheduledTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(22)
@@ -399,7 +400,7 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getWaitingForPrerequisitesTime()
     {
-        return waitingForPrerequisitesTime;
+        return succinctDuration(waitingForPrerequisitesTimeInMillis, MILLISECONDS);
     }
 
     @ThriftField(27)
