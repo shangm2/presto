@@ -253,8 +253,8 @@ public class ClusterMemoryManager
         long totalMemoryBytes = 0L;
         for (QueryExecution query : runningQueries) {
             boolean resourceOvercommit = resourceOvercommit(query.getSession());
-            long userMemoryReservation = query.getUserMemoryReservationInBytes();
-            long totalMemoryReservation = query.getTotalMemoryReservationInBytes();
+            long userMemoryReservation = query.getUserMemoryReservation().toBytes();
+            long totalMemoryReservation = query.getTotalMemoryReservation().toBytes();
 
             if (resourceOvercommit && outOfMemory) {
                 // If a query has requested resource overcommit, only kill it if the cluster has run out of memory
@@ -342,17 +342,17 @@ public class ClusterMemoryManager
         if (memoryManagerService.isPresent()) {
             // We are in the multi-coordinator codepath, and thus care about the globally running queries
             allRunningQueries = getClusterInfo(GENERAL_POOL)
-                    .getRunningQueries()
-                    .orElse(ImmutableList.of())
-                    .stream().collect(toImmutableMap(identity(), t -> Optional.empty()));
+                            .getRunningQueries()
+                            .orElse(ImmutableList.of())
+                            .stream().collect(toImmutableMap(identity(), t -> Optional.empty()));
         }
         else {
             // We are in the single coordinator setup, and thus care about the local queries. Ie, global queries
             // does not make sense.
             allRunningQueries = Maps.uniqueIndex(
                     allQueryInfoSupplier.get().stream()
-                            .map(Optional::of)
-                            .iterator(),
+                        .map(Optional::of)
+                        .iterator(),
                     queryInfo -> queryInfo.get().getQueryId());
         }
         memoryLeakDetector.checkForMemoryLeaks(allRunningQueries, pools.get(GENERAL_POOL).getQueryMemoryReservations());
@@ -497,8 +497,8 @@ public class ClusterMemoryManager
         // If present, this means the resource manager is determining the largest query, so do not make this determination locally
         if (memoryManagerService.isPresent()) {
             return largestMemoryQuery.flatMap(largestMemoryQueryId -> Streams.stream(queries)
-                            .filter(query -> query.getQueryId().equals(largestMemoryQueryId))
-                            .findFirst())
+                    .filter(query -> query.getQueryId().equals(largestMemoryQueryId))
+                    .findFirst())
                     .orElse(null);
         }
         for (QueryExecution queryExecution : queries) {
@@ -519,12 +519,12 @@ public class ClusterMemoryManager
 
     private QueryMemoryInfo createQueryMemoryInfo(QueryExecution query)
     {
-        return new QueryMemoryInfo(query.getQueryId(), query.getMemoryPool().getId(), query.getTotalMemoryReservationInBytes());
+        return new QueryMemoryInfo(query.getQueryId(), query.getMemoryPool().getId(), query.getTotalMemoryReservation().toBytes());
     }
 
     private long getQueryMemoryReservation(QueryExecution query)
     {
-        return query.getTotalMemoryReservationInBytes();
+        return query.getTotalMemoryReservation().toBytes();
     }
 
     private synchronized boolean allAssignmentsHavePropagated(Iterable<QueryExecution> queries)

@@ -75,9 +75,9 @@ public interface QueryExecution
 
     int getRunningTaskCount();
 
-    long getUserMemoryReservationInBytes();
+    DataSize getUserMemoryReservation();
 
-    long getTotalMemoryReservationInBytes();
+    DataSize getTotalMemoryReservation();
 
     VersionedMemoryPoolId getMemoryPool();
 
@@ -99,7 +99,6 @@ public interface QueryExecution
      * Add a listener for the final query info.  This notification is guaranteed to be fired only once.
      * Listener is always notified asynchronously using a dedicated notification thread pool so, care should
      * be taken to avoid leaking {@code this} when adding a listener in a constructor.
-     *
      * @param stateChangeListener The listener to add.
      */
     void addFinalQueryInfoListener(StateChangeListener<QueryInfo> stateChangeListener);

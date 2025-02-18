@@ -41,6 +41,7 @@ import java.util.function.Consumer;
 
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static io.airlift.units.DataSize.Unit.BYTE;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
@@ -109,15 +110,15 @@ public abstract class DataDefinitionExecution<T extends Statement>
     }
 
     @Override
-    public long getUserMemoryReservationInBytes()
+    public DataSize getUserMemoryReservation()
     {
-        return 0L;
+        return new DataSize(0, BYTE);
     }
 
     @Override
-    public long getTotalMemoryReservationInBytes()
+    public DataSize getTotalMemoryReservation()
     {
-        return 0L;
+        return new DataSize(0, BYTE);
     }
 
     @Override
