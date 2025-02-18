@@ -33,9 +33,11 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.succinctBytes;
+import static io.airlift.units.Duration.succinctDuration;
 import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.max;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @Immutable
@@ -52,13 +54,13 @@ public class OperatorStats
     private final long totalDrivers;
 
     private final long isBlockedCalls;
-    private final Duration isBlockedWall;
-    private final Duration isBlockedCpu;
+    private final long isBlockedWallInMillis;
+    private final long isBlockedCpuInMillis;
     private final long isBlockedAllocation;
 
     private final long addInputCalls;
-    private final Duration addInputWall;
-    private final Duration addInputCpu;
+    private final long addInputWallInMillis;
+    private final long addInputCpuInMillis;
     private final long addInputAllocationInBytes;
     private final long rawInputDataSizeInBytes;
     private final long rawInputPositions;
@@ -67,20 +69,20 @@ public class OperatorStats
     private final double sumSquaredInputPositions;
 
     private final long getOutputCalls;
-    private final Duration getOutputWall;
-    private final Duration getOutputCpu;
+    private final long getOutputWallInMillis;
+    private final long getOutputCpuInMillis;
     private final long getOutputAllocationInBytes;
     private final long outputDataSizeInBytes;
     private final long outputPositions;
 
     private final long physicalWrittenDataSizeInBytes;
 
-    private final Duration additionalCpu;
-    private final Duration blockedWall;
+    private final long additionalCpuInMillis;
+    private final long blockedWallInMillis;
 
     private final long finishCalls;
-    private final Duration finishWall;
-    private final Duration finishCpu;
+    private final long finishWallInMillis;
+    private final long finishCpuInMillis;
     private final long finishAllocationInBytes;
 
     private final long userMemoryReservationInBytes;
@@ -183,13 +185,13 @@ public class OperatorStats
         this.totalDrivers = totalDrivers;
 
         this.isBlockedCalls = isBlockedCalls;
-        this.isBlockedWall = requireNonNull(isBlockedWall, "isBlockedWall is null");
-        this.isBlockedCpu = requireNonNull(isBlockedCpu, "isBlockedCpu is null");
+        this.isBlockedWallInMillis = requireNonNull(isBlockedWall, "isBlockedWall is null").toMillis();
+        this.isBlockedCpuInMillis = requireNonNull(isBlockedCpu, "isBlockedCpu is null").toMillis();
         this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null").toBytes();
 
         this.addInputCalls = addInputCalls;
-        this.addInputWall = requireNonNull(addInputWall, "addInputWall is null");
-        this.addInputCpu = requireNonNull(addInputCpu, "addInputCpu is null");
+        this.addInputWallInMillis = requireNonNull(addInputWall, "addInputWall is null").toMillis();
+        this.addInputCpuInMillis = requireNonNull(addInputCpu, "addInputCpu is null").toMillis();
         this.addInputAllocationInBytes = requireNonNull(addInputAllocation, "addInputAllocation is null").toBytes();
         this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         this.rawInputPositions = requireNonNull(rawInputPositions, "rawInputPositions is null");
@@ -199,8 +201,8 @@ public class OperatorStats
         this.sumSquaredInputPositions = sumSquaredInputPositions;
 
         this.getOutputCalls = getOutputCalls;
-        this.getOutputWall = requireNonNull(getOutputWall, "getOutputWall is null");
-        this.getOutputCpu = requireNonNull(getOutputCpu, "getOutputCpu is null");
+        this.getOutputWallInMillis = requireNonNull(getOutputWall, "getOutputWall is null").toMillis();
+        this.getOutputCpuInMillis = requireNonNull(getOutputCpu, "getOutputCpu is null").toMillis();
         this.getOutputAllocationInBytes = requireNonNull(getOutputAllocation, "getOutputAllocation is null").toBytes();
         this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         checkArgument(outputPositions >= 0, "outputPositions is negative");
@@ -208,12 +210,12 @@ public class OperatorStats
 
         this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
-        this.additionalCpu = requireNonNull(additionalCpu, "additionalCpu is null");
-        this.blockedWall = requireNonNull(blockedWall, "blockedWall is null");
+        this.additionalCpuInMillis = requireNonNull(additionalCpu, "additionalCpu is null").toMillis();
+        this.blockedWallInMillis = requireNonNull(blockedWall, "blockedWall is null").toMillis();
 
         this.finishCalls = finishCalls;
-        this.finishWall = requireNonNull(finishWall, "finishWall is null");
-        this.finishCpu = requireNonNull(finishCpu, "finishCpu is null");
+        this.finishWallInMillis = requireNonNull(finishWall, "finishWall is null").toMillis();
+        this.finishCpuInMillis = requireNonNull(finishCpu, "finishCpu is null").toMillis();
         this.finishAllocationInBytes = requireNonNull(finishAllocation, "finishAllocation is null").toBytes();
 
         this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
@@ -315,13 +317,13 @@ public class OperatorStats
         this.totalDrivers = totalDrivers;
 
         this.isBlockedCalls = isBlockedCalls;
-        this.isBlockedWall = requireNonNull(isBlockedWall, "isBlockedWall is null");
-        this.isBlockedCpu = requireNonNull(isBlockedCpu, "isBlockedCpu is null");
+        this.isBlockedWallInMillis = requireNonNull(isBlockedWall, "isBlockedWall is null").toMillis();
+        this.isBlockedCpuInMillis = requireNonNull(isBlockedCpu, "isBlockedCpu is null").toMillis();
         this.isBlockedAllocation = requireNonNull(isBlockedAllocation, "isBlockedAllocation is null").toBytes();
 
         this.addInputCalls = addInputCalls;
-        this.addInputWall = requireNonNull(addInputWall, "addInputWall is null");
-        this.addInputCpu = requireNonNull(addInputCpu, "addInputCpu is null");
+        this.addInputWallInMillis = requireNonNull(addInputWall, "addInputWall is null").toMillis();
+        this.addInputCpuInMillis = requireNonNull(addInputCpu, "addInputCpu is null").toMillis();
         this.addInputAllocationInBytes = requireNonNull(addInputAllocation, "addInputAllocation is null").toBytes();
         this.rawInputDataSizeInBytes = requireNonNull(rawInputDataSize, "rawInputDataSize is null").toBytes();
         this.rawInputPositions = requireNonNull(rawInputPositions, "rawInputPositions is null");
@@ -331,8 +333,8 @@ public class OperatorStats
         this.sumSquaredInputPositions = sumSquaredInputPositions;
 
         this.getOutputCalls = getOutputCalls;
-        this.getOutputWall = requireNonNull(getOutputWall, "getOutputWall is null");
-        this.getOutputCpu = requireNonNull(getOutputCpu, "getOutputCpu is null");
+        this.getOutputWallInMillis = requireNonNull(getOutputWall, "getOutputWall is null").toMillis();
+        this.getOutputCpuInMillis = requireNonNull(getOutputCpu, "getOutputCpu is null").toMillis();
         this.getOutputAllocationInBytes = requireNonNull(getOutputAllocation, "getOutputAllocation is null").toBytes();
         this.outputDataSizeInBytes = requireNonNull(outputDataSize, "outputDataSize is null").toBytes();
         checkArgument(outputPositions >= 0, "outputPositions is negative");
@@ -340,12 +342,12 @@ public class OperatorStats
 
         this.physicalWrittenDataSizeInBytes = requireNonNull(physicalWrittenDataSize, "writtenDataSize is null").toBytes();
 
-        this.additionalCpu = requireNonNull(additionalCpu, "additionalCpu is null");
-        this.blockedWall = requireNonNull(blockedWall, "blockedWall is null");
+        this.additionalCpuInMillis = requireNonNull(additionalCpu, "additionalCpu is null").toMillis();
+        this.blockedWallInMillis = requireNonNull(blockedWall, "blockedWall is null").toMillis();
 
         this.finishCalls = finishCalls;
-        this.finishWall = requireNonNull(finishWall, "finishWall is null");
-        this.finishCpu = requireNonNull(finishCpu, "finishCpu is null");
+        this.finishWallInMillis = requireNonNull(finishWall, "finishWall is null").toMillis();
+        this.finishCpuInMillis = requireNonNull(finishCpu, "finishCpu is null").toMillis();
         this.finishAllocationInBytes = requireNonNull(finishAllocation, "finishAllocation is null").toBytes();
 
         this.userMemoryReservationInBytes = requireNonNull(userMemoryReservation, "userMemoryReservation is null").toBytes();
@@ -432,14 +434,14 @@ public class OperatorStats
     @ThriftField(9)
     public Duration getAddInputWall()
     {
-        return addInputWall;
+        return succinctDuration(addInputWallInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(10)
     public Duration getAddInputCpu()
     {
-        return addInputCpu;
+        return succinctDuration(addInputCpuInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -495,14 +497,14 @@ public class OperatorStats
     @ThriftField(18)
     public Duration getGetOutputWall()
     {
-        return getOutputWall;
+        return succinctDuration(getOutputWallInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(19)
     public Duration getGetOutputCpu()
     {
-        return getOutputCpu;
+        return succinctDuration(getOutputCpuInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -537,14 +539,14 @@ public class OperatorStats
     @ThriftField(24)
     public Duration getAdditionalCpu()
     {
-        return additionalCpu;
+        return succinctDuration(additionalCpuInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(25)
     public Duration getBlockedWall()
     {
-        return blockedWall;
+        return succinctDuration(blockedWallInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -558,14 +560,14 @@ public class OperatorStats
     @ThriftField(27)
     public Duration getFinishWall()
     {
-        return finishWall;
+        return succinctDuration(finishWallInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(28)
     public Duration getFinishCpu()
     {
-        return finishCpu;
+        return succinctDuration(finishCpuInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -700,14 +702,14 @@ public class OperatorStats
     @ThriftField(46)
     public Duration getIsBlockedWall()
     {
-        return isBlockedWall;
+        return succinctDuration(isBlockedWallInMillis, MILLISECONDS);
     }
 
     @JsonProperty
     @ThriftField(47)
     public Duration getIsBlockedCpu()
     {
-        return isBlockedCpu;
+        return succinctDuration(isBlockedCpuInMillis, MILLISECONDS);
     }
 
     @JsonProperty
@@ -949,12 +951,12 @@ public class OperatorStats
                 operatorType,
                 totalDrivers,
                 isBlockedCalls,
-                isBlockedWall,
-                isBlockedCpu,
+                succinctDuration(isBlockedWallInMillis, MILLISECONDS),
+                succinctDuration(isBlockedCpuInMillis, MILLISECONDS),
                 succinctBytes(isBlockedAllocation),
                 addInputCalls,
-                addInputWall,
-                addInputCpu,
+                succinctDuration(addInputWallInMillis, MILLISECONDS),
+                succinctDuration(addInputCpuInMillis, MILLISECONDS),
                 succinctBytes(addInputAllocationInBytes),
                 succinctBytes(rawInputDataSizeInBytes),
                 rawInputPositions,
@@ -962,17 +964,17 @@ public class OperatorStats
                 inputPositions,
                 sumSquaredInputPositions,
                 getOutputCalls,
-                getOutputWall,
-                getOutputCpu,
+                succinctDuration(getOutputWallInMillis, MILLISECONDS),
+                succinctDuration(getOutputCpuInMillis, MILLISECONDS),
                 succinctBytes(getOutputAllocationInBytes),
                 succinctBytes(outputDataSizeInBytes),
                 outputPositions,
                 succinctBytes(physicalWrittenDataSizeInBytes),
-                additionalCpu,
-                blockedWall,
+                succinctDuration(additionalCpuInMillis, MILLISECONDS),
+                succinctDuration(blockedWallInMillis, MILLISECONDS),
                 finishCalls,
-                finishWall,
-                finishCpu,
+                succinctDuration(finishWallInMillis, MILLISECONDS),
+                succinctDuration(finishCpuInMillis, MILLISECONDS),
                 succinctBytes(finishAllocationInBytes),
                 succinctBytes(userMemoryReservationInBytes),
                 succinctBytes(revocableMemoryReservationInBytes),
