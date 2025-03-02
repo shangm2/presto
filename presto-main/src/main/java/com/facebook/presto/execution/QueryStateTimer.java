@@ -64,7 +64,7 @@ public class QueryStateTimer
 {
     private final Ticker ticker;
 
-    private final DateTime createTime = DateTime.now();
+    private final long createTimeInMillis = System.currentTimeMillis();
 
     private final long createNanos;
     private final AtomicReference<Long> beginQueuedNanos = new AtomicReference<>();
@@ -250,14 +250,14 @@ public class QueryStateTimer
     // Stats
     //
 
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return createTime;
+        return createTimeInMillis;
     }
 
-    public Optional<DateTime> getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return toDateTime(beginPlanningNanos);
+        return Optional.ofNullable(beginPlanningNanos.get()).map(NANOSECONDS::toMillis).orElse(0L);
     }
 
     public Duration getElapsedTime()
@@ -319,9 +319,9 @@ public class QueryStateTimer
         return getDuration(executionTime, beginPlanningNanos);
     }
 
-    public Optional<DateTime> getEndTime()
+    public long getEndTimeInMillis()
     {
-        return toDateTime(endNanos);
+        return Optional.ofNullable(endNanos.get()).map(NANOSECONDS::toMillis).orElse(0L);
     }
 
     public Duration getAnalysisTime()
@@ -329,9 +329,9 @@ public class QueryStateTimer
         return getDuration(analysisTime, beginAnalysisNanos);
     }
 
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return toDateTime(lastHeartbeatNanos.get());
+        return Optional.ofNullable(lastHeartbeatNanos.get()).map(NANOSECONDS::toMillis).orElse(0L);
     }
 
     //
@@ -382,6 +382,6 @@ public class QueryStateTimer
     private DateTime toDateTime(long instantNanos)
     {
         long millisSinceCreate = NANOSECONDS.toMillis(instantNanos - createNanos);
-        return new DateTime(createTime.getMillis() + millisSinceCreate);
+        return new DateTime(createTimeInMillis + millisSinceCreate);
     }
 }

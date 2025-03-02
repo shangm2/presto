@@ -158,8 +158,8 @@ public class BasicQueryStats
 
     public BasicQueryStats(QueryStats queryStats)
     {
-        this(queryStats.getCreateTime(),
-                queryStats.getEndTime(),
+        this(new DateTime(queryStats.getCreateTimeInMillis()),
+                new DateTime(queryStats.getEndTimeInMillis()),
                 queryStats.getWaitingForPrerequisitesTime(),
                 queryStats.getQueuedTime(),
                 queryStats.getElapsedTime(),

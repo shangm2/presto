@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 import org.testng.annotations.Test;
 
 import static io.airlift.units.DataSize.Unit.BYTE;
@@ -32,7 +31,7 @@ import static org.testng.Assert.assertEquals;
 public class TestStageExecutionStats
 {
     private static final StageExecutionStats EXPECTED = new StageExecutionStats(
-            new DateTime(0),
+            0L,
 
             getTestDistribution(1),
 
@@ -103,7 +102,7 @@ public class TestStageExecutionStats
 
     private static void assertExpectedStageStats(StageExecutionStats actual)
     {
-        assertEquals(actual.getSchedulingComplete().getMillis(), 0);
+        assertEquals(actual.getSchedulingCompleteInMillis(), 0);
 
         assertEquals(actual.getGetSplitDistribution().getCount(), 1.0);
 

@@ -205,19 +205,19 @@ public class TestSqlTask
                         .withNoMoreBufferIds(),
                 Optional.of(new TableWriteInfo(Optional.empty(), Optional.empty(), Optional.empty())));
         assertEquals(taskInfo.getTaskStatus().getState(), TaskState.RUNNING);
-        assertNull(taskInfo.getStats().getEndTime());
+        assertNull(taskInfo.getStats().getEndTimeInMillis());
 
         taskInfo = sqlTask.getTaskInfo();
         assertEquals(taskInfo.getTaskStatus().getState(), TaskState.RUNNING);
-        assertNull(taskInfo.getStats().getEndTime());
+        assertNull(taskInfo.getStats().getEndTimeInMillis());
 
         taskInfo = sqlTask.cancel();
         assertEquals(taskInfo.getTaskStatus().getState(), TaskState.CANCELED);
-        assertNotNull(taskInfo.getStats().getEndTime());
+        assertNotNull(taskInfo.getStats().getEndTimeInMillis());
 
         taskInfo = sqlTask.getTaskInfo();
         assertEquals(taskInfo.getTaskStatus().getState(), TaskState.CANCELED);
-        assertNotNull(taskInfo.getStats().getEndTime());
+        assertNotNull(taskInfo.getStats().getEndTimeInMillis());
     }
 
     @Test

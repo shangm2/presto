@@ -12,11 +12,11 @@
  * limitations under the License.
  */
 
-import { clsx } from 'clsx';
-import { Timeline, DataSet } from "vis-timeline/standalone";
-import { useRef, useEffect } from 'react';
+import {clsx} from 'clsx';
+import {DataSet, Timeline} from "vis-timeline/standalone";
+import {useEffect, useRef} from 'react';
 
-export default function SplitView({ data, show }): void {
+export default function SplitView({data, show}): void {
 
     const containerRef = useRef(null);
     const timelineRef = useRef(null);
@@ -32,11 +32,11 @@ export default function SplitView({ data, show }): void {
             return {
                 taskId: task.taskId.substring(task.taskId.indexOf('.') + 1),
                 time: {
-                    create: task.stats.createTime,
+                    create: task.stats.createTimeInMillis,
                     firstStart: task.stats.firstStartTime,
                     lastStart: task.stats.lastStartTime,
                     lastEnd: task.stats.lastEndTime,
-                    end: task.stats.endTime,
+                    end: task.stats.endTimeInMillis,
                 },
             };
         });
@@ -47,9 +47,10 @@ export default function SplitView({ data, show }): void {
         // Initializes or updates the timelineRef
         const updateTimeline = () => {
             if (timelineRef.current) {
-                timelineRef.current.setData({ groups, items });
+                timelineRef.current.setData({groups, items});
                 timelineRef.current.fit();
-            } else {
+            }
+            else {
                 timelineRef.current = new Timeline(
                     containerRef.current,
                     items,
@@ -149,7 +150,7 @@ export default function SplitView({ data, show }): void {
                     <div className="text">Ended</div>
                 </div>
             </div>
-            <div ref={containerRef} id="timeline" />
+            <div ref={containerRef} id="timeline"/>
         </div>
     );
 }

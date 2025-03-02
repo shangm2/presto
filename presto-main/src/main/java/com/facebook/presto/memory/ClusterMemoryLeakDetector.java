@@ -63,7 +63,7 @@ public class ClusterMemoryLeakDetector
         long leakedBytesThisTime = leakedQueryReservations.values().stream().reduce(0L, Long::sum);
         if (!leakedQueryReservations.isEmpty()) {
             log.warn("Memory leak of %s detected. The following queries are already finished, " +
-                    "but they have memory reservations on some worker node(s): %s",
+                            "but they have memory reservations on some worker node(s): %s",
                     DataSize.succinctBytes(leakedBytes), leakedQueryReservations);
         }
 
@@ -84,7 +84,10 @@ public class ClusterMemoryLeakDetector
 
         Optional<DateTime> queryEndTime = queryInfo.flatMap(qi -> Optional.ofNullable(qi.getState() == RUNNING ? null : qi.getQueryStats().getEndTime()));
 
-        return queryEndTime.map(ts -> secondsBetween(ts, now()).getSeconds() >= DEFAULT_LEAK_CLAIM_DELTA_SEC).orElse(false);
+        return queryEndTime.map(ts -> {
+            System.out.println("======> ts: " + ts);
+            return secondsBetween(ts, now()).getSeconds() >= DEFAULT_LEAK_CLAIM_DELTA_SEC;
+        }).orElse(false);
     }
 
     synchronized boolean wasQueryPossiblyLeaked(QueryId queryId)

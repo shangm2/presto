@@ -138,10 +138,10 @@ public class TaskSystemTable
 
                     stats.getPhysicalWrittenDataSizeInBytes(),
 
-                    toTimeStamp(stats.getCreateTime()),
-                    toTimeStamp(stats.getFirstStartTime()),
-                    toTimeStamp(taskInfo.getLastHeartbeat()),
-                    toTimeStamp(stats.getEndTime()));
+                    stats.getCreateTimeInMillis(),
+                    stats.getFirstStartTimeInMillis(),
+                    taskInfo.getLastHeartbeatInMillis(),
+                    stats.getEndTimeInMillis());
         }
         return table.build().cursor();
     }

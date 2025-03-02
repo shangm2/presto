@@ -30,7 +30,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
 
@@ -122,27 +121,27 @@ public abstract class DataDefinitionExecution<T extends Statement>
     }
 
     @Override
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return stateMachine.getCreateTime();
+        return stateMachine.getCreateTimeInMillis();
     }
 
     @Override
-    public Optional<DateTime> getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return stateMachine.getExecutionStartTime();
+        return stateMachine.getExecutionStartTimeInMillis();
     }
 
     @Override
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return stateMachine.getLastHeartbeat();
+        return stateMachine.getLastHeartbeatInMillis();
     }
 
     @Override
-    public Optional<DateTime> getEndTime()
+    public long getEndTimeInMillis()
     {
-        return stateMachine.getEndTime();
+        return stateMachine.getEndTimeInMillis();
     }
 
     @Override

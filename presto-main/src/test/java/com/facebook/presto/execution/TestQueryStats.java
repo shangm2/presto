@@ -209,10 +209,10 @@ public class TestQueryStats
                     0));
 
     static final QueryStats EXPECTED = new QueryStats(
-            new DateTime(1),
-            new DateTime(2),
-            new DateTime(3),
-            new DateTime(4),
+            1L,
+            2L,
+            3L,
+            4L,
             new Duration(6, NANOSECONDS),
             new Duration(7, NANOSECONDS),
             new Duration(5, NANOSECONDS),
@@ -435,10 +435,10 @@ public class TestQueryStats
 
     static void assertExpectedQueryStats(QueryStats actual)
     {
-        assertEquals(actual.getCreateTime(), new DateTime(1, UTC));
-        assertEquals(actual.getExecutionStartTime(), new DateTime(2, UTC));
-        assertEquals(actual.getLastHeartbeat(), new DateTime(3, UTC));
-        assertEquals(actual.getEndTime(), new DateTime(4, UTC));
+        assertEquals(actual.getCreateTimeInMillis(), new DateTime(1, UTC));
+        assertEquals(actual.getExecutionStartTimeInMillis(), new DateTime(2, UTC));
+        assertEquals(actual.getLastHeartbeatInMillis(), new DateTime(3, UTC));
+        assertEquals(actual.getEndTimeInMillis(), new DateTime(4, UTC));
 
         assertEquals(actual.getElapsedTime(), new Duration(6, NANOSECONDS));
         assertEquals(actual.getQueuedTime(), new Duration(5, NANOSECONDS));
@@ -584,7 +584,7 @@ public class TestQueryStats
             List<OperatorStats> operatorSummaries)
     {
         return new StageExecutionStats(
-                new DateTime(0),
+                0L,
 
                 new Distribution(0).snapshot(),
 

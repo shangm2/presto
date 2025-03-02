@@ -21,7 +21,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
 
@@ -34,11 +33,11 @@ import static java.util.Objects.requireNonNull;
 @ThriftStruct
 public class TaskStats
 {
-    private final DateTime createTime;
-    private final DateTime firstStartTime;
-    private final DateTime lastStartTime;
-    private final DateTime lastEndTime;
-    private final DateTime endTime;
+    private final long createTimeInMillis;
+    private final long firstStartTimeInMillis;
+    private final long lastStartTimeInMillis;
+    private final long lastEndTimeInMillis;
+    private final long endTimeInMillis;
 
     private final long elapsedTimeInNanos;
     private final long queuedTimeInNanos;
@@ -90,14 +89,14 @@ public class TaskStats
     // RuntimeStats aggregated at the task level including the metrics exposed in this task and each operator of this task.
     private final RuntimeStats runtimeStats;
 
-    public TaskStats(DateTime createTime, DateTime endTime)
+    public TaskStats(long createTimeInMillis, long endTimeInMillis)
     {
         this(
-                createTime,
-                null,
-                null,
-                null,
-                endTime,
+                createTimeInMillis,
+                0L,
+                0L,
+                0L,
+                endTimeInMillis,
                 0L,
                 0L,
                 0,
@@ -139,11 +138,11 @@ public class TaskStats
     @JsonCreator
     @ThriftConstructor
     public TaskStats(
-            @JsonProperty("createTime") DateTime createTime,
-            @JsonProperty("firstStartTime") DateTime firstStartTime,
-            @JsonProperty("lastStartTime") DateTime lastStartTime,
-            @JsonProperty("lastEndTime") DateTime lastEndTime,
-            @JsonProperty("endTime") DateTime endTime,
+            @JsonProperty("createTimeInMillis") long createTimeInMillis,
+            @JsonProperty("firstStartTimeInMillis") long firstStartTimeInMillis,
+            @JsonProperty("lastStartTimeInMillis") long lastStartTimeInMillis,
+            @JsonProperty("lastEndTimeInMillis") long lastEndTimeInMillis,
+            @JsonProperty("endTimeInMillis") long endTimeInMillis,
             @JsonProperty("elapsedTimeInNanos") long elapsedTimeInNanos,
             @JsonProperty("queuedTimeInNanos") long queuedTimeInNanos,
 
@@ -192,11 +191,12 @@ public class TaskStats
             @JsonProperty("pipelines") List<PipelineStats> pipelines,
             @JsonProperty("runtimeStats") RuntimeStats runtimeStats)
     {
-        this.createTime = requireNonNull(createTime, "createTime is null");
-        this.firstStartTime = firstStartTime;
-        this.lastStartTime = lastStartTime;
-        this.lastEndTime = lastEndTime;
-        this.endTime = endTime;
+        checkArgument(createTimeInMillis > 0, "createTime is negative");
+        this.createTimeInMillis = createTimeInMillis;
+        this.firstStartTimeInMillis = firstStartTimeInMillis;
+        this.lastStartTimeInMillis = lastStartTimeInMillis;
+        this.lastEndTimeInMillis = lastEndTimeInMillis;
+        this.endTimeInMillis = endTimeInMillis;
         this.elapsedTimeInNanos = elapsedTimeInNanos;
         this.queuedTimeInNanos = queuedTimeInNanos;
 
@@ -264,41 +264,41 @@ public class TaskStats
 
     @JsonProperty
     @ThriftField(1)
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return createTime;
+        return createTimeInMillis;
     }
 
     @Nullable
     @JsonProperty
     @ThriftField(2)
-    public DateTime getFirstStartTime()
+    public long getFirstStartTimeInMillis()
     {
-        return firstStartTime;
+        return firstStartTimeInMillis;
     }
 
     @Nullable
     @JsonProperty
     @ThriftField(3)
-    public DateTime getLastStartTime()
+    public long getLastStartTimeInMillis()
     {
-        return lastStartTime;
+        return lastStartTimeInMillis;
     }
 
     @Nullable
     @JsonProperty
     @ThriftField(4)
-    public DateTime getLastEndTime()
+    public long getLastEndTimeInMillis()
     {
-        return lastEndTime;
+        return lastEndTimeInMillis;
     }
 
     @Nullable
     @JsonProperty
     @ThriftField(5)
-    public DateTime getEndTime()
+    public long getEndTimeInMillis()
     {
-        return endTime;
+        return endTimeInMillis;
     }
 
     @JsonProperty
@@ -556,11 +556,11 @@ public class TaskStats
     public TaskStats summarize()
     {
         return new TaskStats(
-                createTime,
-                firstStartTime,
-                lastStartTime,
-                lastEndTime,
-                endTime,
+                createTimeInMillis,
+                firstStartTimeInMillis,
+                lastStartTimeInMillis,
+                lastEndTimeInMillis,
+                endTimeInMillis,
                 elapsedTimeInNanos,
                 queuedTimeInNanos,
                 totalDrivers,
@@ -602,11 +602,11 @@ public class TaskStats
     public TaskStats summarizeFinal()
     {
         return new TaskStats(
-                createTime,
-                firstStartTime,
-                lastStartTime,
-                lastEndTime,
-                endTime,
+                createTimeInMillis,
+                firstStartTimeInMillis,
+                lastStartTimeInMillis,
+                lastEndTimeInMillis,
+                endTimeInMillis,
                 elapsedTimeInNanos,
                 queuedTimeInNanos,
                 totalDrivers,

@@ -22,7 +22,6 @@ import com.facebook.presto.sql.planner.Plan;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -67,11 +66,11 @@ public class MockQueryExecution
 
     @Override
     public void addStateChangeListener(StateMachine.StateChangeListener<QueryState> stateChangeListener)
-    { }
+    {}
 
     @Override
     public void addOutputInfoListener(Consumer<QueryOutputInfo> listener)
-    { }
+    {}
 
     @Override
     public Plan getQueryPlan()
@@ -176,27 +175,27 @@ public class MockQueryExecution
     }
 
     @Override
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return null;
+        return 0L;
     }
 
     @Override
-    public Optional<DateTime> getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return Optional.empty();
+        return 0L;
     }
 
     @Override
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return null;
+        return 0L;
     }
 
     @Override
-    public Optional<DateTime> getEndTime()
+    public long getEndTimeInMillis()
     {
-        return Optional.empty();
+        return 0L;
     }
 
     @Override
@@ -218,37 +217,37 @@ public class MockQueryExecution
 
     @Override
     public void pruneExpiredQueryInfo()
-    { }
+    {}
 
     @Override
     public void pruneFinishedQueryInfo()
-    { }
+    {}
 
     @Override
     public void setResourceGroupQueryLimits(ResourceGroupQueryLimits resourceGroupQueryLimits)
-    { }
+    {}
 
     @Override
     public void setMemoryPool(VersionedMemoryPoolId poolId)
-    { }
+    {}
 
     @Override
     public void start()
-    { }
+    {}
 
     @Override
     public void cancelQuery()
-    { }
+    {}
 
     @Override
     public void cancelStage(StageId stageId)
-    { }
+    {}
 
     @Override
     public void recordHeartbeat()
-    { }
+    {}
 
     @Override
     public void addFinalQueryInfoListener(StateMachine.StateChangeListener<QueryInfo> stateChangeListener)
-    { }
+    {}
 }

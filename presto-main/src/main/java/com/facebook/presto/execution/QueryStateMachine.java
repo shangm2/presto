@@ -373,8 +373,8 @@ public class QueryStateMachine
 
         BasicStageExecutionStats stageStats = rootStage.orElse(EMPTY_STAGE_STATS);
         BasicQueryStats queryStats = new BasicQueryStats(
-                queryStateTimer.getCreateTime(),
-                getEndTime().orElse(null),
+                new DateTime(queryStateTimer.getCreateTimeInMillis()),
+                getEndTimeInMillis() > 0 ? new DateTime(getEndTimeInMillis()) : null,
                 queryStateTimer.getWaitingForPrerequisitesTime(),
                 queryStateTimer.getQueuedTime(),
                 queryStateTimer.getElapsedTime(),
@@ -1009,24 +1009,24 @@ public class QueryStateMachine
         queryStateTimer.endAnalysis();
     }
 
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return queryStateTimer.getCreateTime();
+        return queryStateTimer.getCreateTimeInMillis();
     }
 
-    public Optional<DateTime> getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return queryStateTimer.getExecutionStartTime();
+        return queryStateTimer.getExecutionStartTimeInMillis();
     }
 
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return queryStateTimer.getLastHeartbeat();
+        return queryStateTimer.getLastHeartbeatInMillis();
     }
 
-    public Optional<DateTime> getEndTime()
+    public long getEndTimeInMillis()
     {
-        return queryStateTimer.getEndTime();
+        return queryStateTimer.getEndTimeInMillis();
     }
 
     public Optional<ExecutionFailureInfo> getFailureInfo()
@@ -1278,10 +1278,10 @@ public class QueryStateMachine
     private static QueryStats pruneQueryStats(QueryStats queryStats)
     {
         return new QueryStats(
-                queryStats.getCreateTime(),
-                queryStats.getExecutionStartTime(),
-                queryStats.getLastHeartbeat(),
-                queryStats.getEndTime(),
+                queryStats.getCreateTimeInMillis(),
+                queryStats.getExecutionStartTimeInMillis(),
+                queryStats.getLastHeartbeatInMillis(),
+                queryStats.getEndTimeInMillis(),
                 queryStats.getElapsedTime(),
                 queryStats.getWaitingForPrerequisitesTime(),
                 queryStats.getQueuedTime(),

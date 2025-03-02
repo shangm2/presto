@@ -29,7 +29,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 
 import javax.annotation.Nullable;
 
@@ -49,11 +48,10 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class QueryStats
 {
-    private final DateTime createTime;
-
-    private final DateTime executionStartTime;
-    private final DateTime lastHeartbeat;
-    private final DateTime endTime;
+    private final long createTimeInMillis;
+    private final long executionStartTimeInMillis;
+    private final long lastHeartbeatInMillis;
+    private final long endTimeInMillis;
 
     private final Duration elapsedTime;
     private final Duration waitingForPrerequisitesTime;
@@ -125,10 +123,10 @@ public class QueryStats
 
     @JsonCreator
     public QueryStats(
-            @JsonProperty("createTime") DateTime createTime,
-            @JsonProperty("executionStartTime") DateTime executionStartTime,
-            @JsonProperty("lastHeartbeat") DateTime lastHeartbeat,
-            @JsonProperty("endTime") DateTime endTime,
+            @JsonProperty("createTimeInMillis") long createTimeInMillis,
+            @JsonProperty("executionStartTimeInMillis") long executionStartTimeInMillis,
+            @JsonProperty("lastHeartbeatInMillis") long lastHeartbeatInMillis,
+            @JsonProperty("endTimeInMillis") long endTimeInMillis,
 
             @JsonProperty("elapsedTime") Duration elapsedTime,
             @JsonProperty("waitingForPrerequisitesTime") Duration waitingForPrerequisitesTime,
@@ -197,10 +195,11 @@ public class QueryStats
 
             @JsonProperty("runtimeStats") RuntimeStats runtimeStats)
     {
-        this.createTime = requireNonNull(createTime, "createTime is null");
-        this.executionStartTime = executionStartTime;
-        this.lastHeartbeat = requireNonNull(lastHeartbeat, "lastHeartbeat is null");
-        this.endTime = endTime;
+        checkArgument(createTimeInMillis > 0, "createTimeInMillis is negative");
+        this.createTimeInMillis = createTimeInMillis;
+        this.executionStartTimeInMillis = executionStartTimeInMillis;
+        this.lastHeartbeatInMillis = lastHeartbeatInMillis;
+        this.endTimeInMillis = endTimeInMillis;
 
         this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
         this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTime is null");
@@ -425,10 +424,10 @@ public class QueryStats
                 .allMatch(state -> (state == StageExecutionState.RUNNING) || state.isDone());
 
         return new QueryStats(
-                queryStateTimer.getCreateTime(),
-                queryStateTimer.getExecutionStartTime().orElse(null),
-                queryStateTimer.getLastHeartbeat(),
-                queryStateTimer.getEndTime().orElse(null),
+                queryStateTimer.getCreateTimeInMillis(),
+                queryStateTimer.getExecutionStartTimeInMillis(),
+                queryStateTimer.getLastHeartbeatInMillis(),
+                queryStateTimer.getEndTimeInMillis(),
 
                 queryStateTimer.getElapsedTime(),
                 queryStateTimer.getWaitingForPrerequisitesTime(),
@@ -506,7 +505,7 @@ public class QueryStats
 
     public static QueryStats immediateFailureQueryStats()
     {
-        DateTime now = DateTime.now();
+        long now = System.currentTimeMillis();
         return new QueryStats(
                 now,
                 now,
@@ -567,28 +566,28 @@ public class QueryStats
     }
 
     @JsonProperty
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return createTime;
+        return createTimeInMillis;
     }
 
     @JsonProperty
-    public DateTime getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return executionStartTime;
+        return executionStartTimeInMillis;
     }
 
     @JsonProperty
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return lastHeartbeat;
+        return lastHeartbeatInMillis;
     }
 
     @Nullable
     @JsonProperty
-    public DateTime getEndTime()
+    public long getEndTimeInMillis()
     {
-        return endTime;
+        return endTimeInMillis;
     }
 
     @JsonProperty

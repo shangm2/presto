@@ -24,7 +24,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.airlift.units.DataSize;
-import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -65,7 +64,7 @@ public class StageExecutionInfo
             StageExecutionState state,
             Optional<ExecutionFailureInfo> failureInfo,
             List<TaskInfo> taskInfos,
-            DateTime schedulingComplete,
+            long schedulingCompleteInMillis,
             DistributionSnapshot getSplitDistribution,
             RuntimeStats stageRuntimeStats,
             DataSize peakUserMemoryReservation,
@@ -100,7 +99,7 @@ public class StageExecutionInfo
         }
 
         StageExecutionStats stageExecutionStats = new StageExecutionStats(
-                schedulingComplete,
+                schedulingCompleteInMillis,
                 getSplitDistribution,
 
                 taskStatsAggregator.totalTaskCount,

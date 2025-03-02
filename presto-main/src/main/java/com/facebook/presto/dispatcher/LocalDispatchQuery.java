@@ -36,7 +36,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -232,9 +231,9 @@ public class LocalDispatchQuery
     }
 
     @Override
-    public DateTime getLastHeartbeat()
+    public long getLastHeartbeatInMillis()
     {
-        return stateMachine.getLastHeartbeat();
+        return stateMachine.getLastHeartbeatInMillis();
     }
 
     @Override
@@ -277,21 +276,21 @@ public class LocalDispatchQuery
     }
 
     @Override
-    public DateTime getCreateTime()
+    public long getCreateTimeInMillis()
     {
-        return stateMachine.getCreateTime();
+        return stateMachine.getCreateTimeInMillis();
     }
 
     @Override
-    public Optional<DateTime> getExecutionStartTime()
+    public long getExecutionStartTimeInMillis()
     {
-        return stateMachine.getExecutionStartTime();
+        return stateMachine.getExecutionStartTimeInMillis();
     }
 
     @Override
-    public Optional<DateTime> getEndTime()
+    public long getEndTimeInMillis()
     {
-        return stateMachine.getEndTime();
+        return stateMachine.getEndTimeInMillis();
     }
 
     @Override
