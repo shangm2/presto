@@ -121,6 +121,7 @@ public class TestResourceManagerClusterStateProvider
 
         assertQueryInfos(provider.getClusterQueries(), 0, 0);
     }
+
     @Test(timeOut = 15_000)
     public void testOutOfOrderUpdatesIgnored()
             throws Exception
@@ -745,8 +746,8 @@ public class TestResourceManagerClusterStateProvider
                 URI.create("1"),
                 "",
                 new BasicQueryStats(
-                        DateTime.parse("1991-09-06T05:00-05:30"),
-                        DateTime.parse("1991-09-06T05:01-05:30"),
+                        new DateTime("1991-09-06T05:00"),
+                        new DateTime("1991-09-06T05:01"),
                         Duration.valueOf("6m"),
                         Duration.valueOf("8m"),
                         Duration.valueOf("7m"),
