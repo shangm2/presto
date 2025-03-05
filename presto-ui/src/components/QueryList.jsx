@@ -19,7 +19,7 @@ import {
     formatDataSize,
     formatDataSizeBytes,
     formatDuration,
-    formatShortTime,
+    formatShortTimeFromMillis,
     getHumanReadableState,
     getProgressBarPercentage,
     getProgressBarTitle,
@@ -43,8 +43,10 @@ function getHumanReadableStateFromInfo(query) {
 }
 
 
-function ResourceGroupLinks({groupId, length=35}) {
-    if (!groupId?.length) return ('n/a');
+function ResourceGroupLinks({groupId, length = 35}) {
+    if (!groupId?.length) {
+        return ('n/a');
+    }
 
     let previousLen = 0;
     let remaining = length;
@@ -207,7 +209,7 @@ export class QueryListItem extends React.Component {
                                 {this.renderWarning()}
                             </div>
                             <div className="col-3 query-header-timestamp" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Submit time">
-                                <span>{formatShortTime(new Date(Date.parse(query.createTime)))}</span>
+                                <span>{formatShortTimeFromMillis(query.createTimeInMillis)}</span>
                             </div>
                         </div>
                         <div className="row stat-row">
@@ -293,7 +295,7 @@ const FILTER_TYPE = {
 };
 
 const SORT_TYPE = {
-    CREATED: function (query) {return Date.parse(query.createTime);},
+    CREATED: function (query) {return query.createTimeInMillis;},
     ELAPSED: function (query) {return query.progress.elapsedTimeMillis;},
     EXECUTION: function (query) {return query.progress.executionTimeMillis;},
     CPU: function (query) {return query.progress.cpuTimeMillis;},
@@ -458,7 +460,7 @@ export class QueryList extends React.Component {
             });
             this.resetTimer();
         }.bind(this))
-        .fail(function () {
+            .fail(function () {
                 this.setState({
                     initialized: true,
                 });
@@ -494,7 +496,8 @@ export class QueryList extends React.Component {
 
     renderMaxQueriesListItem(maxQueries, maxQueriesText) {
         return (
-            <li><a href="#" className={`dropdown-item text-dark ${this.state.maxQueries === maxQueries ? "active bg-info text-white" : "text-dark"}`} onClick={this.handleMaxQueriesClick.bind(this, maxQueries)}>{maxQueriesText}</a>
+            <li><a href="#" className={`dropdown-item text-dark ${this.state.maxQueries === maxQueries ? "active bg-info text-white" : "text-dark"}`}
+                   onClick={this.handleMaxQueriesClick.bind(this, maxQueries)}>{maxQueriesText}</a>
             </li>
         );
     }
@@ -511,7 +514,8 @@ export class QueryList extends React.Component {
 
     renderReorderListItem(interval, intervalText) {
         return (
-            <li><a href="#" className={`dropdown-item text-dark ${this.state.reorderInterval === interval ? "active bg-info text-white" : "text-dark"}`} onClick={this.handleReorderClick.bind(this, interval)}>{intervalText}</a></li>
+            <li><a href="#" className={`dropdown-item text-dark ${this.state.reorderInterval === interval ? "active bg-info text-white" : "text-dark"}`}
+                   onClick={this.handleReorderClick.bind(this, interval)}>{intervalText}</a></li>
         );
     }
 
@@ -571,7 +575,7 @@ export class QueryList extends React.Component {
         }
 
         return (
-            <button type="button" className={classNames} onClick={this.handleStateFilterClick.bind(this, filterType)} style={{height: "30px", fontSize:"12px", color:"white"}}>
+            <button type="button" className={classNames} onClick={this.handleStateFilterClick.bind(this, filterType)} style={{height: "30px", fontSize: "12px", color: "white"}}>
                 <span className="bi bi-check-lg" style={checkmarkStyle}/>&nbsp;{filterText}
             </button>
         );
@@ -652,68 +656,74 @@ export class QueryList extends React.Component {
                     <div className="col-12 input-group gap-1 toolbar-col d-flex">
                         <div className="input-group-prepend flex-grow-1">
                             <input type="text" className="form-control search-bar rounded-0" placeholder="User, source, query ID, resource group, or query text"
-                                onChange={this.handleSearchStringChange} value={this.state.searchString} style={{backgroundColor: "white" ,color: 'black', fontSize: '12px', borderColor:"#CCCCCC"}} />
+                                   onChange={this.handleSearchStringChange} value={this.state.searchString}
+                                   style={{backgroundColor: "white", color: 'black', fontSize: '12px', borderColor: "#CCCCCC"}}/>
                         </div>
 
-                            <div className="input-group-btn d-flex align-items-center ms-auto">
-                                 <span className="input-group-text input-group-prepend rounded-0" style={{backgroundColor: "white", color: 'black', height:"2rem", fontSize:'12px', borderColor:"#454A58" }}>State:</span>
-                                {this.renderFilterButton(FILTER_TYPE.RUNNING, "Running")}
-                                {this.renderFilterButton(FILTER_TYPE.QUEUED, "Queued")}
-                                {this.renderFilterButton(FILTER_TYPE.FINISHED, "Finished")}
-                                <button type="button" id="error-type-dropdown" className="btn btn-info dropdown-toggle rounded-0" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{height: '30px'}}>
-                                    Failed <span className="caret"/>
-                                </button>
-                                <ul className="dropdown-menu bg-white text-dark error-type-dropdown-menu">
-                                    {this.renderErrorTypeListItem(ERROR_TYPE.INTERNAL_ERROR, "Internal Error")}
-                                    {this.renderErrorTypeListItem(ERROR_TYPE.EXTERNAL, "External Error")}
-                                    {this.renderErrorTypeListItem(ERROR_TYPE.INSUFFICIENT_RESOURCES, "Resources Error")}
-                                    {this.renderErrorTypeListItem(ERROR_TYPE.USER_ERROR, "User Error")}
-                                </ul>
+                        <div className="input-group-btn d-flex align-items-center ms-auto">
+                            <span className="input-group-text input-group-prepend rounded-0"
+                                  style={{backgroundColor: "white", color: 'black', height: "2rem", fontSize: '12px', borderColor: "#454A58"}}>State:</span>
+                            {this.renderFilterButton(FILTER_TYPE.RUNNING, "Running")}
+                            {this.renderFilterButton(FILTER_TYPE.QUEUED, "Queued")}
+                            {this.renderFilterButton(FILTER_TYPE.FINISHED, "Finished")}
+                            <button type="button" id="error-type-dropdown" className="btn btn-info dropdown-toggle rounded-0" data-bs-toggle="dropdown" aria-haspopup="true"
+                                    aria-expanded="false" style={{height: '30px'}}>
+                                Failed <span className="caret"/>
+                            </button>
+                            <ul className="dropdown-menu bg-white text-dark error-type-dropdown-menu">
+                                {this.renderErrorTypeListItem(ERROR_TYPE.INTERNAL_ERROR, "Internal Error")}
+                                {this.renderErrorTypeListItem(ERROR_TYPE.EXTERNAL, "External Error")}
+                                {this.renderErrorTypeListItem(ERROR_TYPE.INSUFFICIENT_RESOURCES, "Resources Error")}
+                                {this.renderErrorTypeListItem(ERROR_TYPE.USER_ERROR, "User Error")}
+                            </ul>
 
-                            </div>
-                            &nbsp;
-                            <div className="input-group-btn">
-                                <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default .query-detail-buttons rounded-0" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{fontSize:'12px', height: '31px'}}>
-                                    Sort <span className="caret"/>
-                                </button>
-                                <ul className="dropdown-menu bg-white text-dark rounded-0">
-                                    {this.renderSortListItem(SORT_TYPE.CREATED, "Creation Time")}
-                                    {this.renderSortListItem(SORT_TYPE.ELAPSED, "Elapsed Time")}
-                                    {this.renderSortListItem(SORT_TYPE.CPU, "CPU Time")}
-                                    {this.renderSortListItem(SORT_TYPE.EXECUTION, "Execution Time")}
-                                    {this.renderSortListItem(SORT_TYPE.CURRENT_MEMORY, "Current Memory")}
-                                    {this.renderSortListItem(SORT_TYPE.CUMULATIVE_MEMORY, "Cumulative User Memory")}
-                                </ul>
-                            </div>
-                            &nbsp;
-                            <div className="input-group-btn">
-                                <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default rounded-0" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{fontSize:'12px', height: '31px'}}>
-                                    Reorder Interval <span className="caret"/>
-                                </button>
-                                <ul className="dropdown-menu bg-white text-dark rounded-0">
-                                    {this.renderReorderListItem(1000, "1s")}
-                                    {this.renderReorderListItem(5000, "5s")}
-                                    {this.renderReorderListItem(10000, "10s")}
-                                    {this.renderReorderListItem(30000, "30s")}
-                                    <hr className="mt-1 mb-1"/>
-                                    {this.renderReorderListItem(0, "Off")}
-                                </ul>
-                            </div>
-                            &nbsp;
-                            <div className="input-group-btn">
-                                <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default rounded-0" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{fontSize:'12px', height: '31px'}}>
-                                    Show <span className="caret"/>
-                                </button>
-                                <ul className="dropdown-menu bg-white text-dark rounded-0">
-                                    {this.renderMaxQueriesListItem(20, "20 queries")}
-                                    {this.renderMaxQueriesListItem(50, "50 queries")}
-                                    {this.renderMaxQueriesListItem(100, "100 queries")}
-                                    <hr className="mt-1 mb-1" />
-                                    {this.renderMaxQueriesListItem(0, "All queries")}
-                                </ul>
-                            </div>
+                        </div>
+                        &nbsp;
+                        <div className="input-group-btn">
+                            <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default .query-detail-buttons rounded-0"
+                                    data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style={{fontSize: '12px', height: '31px'}}>
+                                Sort <span className="caret"/>
+                            </button>
+                            <ul className="dropdown-menu bg-white text-dark rounded-0">
+                                {this.renderSortListItem(SORT_TYPE.CREATED, "Creation Time")}
+                                {this.renderSortListItem(SORT_TYPE.ELAPSED, "Elapsed Time")}
+                                {this.renderSortListItem(SORT_TYPE.CPU, "CPU Time")}
+                                {this.renderSortListItem(SORT_TYPE.EXECUTION, "Execution Time")}
+                                {this.renderSortListItem(SORT_TYPE.CURRENT_MEMORY, "Current Memory")}
+                                {this.renderSortListItem(SORT_TYPE.CUMULATIVE_MEMORY, "Cumulative User Memory")}
+                            </ul>
+                        </div>
+                        &nbsp;
+                        <div className="input-group-btn">
+                            <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default rounded-0" data-bs-toggle="dropdown" aria-haspopup="true"
+                                    aria-expanded="false" style={{fontSize: '12px', height: '31px'}}>
+                                Reorder Interval <span className="caret"/>
+                            </button>
+                            <ul className="dropdown-menu bg-white text-dark rounded-0">
+                                {this.renderReorderListItem(1000, "1s")}
+                                {this.renderReorderListItem(5000, "5s")}
+                                {this.renderReorderListItem(10000, "10s")}
+                                {this.renderReorderListItem(30000, "30s")}
+                                <hr className="mt-1 mb-1"/>
+                                {this.renderReorderListItem(0, "Off")}
+                            </ul>
+                        </div>
+                        &nbsp;
+                        <div className="input-group-btn">
+                            <button type="button" className="btn btn-dark btn-sm dropdown-toggle bg-white text-btn-default rounded-0" data-bs-toggle="dropdown" aria-haspopup="true"
+                                    aria-expanded="false" style={{fontSize: '12px', height: '31px'}}>
+                                Show <span className="caret"/>
+                            </button>
+                            <ul className="dropdown-menu bg-white text-dark rounded-0">
+                                {this.renderMaxQueriesListItem(20, "20 queries")}
+                                {this.renderMaxQueriesListItem(50, "50 queries")}
+                                {this.renderMaxQueriesListItem(100, "100 queries")}
+                                <hr className="mt-1 mb-1"/>
+                                {this.renderMaxQueriesListItem(0, "All queries")}
+                            </ul>
                         </div>
                     </div>
+                </div>
 
                 {queryList}
             </div>

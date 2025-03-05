@@ -24,7 +24,7 @@ import {
     formatDataSize,
     formatDataSizeBytes,
     formatDuration,
-    formatShortDateTime,
+    formatShortDateTimeFromMillis,
     getHostAndPort,
     getHostname,
     getPort,
@@ -49,7 +49,7 @@ type TaskStatus = {
 }
 
 type TaskStats = {
-    createTime: string;
+    createTimeInMillis: number;
     elapsedTimeInNanos: number;
     totalCpuTimeInNanos: number;
     fullyBlocked: boolean;
@@ -117,8 +117,8 @@ type QueryStats = {
     peakUserMemoryReservation: string;
     runtimeStats: RuntimeStats;
     elapsedTime: string;
-    createTime: string;
-    endTime: string;
+    createTimeInMillis: number;
+    endTimeInMillis: number;
     waitingForPrerequisitesTime: string;
     queuedTime: string;
     totalPlanningTime: string;
@@ -277,7 +277,7 @@ function TaskList({ tasks }: { tasks: Task[] }) : React.Node {
     function calculateElapsedTime(row: Task): number {
         let elapsedTime = parseDuration(row.stats.elapsedTimeInNanos + "ns") || 0;
         if (elapsedTime === 0) {
-            elapsedTime = Date.now() - Date.parse(row.stats.createTime);
+            elapsedTime = Date.now() - row.stats.createTimeInMillis;
         }
         return elapsedTime;
     }
@@ -1330,7 +1330,7 @@ export default function QueryOverview({ data, show }: { data: QueryData, show: b
                                     Submission Time
                                 </td>
                                 <td className="info-text">
-                                    {formatShortDateTime(new Date(data.queryStats.createTime))}
+                                    {formatShortDateTimeFromMillis(data.queryStats.createTimeInMillis)}
                                 </td>
                             </tr>
                             <tr>
@@ -1338,7 +1338,7 @@ export default function QueryOverview({ data, show }: { data: QueryData, show: b
                                     Completion Time
                                 </td>
                                 <td className="info-text">
-                                    {data.queryStats.endTime ? formatShortDateTime(new Date(data.queryStats.endTime)) : ""}
+                                    {data.queryStats.endTimeInMillis ? formatShortDateTimeFromMillis(data.queryStats.endTimeInMillis) : ""}
                                 </td>
                             </tr>
                             <tr>

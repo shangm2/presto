@@ -32,8 +32,7 @@ const STATE_COLOR_MAP = {
     UNKNOWN_ERROR: '#943524'
 };
 
-export function getQueryStateColor(queryState: string, fullyBlocked: boolean, errorType: string, errorCodeName: string): string
-{
+export function getQueryStateColor(queryState: string, fullyBlocked: boolean, errorType: string, errorCodeName: string): string {
     switch (queryState) {
         case "QUEUED":
             return STATE_COLOR_MAP.QUEUED;
@@ -67,8 +66,7 @@ export function getQueryStateColor(queryState: string, fullyBlocked: boolean, er
     }
 }
 
-export function getStageStateColor(stage: any): string
-{
+export function getStageStateColor(stage: any): string {
     switch (stage.state) {
         case "PLANNED":
             return STATE_COLOR_MAP.QUEUED;
@@ -100,8 +98,7 @@ export function getHumanReadableState(
     blockedReasons: Array<mixed>,
     memoryPool: string,
     errorType: string,
-    errorCodeName: string): string
-{
+    errorCodeName: string): string {
     if (queryState === "RUNNING") {
         let title = "RUNNING";
 
@@ -141,8 +138,7 @@ export function getHumanReadableState(
     return queryState;
 }
 
-export function getProgressBarPercentage(progress: number, queryState: string): number
-{
+export function getProgressBarPercentage(progress: number, queryState: string): number {
     // progress bars should appear 'full' when query progress is not meaningful
     if (!progress || queryState !== "RUNNING") {
         return 100;
@@ -151,8 +147,7 @@ export function getProgressBarPercentage(progress: number, queryState: string): 
     return Math.round(progress);
 }
 
-export function getProgressBarTitle(progress: any, queryState: string, humanReadableState: string): string
-{
+export function getProgressBarTitle(progress: any, queryState: string, humanReadableState: string): string {
     if (progress && queryState === "RUNNING") {
         return humanReadableState + " (" + getProgressBarPercentage(progress, queryState) + "%)";
     }
@@ -160,8 +155,7 @@ export function getProgressBarTitle(progress: any, queryState: string, humanRead
     return humanReadableState;
 }
 
-export function isQueryEnded(queryState: any): boolean
-{
+export function isQueryEnded(queryState: any): boolean {
     return ["FINISHED", "FAILED", "CANCELED"].indexOf(queryState) > -1;
 }
 
@@ -173,14 +167,14 @@ const MAX_HISTORY = 60 * 5;
 // alpha param of exponentially weighted moving average. picked arbitrarily - lower values means more smoothness
 const MOVING_AVERAGE_ALPHA = 0.2;
 
-export function addToHistory (value: number, valuesArray: number[]): number[] {
+export function addToHistory(value: number, valuesArray: number[]): number[] {
     if (valuesArray.length === 0) {
         return valuesArray.concat([value]);
     }
     return valuesArray.concat([value]).slice(Math.max(valuesArray.length - MAX_HISTORY, 0));
 }
 
-export function addExponentiallyWeightedToHistory (value: number, valuesArray: number[]): number[] {
+export function addExponentiallyWeightedToHistory(value: number, valuesArray: number[]): number[] {
     if (valuesArray.length === 0) {
         return valuesArray.concat([value]);
     }
@@ -193,8 +187,7 @@ export function addExponentiallyWeightedToHistory (value: number, valuesArray: n
     return valuesArray.concat([movingAverage]).slice(Math.max(valuesArray.length - MAX_HISTORY, 0));
 }
 
-export function getChildren(nodeInfo: any): any[]
-{
+export function getChildren(nodeInfo: any): any[] {
     // TODO: Remove this function by migrating StageDetail to use node JSON representation
     const nodeType = removeNodeTypePackage(nodeInfo["@type"]);
     switch (nodeType) {
@@ -473,7 +466,17 @@ export function formatShortDateTime(date: Date): string {
     const year = date.getFullYear();
     const month = "" + (date.getMonth() + 1);
     const dayOfMonth = "" + date.getDate();
-    return year + "-" + (month[1] ? month : "0" + month[0]) + "-" + (dayOfMonth[1] ? dayOfMonth: "0" + dayOfMonth[0]) + " " + formatShortTime(date);
+    return year + "-" + (month[1] ? month : "0" + month[0]) + "-" + (dayOfMonth[1] ? dayOfMonth : "0" + dayOfMonth[0]) + " " + formatShortTime(date);
+}
+
+export function formatShortTimeFromMillis(millisSinceEpoch: number): string {
+    const date = new Date(millisSinceEpoch);
+    return formatShortTime(date);
+}
+
+export function formatShortDateTimeFromMillis(millisSinceEpoch: number): string {
+    const date = new Date(millisSinceEpoch);
+    return formatShortDateTime(date);
 }
 
 // Remove the Java package from each node type to convert the node type to the short name.

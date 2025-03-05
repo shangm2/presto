@@ -16,7 +16,6 @@ import React from "react";
 
 import {
     formatDataSizeBytes,
-    formatShortTime,
     getHumanReadableState,
     getProgressBarPercentage,
     getProgressBarTitle,
@@ -133,14 +132,14 @@ export class QueryListItem extends React.Component {
                                 <a href={query.coordinatorUri + "/ui/query.html?" + query.queryId} target="_blank">{query.queryId}</a>
                             </div>
                             <div className="col-xs-3 query-header-timestamp" data-toggle="tooltip" data-placement="bottom" title="Submit time">
-                                <span>{formatShortTime(new Date(Date.parse(query.queryStats.createTime)))}</span>
+                                <span>{formatShortTimeFromMillis(query.queryStats.createTimeInMillis)}</span>
                             </div>
                         </div>
                         <div className="row stat-row">
                             <div className="col-xs-12">
                                 <span data-toggle="tooltip" data-placement="right" title="User">
                                     <span className="glyphicon glyphicon-user" style={GLYPHICON_DEFAULT}/>&nbsp;&nbsp;
-            <span>{truncateString(user, 35)}</span>
+                                    <span>{truncateString(user, 35)}</span>
                                 </span>
                             </div>
                         </div>
@@ -209,7 +208,7 @@ const FILTER_TYPE = {
 };
 
 const SORT_TYPE = {
-    CREATED: function (query) {return Date.parse(query.queryStats.createTime)},
+    CREATED: function (query) {return query.queryStats.createTimeInMillis},
     ELAPSED: function (query) {return parseDuration(query.queryStats.elapsedTime)},
     EXECUTION: function (query) {return parseDuration(query.queryStats.executionTime)},
     CPU: function (query) {return parseDuration(query.queryStats.totalCpuTime)},
@@ -567,7 +566,8 @@ export class QueryList extends React.Component {
                                 {this.renderFilterButton(FILTER_TYPE.RUNNING, "Running")}
                                 {this.renderFilterButton(FILTER_TYPE.QUEUED, "Queued")}
                                 {this.renderFilterButton(FILTER_TYPE.FINISHED, "Finished")}
-                                <button type="button" id="error-type-dropdown" className="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <button type="button" id="error-type-dropdown" className="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
+                                        aria-expanded="false">
                                     Failed <span className="caret"/>
                                 </button>
                                 <ul className="dropdown-menu error-type-dropdown-menu">
