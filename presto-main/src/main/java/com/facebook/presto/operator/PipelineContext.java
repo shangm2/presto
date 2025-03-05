@@ -26,7 +26,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.joda.time.DateTime;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -71,9 +70,9 @@ public class PipelineContext
     private final AtomicInteger completedDrivers = new AtomicInteger();
     private final AtomicLong completedSplitsWeight = new AtomicLong();
 
-    private final AtomicReference<DateTime> executionStartTime = new AtomicReference<>();
-    private final AtomicReference<DateTime> lastExecutionStartTime = new AtomicReference<>();
-    private final AtomicReference<DateTime> lastExecutionEndTime = new AtomicReference<>();
+    private final AtomicReference<Long> executionStartTime = new AtomicReference<>();
+    private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
+    private final AtomicReference<Long> lastExecutionEndTime = new AtomicReference<>();
 
     private final Distribution queuedTime = new Distribution();
     private final Distribution elapsedTime = new Distribution();
@@ -182,7 +181,7 @@ public class PipelineContext
         }
 
         // always update last execution end time
-        lastExecutionEndTime.set(DateTime.now());
+        lastExecutionEndTime.set(System.currentTimeMillis());
 
         DriverStats driverStats = driverContext.getDriverStats();
 
@@ -221,7 +220,7 @@ public class PipelineContext
 
     public void start()
     {
-        DateTime now = DateTime.now();
+        long now = System.currentTimeMillis();
         executionStartTime.compareAndSet(null, now);
         // always update last execution start time
         lastExecutionStartTime.set(now);
@@ -344,7 +343,7 @@ public class PipelineContext
     {
         // check for end state to avoid callback ordering problems
         if (taskContext.getState().isDone()) {
-            DateTime now = DateTime.now();
+            long now = System.currentTimeMillis();
             executionStartTime.compareAndSet(null, now);
             lastExecutionStartTime.compareAndSet(null, now);
             lastExecutionEndTime.compareAndSet(null, now);
@@ -389,7 +388,7 @@ public class PipelineContext
             DriverStats driverStats = driverContext.getDriverStats();
             drivers.add(driverStats);
             pipelineStatusBuilder.accumulate(driverStats, driverContext.getSplitWeight());
-            if (driverStats.getStartTime() != null && driverStats.getEndTime() == null) {
+            if (driverStats.getStartTimeInMillis() != 0 && driverStats.getEndTimeInMillis() == 0) {
                 // driver has started running, but not yet completed
                 hasUnfinishedDrivers = true;
                 unfinishedDriversFullyBlocked &= driverStats.isFullyBlocked();
@@ -427,9 +426,9 @@ public class PipelineContext
         return new PipelineStats(
                 pipelineId,
 
-                executionStartTime.get(),
-                lastExecutionStartTime.get(),
-                lastExecutionEndTime.get(),
+                Optional.ofNullable(executionStartTime.get()).orElse(0L),
+                Optional.ofNullable(lastExecutionStartTime.get()).orElse(0L),
+                Optional.ofNullable(lastExecutionEndTime.get()).orElse(0L),
 
                 inputPipeline,
                 outputPipeline,
@@ -556,7 +555,7 @@ public class PipelineContext
 
         public void accumulate(DriverStats driverStats, long splitWeight)
         {
-            if (driverStats.getStartTime() == null) {
+            if (driverStats.getStartTimeInMillis() == 0) {
                 // driver has not started running
                 physicallyQueuedDrivers++;
             }

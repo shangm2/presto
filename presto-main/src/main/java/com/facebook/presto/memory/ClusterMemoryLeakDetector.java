@@ -63,7 +63,7 @@ public class ClusterMemoryLeakDetector
         long leakedBytesThisTime = leakedQueryReservations.values().stream().reduce(0L, Long::sum);
         if (!leakedQueryReservations.isEmpty()) {
             log.warn("Memory leak of %s detected. The following queries are already finished, " +
-                    "but they have memory reservations on some worker node(s): %s",
+                            "but they have memory reservations on some worker node(s): %s",
                     DataSize.succinctBytes(leakedBytes), leakedQueryReservations);
         }
 

@@ -25,7 +25,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import org.joda.time.DateTime;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -43,7 +42,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 @Immutable
 public class StageExecutionStats
 {
-    private final DateTime schedulingComplete;
+    private final long schedulingCompleteInMillis;
 
     private final DistributionSnapshot getSplitDistribution;
 
@@ -97,7 +96,7 @@ public class StageExecutionStats
 
     @JsonCreator
     public StageExecutionStats(
-            @JsonProperty("schedulingComplete") DateTime schedulingComplete,
+            @JsonProperty("schedulingCompleteInMillis") long schedulingCompleteInMillis,
 
             @JsonProperty("getSplitDistribution") DistributionSnapshot getSplitDistribution,
 
@@ -147,7 +146,7 @@ public class StageExecutionStats
             @JsonProperty("operatorSummaries") List<OperatorStats> operatorSummaries,
             @JsonProperty("runtimeStats") RuntimeStats runtimeStats)
     {
-        this.schedulingComplete = schedulingComplete;
+        this.schedulingCompleteInMillis = schedulingCompleteInMillis;
         this.getSplitDistribution = requireNonNull(getSplitDistribution, "getSplitDistribution is null");
 
         checkArgument(totalTasks >= 0, "totalTasks is negative");
@@ -212,9 +211,9 @@ public class StageExecutionStats
     }
 
     @JsonProperty
-    public DateTime getSchedulingComplete()
+    public long getSchedulingCompleteInMillis()
     {
-        return schedulingComplete;
+        return schedulingCompleteInMillis;
     }
 
     @JsonProperty
@@ -459,7 +458,7 @@ public class StageExecutionStats
     public static StageExecutionStats zero(int stageId)
     {
         return new StageExecutionStats(
-                null,
+                0L,
                 new Distribution().snapshot(),
                 0,
                 0,

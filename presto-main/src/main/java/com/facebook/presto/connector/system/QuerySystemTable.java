@@ -119,10 +119,10 @@ public class QuerySystemTable
                     toMillis(queryStats.getQueuedTime()),
                     toMillis(queryStats.getAnalysisTime()),
 
-                    toTimeStamp(queryStats.getCreateTime()),
-                    toTimeStamp(queryStats.getExecutionStartTime()),
-                    toTimeStamp(queryStats.getLastHeartbeat()),
-                    toTimeStamp(queryStats.getEndTime()));
+                    queryStats.getCreateTimeInMillis(),
+                    queryStats.getExecutionStartTimeInMillis(),
+                    queryStats.getLastHeartbeatInMillis(),
+                    queryStats.getEndTimeInMillis());
         }
         return table.build().cursor();
     }
