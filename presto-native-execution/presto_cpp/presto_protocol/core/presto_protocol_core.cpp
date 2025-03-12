@@ -3513,18 +3513,18 @@ void to_json(json& j, const OperatorStats& p) {
       "isBlockedCalls");
   to_json_key(
       j,
-      "isBlockedWall",
-      p.isBlockedWall,
+      "isBlockedWallInNanos",
+      p.isBlockedWallInNanos,
       "OperatorStats",
       "Duration",
-      "isBlockedWall");
+      "isBlockedWallInNanos");
   to_json_key(
       j,
-      "isBlockedCpu",
-      p.isBlockedCpu,
+      "isBlockedCpuInNanos",
+      p.isBlockedCpuInNanos,
       "OperatorStats",
       "Duration",
-      "isBlockedCpu");
+      "isBlockedCpuInNanos");
   to_json_key(
       j,
       "isBlockedAllocationInBytes",
@@ -3541,18 +3541,18 @@ void to_json(json& j, const OperatorStats& p) {
       "addInputCalls");
   to_json_key(
       j,
-      "addInputWall",
-      p.addInputWall,
+      "addInputWallInNanos",
+      p.addInputWallInNanos,
       "OperatorStats",
       "Duration",
-      "addInputWall");
+      "addInputWallInNanos");
   to_json_key(
       j,
-      "addInputCpu",
-      p.addInputCpu,
+      "addInputCpuInNanos",
+      p.addInputCpuInNanos,
       "OperatorStats",
       "Duration",
-      "addInputCpu");
+      "addInputCpuInNanos");
   to_json_key(
       j,
       "addInputAllocationInBytes",
@@ -3604,18 +3604,18 @@ void to_json(json& j, const OperatorStats& p) {
       "getOutputCalls");
   to_json_key(
       j,
-      "getOutputWall",
-      p.getOutputWall,
+      "getOutputWallInNanos",
+      p.getOutputWallInNanos,
       "OperatorStats",
       "Duration",
-      "getOutputWall");
+      "getOutputWallInNanos");
   to_json_key(
       j,
-      "getOutputCpu",
-      p.getOutputCpu,
+      "getOutputCpuInNanos",
+      p.getOutputCpuInNanos,
       "OperatorStats",
       "Duration",
-      "getOutputCpu");
+      "getOutputCpuInNanos");
   to_json_key(
       j,
       "getOutputAllocationInBytes",
@@ -3646,18 +3646,18 @@ void to_json(json& j, const OperatorStats& p) {
       "physicalWrittenDataSizeInBytes");
   to_json_key(
       j,
-      "additionalCpu",
-      p.additionalCpu,
+      "additionalCpuInNanos",
+      p.additionalCpuInNanos,
       "OperatorStats",
       "Duration",
-      "additionalCpu");
+      "additionalCpuInNanos");
   to_json_key(
       j,
-      "blockedWall",
-      p.blockedWall,
+      "blockedWallInNanos",
+      p.blockedWallInNanos,
       "OperatorStats",
       "Duration",
-      "blockedWall");
+      "blockedWallInNanos");
   to_json_key(
       j,
       "finishCalls",
@@ -3666,9 +3666,19 @@ void to_json(json& j, const OperatorStats& p) {
       "int64_t",
       "finishCalls");
   to_json_key(
-      j, "finishWall", p.finishWall, "OperatorStats", "Duration", "finishWall");
+      j,
+      "finishWallInNanos",
+      p.finishWallInNanos,
+      "OperatorStats",
+      "Duration",
+      "finishWallInNanos");
   to_json_key(
-      j, "finishCpu", p.finishCpu, "OperatorStats", "Duration", "finishCpu");
+      j,
+      "finishCpuInNanos",
+      p.finishCpuInNanos,
+      "OperatorStats",
+      "Duration",
+      "finishCpuInNanos");
   to_json_key(
       j,
       "finishAllocationInBytes",
@@ -3820,18 +3830,18 @@ void from_json(const json& j, OperatorStats& p) {
       "isBlockedCalls");
   from_json_key(
       j,
-      "isBlockedWall",
-      p.isBlockedWall,
+      "isBlockedWallInNanos",
+      p.isBlockedWallInNanos,
       "OperatorStats",
       "Duration",
-      "isBlockedWall");
+      "isBlockedWallInNanos");
   from_json_key(
       j,
-      "isBlockedCpu",
-      p.isBlockedCpu,
+      "isBlockedCpuInNanos",
+      p.isBlockedCpuInNanos,
       "OperatorStats",
       "Duration",
-      "isBlockedCpu");
+      "isBlockedCpuInNanos");
   from_json_key(
       j,
       "isBlockedAllocationInBytes",
@@ -3848,18 +3858,18 @@ void from_json(const json& j, OperatorStats& p) {
       "addInputCalls");
   from_json_key(
       j,
-      "addInputWall",
-      p.addInputWall,
+      "addInputWallInNanos",
+      p.addInputWallInNanos,
       "OperatorStats",
       "Duration",
-      "addInputWall");
+      "addInputWallInNanos");
   from_json_key(
       j,
-      "addInputCpu",
-      p.addInputCpu,
+      "addInputCpuInNanos",
+      p.addInputCpuInNanos,
       "OperatorStats",
       "Duration",
-      "addInputCpu");
+      "addInputCpuInNanos");
   from_json_key(
       j,
       "addInputAllocationInBytes",
@@ -3911,18 +3921,18 @@ void from_json(const json& j, OperatorStats& p) {
       "getOutputCalls");
   from_json_key(
       j,
-      "getOutputWall",
-      p.getOutputWall,
+      "getOutputWallInNanos",
+      p.getOutputWallInNanos,
       "OperatorStats",
       "Duration",
-      "getOutputWall");
+      "getOutputWallInNanos");
   from_json_key(
       j,
-      "getOutputCpu",
-      p.getOutputCpu,
+      "getOutputCpuInNanos",
+      p.getOutputCpuInNanos,
       "OperatorStats",
       "Duration",
-      "getOutputCpu");
+      "getOutputCpuInNanos");
   from_json_key(
       j,
       "getOutputAllocationInBytes",
@@ -3953,18 +3963,18 @@ void from_json(const json& j, OperatorStats& p) {
       "physicalWrittenDataSizeInBytes");
   from_json_key(
       j,
-      "additionalCpu",
-      p.additionalCpu,
+      "additionalCpuInNanos",
+      p.additionalCpuInNanos,
       "OperatorStats",
       "Duration",
-      "additionalCpu");
+      "additionalCpuInNanos");
   from_json_key(
       j,
-      "blockedWall",
-      p.blockedWall,
+      "blockedWallInNanos",
+      p.blockedWallInNanos,
       "OperatorStats",
       "Duration",
-      "blockedWall");
+      "blockedWallInNanos");
   from_json_key(
       j,
       "finishCalls",
@@ -3973,9 +3983,19 @@ void from_json(const json& j, OperatorStats& p) {
       "int64_t",
       "finishCalls");
   from_json_key(
-      j, "finishWall", p.finishWall, "OperatorStats", "Duration", "finishWall");
+      j,
+      "finishWallInNanos",
+      p.finishWallInNanos,
+      "OperatorStats",
+      "Duration",
+      "finishWallInNanos");
   from_json_key(
-      j, "finishCpu", p.finishCpu, "OperatorStats", "Duration", "finishCpu");
+      j,
+      "finishCpuInNanos",
+      p.finishCpuInNanos,
+      "OperatorStats",
+      "Duration",
+      "finishCpuInNanos");
   from_json_key(
       j,
       "finishAllocationInBytes",
@@ -4095,14 +4115,19 @@ void to_json(json& j, const DriverStats& p) {
       j, "startTimeInMillis", p.startTimeInMillis, "DriverStats", "int64_t", "startTimeInMillis");
   to_json_key(j, "endTimeInMillis", p.endTimeInMillis, "DriverStats", "int64_t", "endTimeInMillis");
   to_json_key(
-      j, "queuedTime", p.queuedTime, "DriverStats", "Duration", "queuedTime");
-  to_json_key(
       j,
-      "elapsedTime",
-      p.elapsedTime,
+      "queuedTimeInNanos",
+      p.queuedTimeInNanos,
       "DriverStats",
       "Duration",
-      "elapsedTime");
+      "queuedTimeInNanos");
+  to_json_key(
+      j,
+      "elapsedTimeInNanos",
+      p.elapsedTimeInNanos,
+      "DriverStats",
+      "Duration",
+      "elapsedTimeInNanos");
   to_json_key(
       j,
       "userMemoryReservationInBytes",
@@ -4133,18 +4158,18 @@ void to_json(json& j, const DriverStats& p) {
       "totalScheduledTime");
   to_json_key(
       j,
-      "totalCpuTime",
-      p.totalCpuTime,
+      "totalCpuTimeInNanos",
+      p.totalCpuTimeInNanos,
       "DriverStats",
       "Duration",
-      "totalCpuTime");
+      "totalCpuTimeInNanos");
   to_json_key(
       j,
-      "totalBlockedTime",
-      p.totalBlockedTime,
+      "totalBlockedTimeInNanos",
+      p.totalBlockedTimeInNanos,
       "DriverStats",
       "Duration",
-      "totalBlockedTime");
+      "totalBlockedTimeInNanos");
   to_json_key(
       j, "fullyBlocked", p.fullyBlocked, "DriverStats", "bool", "fullyBlocked");
   to_json_key(
@@ -4177,11 +4202,11 @@ void to_json(json& j, const DriverStats& p) {
       "rawInputPositions");
   to_json_key(
       j,
-      "rawInputReadTime",
-      p.rawInputReadTime,
+      "rawInputReadTimeInNanos",
+      p.rawInputReadTimeInNanos,
       "DriverStats",
       "Duration",
-      "rawInputReadTime");
+      "rawInputReadTimeInNanos");
   to_json_key(
       j,
       "processedInputDataSizeInBytes",
@@ -4235,14 +4260,19 @@ void from_json(const json& j, DriverStats& p) {
       j, "startTimeInMillis", p.startTimeInMillis, "DriverStats", "int64_t", "startTimeInMillis");
   from_json_key(j, "endTimeInMillis", p.endTimeInMillis, "DriverStats", "int64_t", "endTimeInMillis");
   from_json_key(
-      j, "queuedTime", p.queuedTime, "DriverStats", "Duration", "queuedTime");
-  from_json_key(
       j,
-      "elapsedTime",
-      p.elapsedTime,
+      "queuedTimeInNanos",
+      p.queuedTimeInNanos,
       "DriverStats",
       "Duration",
-      "elapsedTime");
+      "queuedTimeInNanos");
+  from_json_key(
+      j,
+      "elapsedTimeInNanos",
+      p.elapsedTimeInNanos,
+      "DriverStats",
+      "Duration",
+      "elapsedTimeInNanos");
   from_json_key(
       j,
       "userMemoryReservationInBytes",
@@ -4266,25 +4296,25 @@ void from_json(const json& j, DriverStats& p) {
       "systemMemoryReservationInBytes");
   from_json_key(
       j,
-      "totalScheduledTime",
-      p.totalScheduledTime,
+      "totalScheduledTimeInNanos",
+      p.totalScheduledTimeInNanos,
       "DriverStats",
       "Duration",
-      "totalScheduledTime");
+      "totalScheduledTimeInNanos");
   from_json_key(
       j,
-      "totalCpuTime",
-      p.totalCpuTime,
+      "totalCpuTimeInNanos",
+      p.totalCpuTimeInNanos,
       "DriverStats",
       "Duration",
-      "totalCpuTime");
+      "totalCpuTimeInNanos");
   from_json_key(
       j,
-      "totalBlockedTime",
-      p.totalBlockedTime,
+      "totalBlockedTimeInNanos",
+      p.totalBlockedTimeInNanos,
       "DriverStats",
       "Duration",
-      "totalBlockedTime");
+      "totalBlockedTimeInNanos");
   from_json_key(
       j, "fullyBlocked", p.fullyBlocked, "DriverStats", "bool", "fullyBlocked");
   from_json_key(
@@ -4317,11 +4347,11 @@ void from_json(const json& j, DriverStats& p) {
       "rawInputPositions");
   from_json_key(
       j,
-      "rawInputReadTime",
-      p.rawInputReadTime,
+      "rawInputReadTimeInNanos",
+      p.rawInputReadTimeInNanos,
       "DriverStats",
       "Duration",
-      "rawInputReadTime");
+      "rawInputReadTimeInNanos");
   from_json_key(
       j,
       "processedInputDataSizeInBytes",
@@ -6599,7 +6629,13 @@ void to_json(json& j, const NodeStatus& p) {
       j, "environment", p.environment, "NodeStatus", "String", "environment");
   to_json_key(
       j, "coordinator", p.coordinator, "NodeStatus", "bool", "coordinator");
-  to_json_key(j, "uptime", p.uptime, "NodeStatus", "Duration", "uptime");
+  to_json_key(
+      j,
+      "uptimeInNanos",
+      p.uptimeInNanos,
+      "NodeStatus",
+      "Duration",
+      "uptimeInNanos");
   to_json_key(
       j,
       "externalAddress",
@@ -6656,7 +6692,13 @@ void from_json(const json& j, NodeStatus& p) {
       j, "environment", p.environment, "NodeStatus", "String", "environment");
   from_json_key(
       j, "coordinator", p.coordinator, "NodeStatus", "bool", "coordinator");
-  from_json_key(j, "uptime", p.uptime, "NodeStatus", "Duration", "uptime");
+  from_json_key(
+      j,
+      "uptimeInNanos",
+      p.uptimeInNanos,
+      "NodeStatus",
+      "Duration",
+      "uptimeInNanos");
   from_json_key(
       j,
       "externalAddress",
