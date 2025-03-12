@@ -33,6 +33,8 @@ import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.concurrent.TimeUnit;
 
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 @DefunctConfig({
@@ -68,10 +70,10 @@ public class TaskManagerConfig
     private DataSize maxPagePartitioningBufferSize = new DataSize(32, Unit.MEGABYTE);
 
     private Duration clientTimeout = new Duration(2, TimeUnit.MINUTES);
-    private Duration infoMaxAge = new Duration(15, TimeUnit.MINUTES);
+    private long infoMaxAgeInNanos = new Duration(15, TimeUnit.MINUTES).roundTo(NANOSECONDS);
 
     private Duration statusRefreshMaxWait = new Duration(1, TimeUnit.SECONDS);
-    private Duration infoRefreshMaxWait = new Duration(0, TimeUnit.SECONDS);
+    private long infoRefreshMaxWaitInNanos = new Duration(0, TimeUnit.SECONDS).roundTo(NANOSECONDS);
 
     private Duration infoUpdateInterval = new Duration(3, TimeUnit.SECONDS);
 
@@ -145,18 +147,17 @@ public class TaskManagerConfig
         return this;
     }
 
-    @NotNull
-    public Duration getInfoRefreshMaxWait()
+    public long getInfoRefreshMaxWaitInNanos()
     {
-        return infoRefreshMaxWait;
+        return infoRefreshMaxWaitInNanos;
     }
 
     @Config("experimental.task.info-update-refresh-max-wait")
     @ConfigDescription("When this is set to non-zero, task info update request will be a long polling with " +
             "given maximum update refresh wait time. This is an experimental config to reduce unnecessary task info update.")
-    public TaskManagerConfig setInfoRefreshMaxWait(Duration infoRefreshMaxWait)
+    public TaskManagerConfig setInfoRefreshMaxWaitInNanos(Duration infoRefreshMaxWaitInNanos)
     {
-        this.infoRefreshMaxWait = infoRefreshMaxWait;
+        this.infoRefreshMaxWaitInNanos = toTimeStampInNanos(infoRefreshMaxWaitInNanos);
         return this;
     }
 
@@ -428,16 +429,15 @@ public class TaskManagerConfig
         return this;
     }
 
-    @NotNull
-    public Duration getInfoMaxAge()
+    public long getInfoMaxAgeInNanos()
     {
-        return infoMaxAge;
+        return infoMaxAgeInNanos;
     }
 
     @Config("task.info.max-age")
-    public TaskManagerConfig setInfoMaxAge(Duration infoMaxAge)
+    public TaskManagerConfig setInfoMaxAgeInNanos(Duration infoMaxAgeInNanos)
     {
-        this.infoMaxAge = infoMaxAge;
+        this.infoMaxAgeInNanos = toTimeStampInNanos(infoMaxAgeInNanos);
         return this;
     }
 

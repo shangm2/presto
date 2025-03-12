@@ -23,7 +23,6 @@ import com.facebook.presto.spi.PrestoTransportException;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListenableFutureTask;
-import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -38,6 +37,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.spi.HostAddress.fromUri;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.TOO_MANY_REQUESTS_FAILED;
@@ -45,7 +45,6 @@ import static com.facebook.presto.util.Failures.WORKER_NODE_ERROR;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 @ThreadSafe
 public class RequestErrorTracker
@@ -62,20 +61,20 @@ public class RequestErrorTracker
 
     private final Queue<Throwable> errorsSinceLastSuccess = new ConcurrentLinkedQueue<>();
 
-    public RequestErrorTracker(Object id, URI uri, ErrorCodeSupplier errorCode, String nodeErrorMessage, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription)
+    public RequestErrorTracker(Object id, URI uri, ErrorCodeSupplier errorCode, String nodeErrorMessage, long maxErrorDurationInNanos, ScheduledExecutorService scheduledExecutor, String jobDescription)
     {
         this.id = requireNonNull(id, "id is null");
         this.uri = requireNonNull(uri, "uri is null");
         this.errorCode = requireNonNull(errorCode, "errorCode is null");
         this.nodeErrorMessage = requireNonNull(nodeErrorMessage, "nodeErrorMessage is null");
         this.scheduledExecutor = requireNonNull(scheduledExecutor, "scheduledExecutor is null");
-        this.backoff = new Backoff(requireNonNull(maxErrorDuration, "maxErrorDuration is null"));
+        this.backoff = new Backoff(checkNonNegative(maxErrorDurationInNanos, "maxErrorDurationInNanos is negative"));
         this.jobDescription = requireNonNull(jobDescription, "jobDescription is null");
     }
 
-    public static RequestErrorTracker taskRequestErrorTracker(TaskId taskId, URI taskUri, Duration maxErrorDuration, ScheduledExecutorService scheduledExecutor, String jobDescription)
+    public static RequestErrorTracker taskRequestErrorTracker(TaskId taskId, URI taskUri, long maxErrorDurationInNanos, ScheduledExecutorService scheduledExecutor, String jobDescription)
     {
-        return new RequestErrorTracker(taskId, taskUri, REMOTE_TASK_ERROR, WORKER_NODE_ERROR, maxErrorDuration, scheduledExecutor, jobDescription);
+        return new RequestErrorTracker(taskId, taskUri, REMOTE_TASK_ERROR, WORKER_NODE_ERROR, maxErrorDurationInNanos, scheduledExecutor, jobDescription);
     }
 
     public ListenableFuture<?> acquireRequestPermit()
@@ -145,13 +144,13 @@ public class RequestErrorTracker
             // it is weird to mark the task failed locally and then cancel the remote task, but there is no way to tell a remote task that it is failed
             PrestoException exception = new PrestoTransportException(TOO_MANY_REQUESTS_FAILED,
                     fromUri(uri),
-                    format("%s (%s %s - %s failures, failure duration %s, total failed request time %s)",
+                    format("%s (%s %s - %s failures, failure duration %s seconds, total failed request time %s seconds)",
                             nodeErrorMessage,
                             jobDescription,
                             uri,
                             backoff.getFailureCount(),
-                            backoff.getFailureDuration().convertTo(SECONDS),
-                            backoff.getFailureRequestTimeTotal().convertTo(SECONDS)));
+                            backoff.getFailureDurationInSeconds(),
+                            backoff.getFailureRequestTimeTotalInSeconds()));
             errorsSinceLastSuccess.forEach(exception::addSuppressed);
             throw exception;
         }

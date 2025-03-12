@@ -15,17 +15,15 @@ package com.facebook.presto.execution;
 
 import com.facebook.presto.operator.BlockedReason;
 import com.google.common.collect.ImmutableSet;
-import io.airlift.units.Duration;
 
 import java.util.HashSet;
 import java.util.OptionalDouble;
 import java.util.Set;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.google.common.base.Preconditions.checkArgument;
-import static io.airlift.units.Duration.succinctDuration;
 import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class BasicStageExecutionStats
 {
@@ -45,8 +43,8 @@ public class BasicStageExecutionStats
             0L,
             0L,
 
-            new Duration(0, MILLISECONDS),
-            new Duration(0, MILLISECONDS),
+            0L,
+            0L,
 
             false,
             ImmutableSet.of(),
@@ -66,8 +64,8 @@ public class BasicStageExecutionStats
     private final double cumulativeTotalMemory;
     private final long userMemoryReservationInBytes;
     private final long totalMemoryReservationInBytes;
-    private final Duration totalCpuTime;
-    private final Duration totalScheduledTime;
+    private final long totalCpuTimeInNanos;
+    private final long totalScheduledTimeInNanos;
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
     private final long totalAllocationInBytes;
@@ -89,8 +87,8 @@ public class BasicStageExecutionStats
             long userMemoryReservationInBytes,
             long totalMemoryReservationInBytes,
 
-            Duration totalCpuTime,
-            Duration totalScheduledTime,
+            long totalCpuTimeInNanos,
+            long totalScheduledTimeInNanos,
 
             boolean fullyBlocked,
             Set<BlockedReason> blockedReasons,
@@ -113,8 +111,8 @@ public class BasicStageExecutionStats
         this.userMemoryReservationInBytes = userMemoryReservationInBytes;
         checkArgument(totalMemoryReservationInBytes >= 0, "totalMemoryReservationInBytes is negative");
         this.totalMemoryReservationInBytes = totalMemoryReservationInBytes;
-        this.totalCpuTime = requireNonNull(totalCpuTime, "totalCpuTime is null");
-        this.totalScheduledTime = requireNonNull(totalScheduledTime, "totalScheduledTime is null");
+        this.totalCpuTimeInNanos = checkNonNegative(totalCpuTimeInNanos, "totalCpuTime is negative");
+        this.totalScheduledTimeInNanos = checkNonNegative(totalScheduledTimeInNanos, "totalScheduledTime is negative");
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
         checkArgument(totalAllocationInBytes >= 0, "totalAllocationInBytes is negative");
@@ -177,14 +175,14 @@ public class BasicStageExecutionStats
         return totalMemoryReservationInBytes;
     }
 
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
-        return totalCpuTime;
+        return totalCpuTimeInNanos;
     }
 
-    public Duration getTotalScheduledTime()
+    public long getTotalScheduledTimeInNanos()
     {
-        return totalScheduledTime;
+        return totalScheduledTimeInNanos;
     }
 
     public boolean isFullyBlocked()
@@ -219,8 +217,8 @@ public class BasicStageExecutionStats
         long userMemoryReservation = 0;
         long totalMemoryReservation = 0;
 
-        long totalScheduledTimeMillis = 0;
-        long totalCpuTime = 0;
+        long totalScheduledTimeInNanos = 0;
+        long totalCpuTimeInNanos = 0;
 
         long rawInputDataSize = 0;
         long rawInputPositions = 0;
@@ -243,8 +241,8 @@ public class BasicStageExecutionStats
             userMemoryReservation += stageStats.getUserMemoryReservationInBytes();
             totalMemoryReservation += stageStats.getTotalMemoryReservationInBytes();
 
-            totalScheduledTimeMillis += stageStats.getTotalScheduledTime().roundTo(MILLISECONDS);
-            totalCpuTime += stageStats.getTotalCpuTime().roundTo(MILLISECONDS);
+            totalScheduledTimeInNanos += stageStats.getTotalScheduledTimeInNanos();
+            totalCpuTimeInNanos += stageStats.getTotalCpuTimeInNanos();
 
             isScheduled &= stageStats.isScheduled();
 
@@ -278,8 +276,8 @@ public class BasicStageExecutionStats
                 userMemoryReservation,
                 totalMemoryReservation,
 
-                succinctDuration(totalCpuTime, MILLISECONDS),
-                succinctDuration(totalScheduledTimeMillis, MILLISECONDS),
+                totalCpuTimeInNanos,
+                totalScheduledTimeInNanos,
 
                 fullyBlocked,
                 blockedReasons,

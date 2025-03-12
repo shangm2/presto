@@ -62,7 +62,6 @@ import static com.facebook.presto.execution.StageExecutionState.TERMINAL_STAGE_S
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.System.currentTimeMillis;
@@ -320,8 +319,8 @@ public class StageExecutionStateMachine
                 userMemoryReservationInBytes,
                 totalMemoryReservationInBytes,
 
-                succinctNanos(totalCpuTime),
-                succinctNanos(totalScheduledTime),
+                NANOSECONDS.toMillis(totalCpuTime),
+                NANOSECONDS.toMillis(totalScheduledTime),
 
                 fullyBlocked,
                 blockedReasons,

@@ -53,7 +53,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.sun.management.ThreadMXBean;
-import io.airlift.units.Duration;
 import org.apache.http.client.utils.URIBuilder;
 
 import java.lang.management.ManagementFactory;
@@ -856,12 +855,12 @@ public class SqlQueryScheduler
                 .sum();
     }
 
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
         long millis = stageExecutions.values().stream()
                 .mapToLong(stage -> stage.getStageExecution().getTotalCpuTime().toMillis())
                 .sum();
-        return new Duration(millis, MILLISECONDS);
+        return MILLISECONDS.toNanos(millis);
     }
 
     @Override

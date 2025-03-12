@@ -30,7 +30,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
-import static io.airlift.units.Duration.nanosSince;
 import static java.util.Objects.requireNonNull;
 import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 
@@ -82,7 +81,7 @@ public class StatusResource
                 version,
                 environment,
                 coordinator,
-                nanosSince(startTime),
+                startTime,
                 nodeInfo.getExternalAddress(),
                 nodeInfo.getInternalAddress(),
                 memoryManager.getInfo(),

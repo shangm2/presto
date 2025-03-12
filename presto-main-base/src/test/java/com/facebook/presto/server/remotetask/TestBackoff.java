@@ -14,12 +14,10 @@
 package com.facebook.presto.server.remotetask;
 
 import com.facebook.airlift.testing.TestingTicker;
-import com.google.common.collect.ImmutableList;
 import io.airlift.units.Duration;
 import org.testng.annotations.Test;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
@@ -34,31 +32,31 @@ public class TestBackoff
         TestingTicker ticker = new TestingTicker();
         ticker.increment(1, NANOSECONDS);
 
-        Backoff backoff = new Backoff(1, new Duration(15, SECONDS), ticker, ImmutableList.of(new Duration(10, MILLISECONDS)));
+        Backoff backoff = new Backoff(1, new Duration(15, SECONDS).roundTo(NANOSECONDS), ticker, new long[] {10L});
         ticker.increment(10, MICROSECONDS);
 
         // verify initial state
         assertEquals(backoff.getFailureCount(), 0);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
 
         // first failure, should never fail
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 1);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
 
         ticker.increment(14, SECONDS);
 
         // second failure within the limit, should not fail
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 2);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 14);
+        assertEquals(backoff.getFailureDurationInSeconds(), 14);
 
         ticker.increment(1, SECONDS);
 
         // final failure after the limit causes failure
         assertTrue(backoff.failure());
         assertEquals(backoff.getFailureCount(), 3);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 15);
+        assertEquals(backoff.getFailureDurationInSeconds(), 15);
     }
 
     @Test
@@ -67,31 +65,31 @@ public class TestBackoff
         TestingTicker ticker = new TestingTicker();
         ticker.increment(1, NANOSECONDS);
 
-        Backoff backoff = new Backoff(3, new Duration(1, NANOSECONDS), ticker, ImmutableList.of(new Duration(10, MILLISECONDS)));
+        Backoff backoff = new Backoff(3, new Duration(1, NANOSECONDS).roundTo(NANOSECONDS), ticker, new long[] {10L});
         ticker.increment(10, MICROSECONDS);
 
         // verify initial state
         assertEquals(backoff.getFailureCount(), 0);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
 
         // first failure, should never fail
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 1);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
 
         ticker.increment(14, SECONDS);
 
         // second failure under min failures, should not fail
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 2);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 14);
+        assertEquals(backoff.getFailureDurationInSeconds(), 14);
 
         ticker.increment(1, SECONDS);
 
         // last try failed
         assertTrue(backoff.failure());
         assertEquals(backoff.getFailureCount(), 3);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 15);
+        assertEquals(backoff.getFailureDurationInSeconds(), 15);
     }
 
     @Test
@@ -100,13 +98,13 @@ public class TestBackoff
         TestingTicker ticker = new TestingTicker();
         ticker.increment(1, NANOSECONDS);
 
-        Backoff backoff = new Backoff(1, new Duration(15, SECONDS), ticker, ImmutableList.of(new Duration(10, MILLISECONDS)));
+        Backoff backoff = new Backoff(1, new Duration(15, SECONDS).roundTo(NANOSECONDS), ticker, new long[] {10L});
         ticker.increment(10, MICROSECONDS);
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 1);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
-        assertEquals(backoff.getFailureRequestTimeTotal().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
+        assertEquals(backoff.getFailureRequestTimeTotalInSeconds(), 0);
 
         ticker.increment(7, SECONDS);
         backoff.startRequest();
@@ -114,9 +112,9 @@ public class TestBackoff
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 2);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 14);
+        assertEquals(backoff.getFailureDurationInSeconds(), 14);
         // failed request took 7 seconds.
-        assertEquals(backoff.getFailureRequestTimeTotal().roundTo(SECONDS), 7);
+        assertEquals(backoff.getFailureRequestTimeTotalInSeconds(), 7);
 
         ticker.increment(1, SECONDS);
         backoff.startRequest();
@@ -124,9 +122,9 @@ public class TestBackoff
 
         assertTrue(backoff.failure());
         assertEquals(backoff.getFailureCount(), 3);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 16);
+        assertEquals(backoff.getFailureDurationInSeconds(), 16);
         // failed requests took 7+1 seconds.
-        assertEquals(backoff.getFailureRequestTimeTotal().roundTo(SECONDS), 8);
+        assertEquals(backoff.getFailureRequestTimeTotalInSeconds(), 8);
     }
 
     @Test
@@ -136,19 +134,14 @@ public class TestBackoff
         TestingTicker ticker = new TestingTicker();
         ticker.increment(1, NANOSECONDS);
 
-        Backoff backoff = new Backoff(1, new Duration(15, SECONDS), ticker, ImmutableList.of(
-                new Duration(0, SECONDS),
-                new Duration(1, SECONDS),
-                new Duration(2, SECONDS),
-                new Duration(4, SECONDS),
-                new Duration(8, SECONDS)));
+        Backoff backoff = new Backoff(1, new Duration(15, SECONDS).roundTo(NANOSECONDS), ticker, new long[] {0L, 1_000L, 2_000L, 4_000L, 8_000L});
 
         assertEquals(backoff.getFailureCount(), 0);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 1);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
         long backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 0);
 
@@ -156,7 +149,7 @@ public class TestBackoff
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 2);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 0);
+        assertEquals(backoff.getFailureDurationInSeconds(), 0);
         backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 1);
 
@@ -164,7 +157,7 @@ public class TestBackoff
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 3);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 1);
+        assertEquals(backoff.getFailureDurationInSeconds(), 1);
         backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 2);
 
@@ -172,7 +165,7 @@ public class TestBackoff
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 4);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 3);
+        assertEquals(backoff.getFailureDurationInSeconds(), 3);
         backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 4);
 
@@ -180,7 +173,7 @@ public class TestBackoff
 
         assertFalse(backoff.failure());
         assertEquals(backoff.getFailureCount(), 5);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 7);
+        assertEquals(backoff.getFailureDurationInSeconds(), 7);
         backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 8);
 
@@ -188,7 +181,7 @@ public class TestBackoff
 
         assertTrue(backoff.failure());
         assertEquals(backoff.getFailureCount(), 6);
-        assertEquals(backoff.getFailureDuration().roundTo(SECONDS), 15);
+        assertEquals(backoff.getFailureDurationInSeconds(), 15);
         backoffDelay = backoff.getBackoffDelayNanos();
         assertEquals(NANOSECONDS.toSeconds(backoffDelay), 8);
     }

@@ -14,14 +14,11 @@
 package com.facebook.presto.execution;
 
 import com.google.common.base.Ticker;
-import io.airlift.units.Duration;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 
-import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.max;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 // Query time workflow chart. Left side shows query workflow. Right side shows
@@ -65,35 +62,35 @@ public class QueryStateTimer
     private final long createTimeInMillis = System.currentTimeMillis();
 
     private final long createNanos;
-    private final AtomicReference<Long> beginQueuedNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginResourceWaitingNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginSemanticAnalyzingNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginColumnAccessPermissionCheckingNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginDispatchingNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginPlanningNanos = new AtomicReference<>();
-    private final AtomicReference<Long> beginFinishingNanos = new AtomicReference<>();
-    private final AtomicReference<Long> endNanos = new AtomicReference<>();
+    private final AtomicLong beginQueuedNanos = new AtomicLong();
+    private final AtomicLong beginResourceWaitingNanos = new AtomicLong();
+    private final AtomicLong beginSemanticAnalyzingNanos = new AtomicLong();
+    private final AtomicLong beginColumnAccessPermissionCheckingNanos = new AtomicLong();
+    private final AtomicLong beginDispatchingNanos = new AtomicLong();
+    private final AtomicLong beginPlanningNanos = new AtomicLong();
+    private final AtomicLong beginFinishingNanos = new AtomicLong();
+    private final AtomicLong endNanos = new AtomicLong();
 
-    private final AtomicReference<Duration> waitingForPrerequisitesTime = new AtomicReference<>();
-    private final AtomicReference<Duration> queuedTime = new AtomicReference<>();
-    private final AtomicReference<Duration> resourceWaitingTime = new AtomicReference<>();
-    private final AtomicReference<Duration> semanticAnalyzingTime = new AtomicReference<>();
-    private final AtomicReference<Duration> columnAccessPermissionCheckingTime = new AtomicReference<>();
-    private final AtomicReference<Duration> dispatchingTime = new AtomicReference<>();
-    private final AtomicReference<Duration> executionTime = new AtomicReference<>();
-    private final AtomicReference<Duration> planningTime = new AtomicReference<>();
-    private final AtomicReference<Duration> finishingTime = new AtomicReference<>();
+    private final AtomicLong waitingForPrerequisitesTime = new AtomicLong();
+    private final AtomicLong queuedTime = new AtomicLong();
+    private final AtomicLong resourceWaitingTime = new AtomicLong();
+    private final AtomicLong semanticAnalyzingTime = new AtomicLong();
+    private final AtomicLong columnAccessPermissionCheckingTime = new AtomicLong();
+    private final AtomicLong dispatchingTime = new AtomicLong();
+    private final AtomicLong executionTime = new AtomicLong();
+    private final AtomicLong planningTime = new AtomicLong();
+    private final AtomicLong finishingTime = new AtomicLong();
 
-    private final AtomicReference<Long> beginAnalysisNanos = new AtomicReference<>();
-    private final AtomicReference<Duration> analysisTime = new AtomicReference<>();
+    private final AtomicLong beginAnalysisNanos = new AtomicLong();
+    private final AtomicLong analysisTime = new AtomicLong();
 
-    private final AtomicReference<Long> lastHeartbeatNanos;
+    private final AtomicLong lastHeartbeatNanos;
 
     public QueryStateTimer(Ticker ticker)
     {
         this.ticker = requireNonNull(ticker, "ticker is null");
         this.createNanos = tickerNanos();
-        this.lastHeartbeatNanos = new AtomicReference<>(createNanos);
+        this.lastHeartbeatNanos = new AtomicLong(createNanos);
     }
 
     //
@@ -107,8 +104,8 @@ public class QueryStateTimer
 
     private void beginQueued(long now)
     {
-        waitingForPrerequisitesTime.compareAndSet(null, nanosSince(createNanos, now));
-        beginQueuedNanos.compareAndSet(null, now);
+        waitingForPrerequisitesTime.compareAndSet(0, nanosSince(createNanos, now));
+        beginQueuedNanos.compareAndSet(0, now);
     }
 
     public void beginWaitingForResources()
@@ -119,8 +116,8 @@ public class QueryStateTimer
     private void beginWaitingForResources(long now)
     {
         beginQueued(now);
-        queuedTime.compareAndSet(null, nanosSince(beginQueuedNanos, now));
-        beginResourceWaitingNanos.compareAndSet(null, now);
+        queuedTime.compareAndSet(0, nanosSince(beginQueuedNanos, now));
+        beginResourceWaitingNanos.compareAndSet(0, now);
     }
 
     public void beginSemanticAnalyzing()
@@ -130,7 +127,7 @@ public class QueryStateTimer
 
     private void beginSemanticAnalyzing(long now)
     {
-        beginSemanticAnalyzingNanos.compareAndSet(null, now);
+        beginSemanticAnalyzingNanos.compareAndSet(0, now);
     }
 
     public void beginColumnAccessPermissionChecking()
@@ -141,8 +138,8 @@ public class QueryStateTimer
     private void beginColumnAccessPermissionChecking(long now)
     {
         beginSemanticAnalyzing(now);
-        semanticAnalyzingTime.compareAndSet(null, nanosSince(beginSemanticAnalyzingNanos, now));
-        beginColumnAccessPermissionCheckingNanos.compareAndSet(null, now);
+        semanticAnalyzingTime.compareAndSet(0, nanosSince(beginSemanticAnalyzingNanos, now));
+        beginColumnAccessPermissionCheckingNanos.compareAndSet(0, now);
     }
 
     public void endColumnAccessPermissionChecking()
@@ -153,7 +150,7 @@ public class QueryStateTimer
     private void endColumnAccessPermissionChecking(long now)
     {
         beginColumnAccessPermissionChecking(now);
-        columnAccessPermissionCheckingTime.compareAndSet(null, nanosSince(beginColumnAccessPermissionCheckingNanos, now));
+        columnAccessPermissionCheckingTime.compareAndSet(0, nanosSince(beginColumnAccessPermissionCheckingNanos, now));
     }
 
     public void beginDispatching()
@@ -164,8 +161,8 @@ public class QueryStateTimer
     private void beginDispatching(long now)
     {
         beginWaitingForResources(now);
-        resourceWaitingTime.compareAndSet(null, nanosSince(beginResourceWaitingNanos, now));
-        beginDispatchingNanos.compareAndSet(null, now);
+        resourceWaitingTime.compareAndSet(0, nanosSince(beginResourceWaitingNanos, now));
+        beginDispatchingNanos.compareAndSet(0, now);
     }
 
     public void beginPlanning()
@@ -176,8 +173,8 @@ public class QueryStateTimer
     private void beginPlanning(long now)
     {
         beginDispatching(now);
-        dispatchingTime.compareAndSet(null, nanosSince(beginDispatchingNanos, now));
-        beginPlanningNanos.compareAndSet(null, now);
+        dispatchingTime.compareAndSet(0, nanosSince(beginDispatchingNanos, now));
+        beginPlanningNanos.compareAndSet(0, now);
     }
 
     public void beginStarting()
@@ -188,7 +185,7 @@ public class QueryStateTimer
     private void beginStarting(long now)
     {
         beginPlanning(now);
-        planningTime.compareAndSet(null, nanosSince(beginPlanningNanos, now));
+        planningTime.compareAndSet(0, nanosSince(beginPlanningNanos, now));
     }
 
     public void beginRunning()
@@ -209,7 +206,7 @@ public class QueryStateTimer
     private void beginFinishing(long now)
     {
         beginRunning(now);
-        beginFinishingNanos.compareAndSet(null, now);
+        beginFinishingNanos.compareAndSet(0, now);
     }
 
     public void endQuery()
@@ -220,9 +217,9 @@ public class QueryStateTimer
     private void endQuery(long now)
     {
         beginFinishing(now);
-        finishingTime.compareAndSet(null, nanosSince(beginFinishingNanos, now));
-        executionTime.compareAndSet(null, nanosSince(beginPlanningNanos, now));
-        endNanos.compareAndSet(null, now);
+        finishingTime.compareAndSet(0, nanosSince(beginFinishingNanos, now));
+        executionTime.compareAndSet(0, nanosSince(beginPlanningNanos, now));
+        endNanos.compareAndSet(0, now);
     }
 
     //
@@ -231,12 +228,12 @@ public class QueryStateTimer
 
     public void beginAnalyzing()
     {
-        beginAnalysisNanos.compareAndSet(null, tickerNanos());
+        beginAnalysisNanos.compareAndSet(0, tickerNanos());
     }
 
     public void endAnalysis()
     {
-        analysisTime.compareAndSet(null, nanosSince(beginAnalysisNanos, tickerNanos()));
+        analysisTime.compareAndSet(0, nanosSince(beginAnalysisNanos, tickerNanos()));
     }
 
     public void recordHeartbeat()
@@ -258,63 +255,63 @@ public class QueryStateTimer
         return toMillis(beginPlanningNanos);
     }
 
-    public Duration getElapsedTime()
+    public long getElapsedTimeInNanos()
     {
-        if (endNanos.get() != null) {
-            return succinctNanos(endNanos.get() - createNanos);
+        if (endNanos.get() != 0) {
+            return endNanos.get() - createNanos;
         }
         return nanosSince(createNanos, tickerNanos());
     }
 
-    public Duration getWaitingForPrerequisitesTime()
+    public long getWaitingForPrerequisitesTimeInNanos()
     {
-        Duration waitingForPrerequisitesTime = this.waitingForPrerequisitesTime.get();
-        if (waitingForPrerequisitesTime != null) {
+        long waitingForPrerequisitesTime = this.waitingForPrerequisitesTime.get();
+        if (waitingForPrerequisitesTime != 0) {
             return waitingForPrerequisitesTime;
         }
 
         // if prerequisite wait time is not set, the query is still waiting for prerequisites to finish
-        return getElapsedTime();
+        return getElapsedTimeInNanos();
     }
 
-    public Duration getQueuedTime()
+    public long getQueuedTimeInNanos()
     {
-        return getDuration(queuedTime, beginQueuedNanos);
+        return getDurationInNanos(queuedTime, beginQueuedNanos);
     }
 
-    public Duration getResourceWaitingTime()
+    public long getResourceWaitingTimeInNanos()
     {
-        return getDuration(resourceWaitingTime, beginResourceWaitingNanos);
+        return getDurationInNanos(resourceWaitingTime, beginResourceWaitingNanos);
     }
 
-    public Duration getSemanticAnalyzingTime()
+    public long getSemanticAnalyzingTimeInNanos()
     {
-        return getDuration(semanticAnalyzingTime, beginSemanticAnalyzingNanos);
+        return getDurationInNanos(semanticAnalyzingTime, beginSemanticAnalyzingNanos);
     }
 
-    public Duration getColumnAccessPermissionCheckingTime()
+    public long getColumnAccessPermissionCheckingTimeInNanos()
     {
-        return getDuration(columnAccessPermissionCheckingTime, beginColumnAccessPermissionCheckingNanos);
+        return getDurationInNanos(columnAccessPermissionCheckingTime, beginColumnAccessPermissionCheckingNanos);
     }
 
-    public Duration getDispatchingTime()
+    public long getDispatchingTimeInNanos()
     {
-        return getDuration(dispatchingTime, beginDispatchingNanos);
+        return getDurationInNanos(dispatchingTime, beginDispatchingNanos);
     }
 
-    public Duration getPlanningTime()
+    public long getPlanningTimeInNanos()
     {
-        return getDuration(planningTime, beginPlanningNanos);
+        return getDurationInNanos(planningTime, beginPlanningNanos);
     }
 
-    public Duration getFinishingTime()
+    public long getFinishingTimeInNanos()
     {
-        return getDuration(finishingTime, beginFinishingNanos);
+        return getDurationInNanos(finishingTime, beginFinishingNanos);
     }
 
-    public Duration getExecutionTime()
+    public long getExecutionTimeInNanos()
     {
-        return getDuration(executionTime, beginPlanningNanos);
+        return getDurationInNanos(executionTime, beginPlanningNanos);
     }
 
     public long getEndTimeInMillis()
@@ -322,9 +319,9 @@ public class QueryStateTimer
         return toMillis(endNanos);
     }
 
-    public Duration getAnalysisTime()
+    public long getAnalysisTimeInNanos()
     {
-        return getDuration(analysisTime, beginAnalysisNanos);
+        return getDurationInNanos(analysisTime, beginAnalysisNanos);
     }
 
     public long getLastHeartbeatInMillis()
@@ -341,36 +338,36 @@ public class QueryStateTimer
         return ticker.read();
     }
 
-    private static Duration nanosSince(AtomicReference<Long> start, long end)
+    private static long nanosSince(AtomicLong start, long end)
     {
-        Long startNanos = start.get();
-        if (startNanos == null) {
+        long startNanos = start.get();
+        if (startNanos == 0) {
             throw new IllegalStateException("Start time not set");
         }
         return nanosSince(startNanos, end);
     }
 
-    private static Duration nanosSince(long start, long now)
+    private static long nanosSince(long start, long now)
     {
-        return succinctNanos(max(0, now - start));
+        return max(0, now - start);
     }
 
-    private Duration getDuration(AtomicReference<Duration> finalDuration, AtomicReference<Long> start)
+    private long getDurationInNanos(AtomicLong finalDuration, AtomicLong start)
     {
-        Duration duration = finalDuration.get();
-        if (duration != null) {
+        long duration = finalDuration.get();
+        if (duration != 0) {
             return duration;
         }
-        Long startNanos = start.get();
-        if (startNanos != null) {
+        long startNanos = start.get();
+        if (startNanos != 0) {
             return nanosSince(startNanos, tickerNanos());
         }
-        return new Duration(0, MILLISECONDS);
+        return 0L;
     }
 
-    private long toMillis(AtomicReference<Long> instantNanos)
+    private long toMillis(AtomicLong instantNanos)
     {
-        Long nanos = instantNanos.get();
-        return nanos != null ? createTimeInMillis + NANOSECONDS.toMillis(nanos - createNanos) : 0L;
+        long nanos = instantNanos.get();
+        return nanos != 0 ? createTimeInMillis + NANOSECONDS.toMillis(nanos - createNanos) : 0L;
     }
 }

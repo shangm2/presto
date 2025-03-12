@@ -18,7 +18,6 @@ import com.facebook.presto.common.ErrorCode;
 import com.facebook.presto.execution.StateMachine.StateChangeListener;
 import com.facebook.presto.server.BasicQueryInfo;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
-import io.airlift.units.Duration;
 
 import java.util.Optional;
 
@@ -43,7 +42,7 @@ public interface ManagedQueryExecution
 
     long getTotalMemoryReservationInBytes();
 
-    Duration getTotalCpuTime();
+    long getTotalCpuTimeInNanos();
 
     BasicQueryInfo getBasicQueryInfo();
 

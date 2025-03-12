@@ -73,6 +73,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class HeartbeatFailureDetector
         implements FailureDetector
@@ -90,10 +91,10 @@ public class HeartbeatFailureDetector
     private final ConcurrentMap<UUID, MonitoringTask> tasks = new ConcurrentHashMap<>();
 
     private final double failureRatioThreshold;
-    private final Duration heartbeat;
+    private final long heartbeatInNanos;
     private final boolean isEnabled;
-    private final Duration warmupInterval;
-    private final Duration gcGraceInterval;
+    private final long warmupIntervalInNanos;
+    private final long gcGraceIntervalInNanos;
     private final int exponentialDecaySeconds;
     private final boolean httpsRequired;
 
@@ -118,9 +119,9 @@ public class HeartbeatFailureDetector
         this.nodeInfo = nodeInfo;
 
         this.failureRatioThreshold = failureDetectorConfig.getFailureRatioThreshold();
-        this.heartbeat = failureDetectorConfig.getHeartbeatInterval();
-        this.warmupInterval = failureDetectorConfig.getWarmupInterval();
-        this.gcGraceInterval = failureDetectorConfig.getExpirationGraceInterval();
+        this.heartbeatInNanos = failureDetectorConfig.getHeartbeatInterval().roundTo(NANOSECONDS);
+        this.warmupIntervalInNanos = failureDetectorConfig.getWarmupInterval().roundTo(NANOSECONDS);
+        this.gcGraceIntervalInNanos = failureDetectorConfig.getExpirationGraceInterval().roundTo(NANOSECONDS);
         this.exponentialDecaySeconds = failureDetectorConfig.getExponentialDecaySeconds();
 
         this.isEnabled = failureDetectorConfig.isEnabled();
@@ -323,10 +324,10 @@ public class HeartbeatFailureDetector
         private ScheduledFuture<?> future;
 
         @GuardedBy("this")
-        private Long disabledTimestamp;
+        private Long disabledTimestampInNanos;
 
         @GuardedBy("this")
-        private Long successTransitionTimestamp;
+        private Long successTransitionTimestampInNanos;
 
         private MonitoringTask(ServiceDescriptor service, URI uri)
         {
@@ -362,8 +363,8 @@ public class HeartbeatFailureDetector
                             log.error(e, "Error pinging service %s (%s)", service.getId(), uri);
                         }
                     }
-                }, heartbeat.toMillis(), heartbeat.toMillis(), TimeUnit.MILLISECONDS);
-                disabledTimestamp = null;
+                }, NANOSECONDS.toMillis(heartbeatInNanos), NANOSECONDS.toMillis(heartbeatInNanos), TimeUnit.MILLISECONDS);
+                disabledTimestampInNanos = 0L;
             }
         }
 
@@ -372,20 +373,20 @@ public class HeartbeatFailureDetector
             if (future != null) {
                 future.cancel(true);
                 future = null;
-                disabledTimestamp = System.nanoTime();
+                disabledTimestampInNanos = System.nanoTime();
             }
         }
 
         public synchronized boolean isExpired()
         {
-            return future == null && disabledTimestamp != null && Duration.nanosSince(disabledTimestamp).compareTo(gcGraceInterval) > 0;
+            return future == null && disabledTimestampInNanos != 0L && disabledTimestampInNanos > gcGraceIntervalInNanos;
         }
 
         public synchronized boolean isFailed()
         {
             return future == null || // are we disabled?
-                    successTransitionTimestamp == null || // are we in success state?
-                    Duration.nanosSince(successTransitionTimestamp).compareTo(warmupInterval) < 0; // are we within the warmup period?
+                    successTransitionTimestampInNanos == 0 || // are we in success state?
+                    successTransitionTimestampInNanos < warmupIntervalInNanos; // are we within the warmup period?
         }
 
         private void ping()
@@ -422,10 +423,10 @@ public class HeartbeatFailureDetector
         {
             // is this an over/under transition?
             if (stats.getRecentFailureRatio() > failureRatioThreshold) {
-                successTransitionTimestamp = null;
+                successTransitionTimestampInNanos = 0L;
             }
-            else if (successTransitionTimestamp == null) {
-                successTransitionTimestamp = System.nanoTime();
+            else if (successTransitionTimestampInNanos == 0L) {
+                successTransitionTimestampInNanos = System.nanoTime();
             }
         }
     }

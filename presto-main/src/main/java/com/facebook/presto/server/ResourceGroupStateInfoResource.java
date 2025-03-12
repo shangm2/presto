@@ -20,7 +20,6 @@ import com.facebook.presto.resourcemanager.ResourceManagerProxy;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupId;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
-import io.airlift.units.Duration;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
@@ -125,7 +124,7 @@ public class ResourceGroupStateInfoResource
     private final Optional<ResourceManagerProxy> proxyHelper;
     private final Map<ResourceGroupStateInfoKey, Supplier<ResourceGroupInfo>> resourceGroupStateInfoKeySupplierMap;
     private final Supplier<List<ResourceGroupInfo>> rootResourceGroupInfoSupplier;
-    private final Duration expirationDuration;
+    private final long expirationDurationInMillis;
 
     @Inject
     public ResourceGroupStateInfoResource(
@@ -139,9 +138,9 @@ public class ResourceGroupStateInfoResource
         this.internalNodeManager = requireNonNull(internalNodeManager, "internalNodeManager is null");
         this.proxyHelper = requireNonNull(proxyHelper, "proxyHelper is null");
         this.resourceGroupStateInfoKeySupplierMap = new HashMap<>();
-        this.expirationDuration = requireNonNull(serverConfig, "serverConfig is null").getClusterResourceGroupStateInfoExpirationDuration();
-        this.rootResourceGroupInfoSupplier = expirationDuration.getValue() > 0 ?
-                memoizeWithExpiration(() -> resourceGroupManager.getRootResourceGroups(), expirationDuration.toMillis(), MILLISECONDS) :
+        this.expirationDurationInMillis = requireNonNull(serverConfig, "serverConfig is null").getClusterResourceGroupStateInfoExpirationDuration().toMillis();
+        this.rootResourceGroupInfoSupplier = expirationDurationInMillis > 0 ?
+                memoizeWithExpiration(() -> resourceGroupManager.getRootResourceGroups(), expirationDurationInMillis, MILLISECONDS) :
                 () -> resourceGroupManager.getRootResourceGroups();
     }
 
@@ -174,8 +173,8 @@ public class ResourceGroupStateInfoResource
 
                 ResourceGroupStateInfoKey resourceGroupStateInfoKey = new ResourceGroupStateInfoKey(resourceGroupId, includeQueryInfo, summarizeSubgroups, includeStaticSubgroupsOnly);
 
-                Supplier<ResourceGroupInfo> resourceGroupInfoSupplier = resourceGroupStateInfoKeySupplierMap.getOrDefault(resourceGroupStateInfoKey, expirationDuration.getValue() > 0 ?
-                        Suppliers.memoizeWithExpiration(() -> getResourceGroupInfo(resourceGroupId, includeQueryInfo, summarizeSubgroups, includeStaticSubgroupsOnly), expirationDuration.toMillis(), MILLISECONDS) :
+                Supplier<ResourceGroupInfo> resourceGroupInfoSupplier = resourceGroupStateInfoKeySupplierMap.getOrDefault(resourceGroupStateInfoKey, expirationDurationInMillis > 0 ?
+                        Suppliers.memoizeWithExpiration(() -> getResourceGroupInfo(resourceGroupId, includeQueryInfo, summarizeSubgroups, includeStaticSubgroupsOnly), expirationDurationInMillis, MILLISECONDS) :
                         () -> getResourceGroupInfo(resourceGroupId, includeQueryInfo, summarizeSubgroups, includeStaticSubgroupsOnly));
 
                 resourceGroupStateInfoKeySupplierMap.putIfAbsent(resourceGroupStateInfoKey, resourceGroupInfoSupplier);

@@ -21,16 +21,23 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.airlift.units.Duration;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static io.airlift.units.Duration.succinctNanos;
 
 @ThriftStruct
 public class TableWriterMergeInfo
         implements Mergeable<TableWriterMergeInfo>, OperatorInfo
 {
-    private final Duration statisticsWallTime;
-    private final Duration statisticsCpuTime;
+    private final long statisticsWallTimeInNanos;
+    private final long statisticsCpuTimeInNanos;
+
+    public TableWriterMergeInfo(long statisticsWallTimeInNanos, long statisticsCpuTimeInNanos)
+    {
+        this.statisticsWallTimeInNanos = checkNonNegative(statisticsWallTimeInNanos, "statisticsWallTimeInNanos is negative");
+        this.statisticsCpuTimeInNanos = checkNonNegative(statisticsCpuTimeInNanos, "statisticsCpuTimeInNanos is negative");
+    }
 
     @JsonCreator
     @ThriftConstructor
@@ -38,30 +45,39 @@ public class TableWriterMergeInfo
             @JsonProperty("statisticsWallTime") Duration statisticsWallTime,
             @JsonProperty("statisticsCpuTime") Duration statisticsCpuTime)
     {
-        this.statisticsWallTime = requireNonNull(statisticsWallTime, "statisticsWallTime is null");
-        this.statisticsCpuTime = requireNonNull(statisticsCpuTime, "statisticsCpuTime is null");
+        this(toTimeStampInNanos(statisticsWallTime), toTimeStampInNanos(statisticsCpuTime));
     }
 
     @JsonProperty
     @ThriftField(1)
     public Duration getStatisticsWallTime()
     {
-        return statisticsWallTime;
+        return succinctNanos(statisticsWallTimeInNanos);
+    }
+
+    public long getStatisticsWallTimeInNanos()
+    {
+        return statisticsWallTimeInNanos;
     }
 
     @JsonProperty
     @ThriftField(2)
     public Duration getStatisticsCpuTime()
     {
-        return statisticsCpuTime;
+        return succinctNanos(statisticsCpuTimeInNanos);
+    }
+
+    public long getStatisticsCpuTimeInNanos()
+    {
+        return statisticsCpuTimeInNanos;
     }
 
     @Override
     public String toString()
     {
         return toStringHelper(this)
-                .add("statisticsWallTime", statisticsWallTime)
-                .add("statisticsCpuTime", statisticsCpuTime)
+                .add("statisticsWallTime", statisticsWallTimeInNanos)
+                .add("statisticsCpuTime", statisticsCpuTimeInNanos)
                 .toString();
     }
 
@@ -69,8 +85,8 @@ public class TableWriterMergeInfo
     public TableWriterMergeInfo mergeWith(TableWriterMergeInfo other)
     {
         return new TableWriterMergeInfo(
-                new Duration(this.statisticsWallTime.toMillis() + other.statisticsWallTime.toMillis(), MILLISECONDS),
-                new Duration(this.statisticsCpuTime.toMillis() + other.statisticsCpuTime.toMillis(), MILLISECONDS));
+                this.statisticsWallTimeInNanos + other.statisticsWallTimeInNanos,
+                this.statisticsCpuTimeInNanos + other.statisticsCpuTimeInNanos);
     }
 
     @Override

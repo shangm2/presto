@@ -36,7 +36,6 @@ import com.facebook.presto.spi.function.SqlFunctionId;
 import com.facebook.presto.spi.function.SqlInvokedFunction;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import io.airlift.units.Duration;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
@@ -85,7 +84,7 @@ import static com.google.common.base.Strings.isNullOrEmpty;
 import static java.lang.String.format;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.stream.Collectors.toList;
 import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 
@@ -96,7 +95,7 @@ public final class QueryResourceUtil
     private static final JsonCodec<SqlInvokedFunction> SQL_INVOKED_FUNCTION_JSON_CODEC = jsonCodec(SqlInvokedFunction.class);
     private static final JsonCodec<List<Object>> LIST_JSON_CODEC = listJsonCodec(Object.class);
     private static final JsonCodec<Map<Object, Object>> MAP_JSON_CODEC = mapJsonCodec(Object.class, Object.class);
-    static final Duration NO_DURATION = new Duration(0, MILLISECONDS);
+    static final long NO_DURATION_IN_NANOS = 0;
 
     private QueryResourceUtil() {}
 
@@ -420,12 +419,12 @@ public final class QueryResourceUtil
             UriInfo uriInfo,
             String xForwardedProto,
             String xPrestoPrefixUrl,
-            Duration elapsedTime,
-            Optional<Duration> queuedTime,
-            Duration waitingForPrerequisitesTime)
+            long elapsedTimeInNanos,
+            long queuedTimeInNanos,
+            long waitingForPrerequisitesTimeInNanos)
     {
         QueryState state = queryError.map(error -> FAILED)
-                .orElseGet(() -> queuedTime.isPresent() ? QUEUED : WAITING_FOR_PREREQUISITES);
+                .orElseGet(() -> queuedTimeInNanos > 0 ? QUEUED : WAITING_FOR_PREREQUISITES);
         return new QueryResults(
                 queryId.toString(),
                 getQueryHtmlUri(queryId, uriInfo, xForwardedProto, xPrestoPrefixUrl),
@@ -437,9 +436,9 @@ public final class QueryResourceUtil
                 StatementStats.builder()
                         .setState(state.toString())
                         .setWaitingForPrerequisites(state == WAITING_FOR_PREREQUISITES)
-                        .setElapsedTimeMillis(elapsedTime.toMillis())
-                        .setQueuedTimeMillis(queuedTime.orElse(NO_DURATION).toMillis())
-                        .setWaitingForPrerequisitesTimeMillis(waitingForPrerequisitesTime.toMillis())
+                        .setElapsedTimeMillis(NANOSECONDS.toMillis(elapsedTimeInNanos))
+                        .setQueuedTimeMillis(NANOSECONDS.toMillis(queuedTimeInNanos > 0 ? queuedTimeInNanos : NO_DURATION_IN_NANOS))
+                        .setWaitingForPrerequisitesTimeMillis(NANOSECONDS.toMillis(waitingForPrerequisitesTimeInNanos))
                         .build(),
                 queryError.orElse(null),
                 ImmutableList.of(),

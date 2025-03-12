@@ -825,7 +825,7 @@ public class InternalResourceGroup
             if (!query.getErrorCode().isPresent() || query.getErrorCode().get().getType() == USER_ERROR) {
                 InternalResourceGroup group = this;
                 while (group != null) {
-                    group.cpuUsageMillis = saturatedAdd(group.cpuUsageMillis, query.getTotalCpuTime().toMillis());
+                    group.cpuUsageMillis = saturatedAdd(group.cpuUsageMillis, query.getTotalCpuTimeInNanos());
                     group = group.parent.orElse(null);
                 }
             }

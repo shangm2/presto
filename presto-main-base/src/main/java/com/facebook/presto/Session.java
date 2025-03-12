@@ -72,6 +72,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public final class Session
 {
@@ -904,38 +905,38 @@ public final class Session
 
     public static class ResourceEstimateBuilder
     {
-        private Optional<Duration> executionTime = Optional.empty();
-        private Optional<Duration> cpuTime = Optional.empty();
-        private Optional<DataSize> peakMemory = Optional.empty();
-        private Optional<DataSize> peakTaskMemory = Optional.empty();
+        private long executionTimeInNanos;
+        private long cpuTimeInNanos;
+        private long peakMemoryInBytes;
+        private long peakTaskMemoryInBytes;
 
-        public ResourceEstimateBuilder setExecutionTime(Duration executionTime)
+        public ResourceEstimateBuilder setExecutionTimeInNanos(Duration executionTime)
         {
-            this.executionTime = Optional.of(executionTime);
+            this.executionTimeInNanos = executionTime.roundTo(NANOSECONDS);
             return this;
         }
 
-        public ResourceEstimateBuilder setCpuTime(Duration cpuTime)
+        public ResourceEstimateBuilder setCpuTimeInNanos(Duration cpuTime)
         {
-            this.cpuTime = Optional.of(cpuTime);
+            this.cpuTimeInNanos = cpuTime.roundTo(NANOSECONDS);
             return this;
         }
 
-        public ResourceEstimateBuilder setPeakMemory(DataSize peakMemory)
+        public ResourceEstimateBuilder setPeakMemoryInBytes(DataSize peakMemory)
         {
-            this.peakMemory = Optional.of(peakMemory);
+            this.peakMemoryInBytes = peakMemory.toBytes();
             return this;
         }
 
-        public ResourceEstimateBuilder setPeakTaskMemory(DataSize peakTaskMemory)
+        public ResourceEstimateBuilder setPeakTaskMemoryInBytes(DataSize peakTaskMemory)
         {
-            this.peakTaskMemory = Optional.of(peakTaskMemory);
+            this.peakTaskMemoryInBytes = peakTaskMemory.toBytes();
             return this;
         }
 
         public ResourceEstimates build()
         {
-            return new ResourceEstimates(executionTime, cpuTime, peakMemory, peakTaskMemory);
+            return new ResourceEstimates(executionTimeInNanos, cpuTimeInNanos, peakMemoryInBytes, peakTaskMemoryInBytes);
         }
     }
 }

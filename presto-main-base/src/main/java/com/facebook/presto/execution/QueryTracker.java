@@ -22,7 +22,6 @@ import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
@@ -41,21 +40,24 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.facebook.presto.SystemSessionProperties.getQueryMaxExecutionTime;
-import static com.facebook.presto.SystemSessionProperties.getQueryMaxRunTime;
+import static com.facebook.presto.SystemSessionProperties.getQueryMaxExecutionTimeInNanos;
+import static com.facebook.presto.SystemSessionProperties.getQueryMaxRunTimeInNanos;
 import static com.facebook.presto.execution.QueryLimit.Source.QUERY;
 import static com.facebook.presto.execution.QueryLimit.Source.RESOURCE_GROUP;
-import static com.facebook.presto.execution.QueryLimit.createDurationLimit;
+import static com.facebook.presto.execution.QueryLimit.createDurationLimitInNanos;
 import static com.facebook.presto.execution.QueryLimit.getMinimum;
 import static com.facebook.presto.spi.StandardErrorCode.ABANDONED_QUERY;
 import static com.facebook.presto.spi.StandardErrorCode.CLUSTER_HAS_TOO_MANY_RUNNING_TASKS;
 import static com.facebook.presto.spi.StandardErrorCode.EXCEEDED_TIME_LIMIT;
 import static com.facebook.presto.spi.StandardErrorCode.SERVER_SHUTTING_DOWN;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.Preconditions.checkState;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Comparator.comparingInt;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @ThreadSafe
 public class QueryTracker<T extends TrackedQuery>
@@ -69,12 +71,12 @@ public class QueryTracker<T extends TrackedQuery>
     private final AtomicInteger runningTaskCount = new AtomicInteger();
     private final AtomicLong queriesKilledDueToTooManyTask = new AtomicLong();
 
-    private final Duration minQueryExpireAge;
+    private final long minQueryExpireAgeInNanos;
 
     private final ConcurrentMap<QueryId, T> queries = new ConcurrentHashMap<>();
     private final Queue<T> expirationQueue = new LinkedBlockingQueue<>();
 
-    private final Duration clientTimeout;
+    private final long clientTimeoutInNanos;
 
     private final ScheduledExecutorService queryManagementExecutor;
 
@@ -86,9 +88,9 @@ public class QueryTracker<T extends TrackedQuery>
     public QueryTracker(QueryManagerConfig queryManagerConfig, ScheduledExecutorService queryManagementExecutor, Optional<ClusterQueryTrackerService> clusterQueryTrackerService)
     {
         requireNonNull(queryManagerConfig, "queryManagerConfig is null");
-        this.minQueryExpireAge = queryManagerConfig.getMinQueryExpireAge();
+        this.minQueryExpireAgeInNanos = toTimeStampInNanos(queryManagerConfig.getMinQueryExpireAge());
         this.maxQueryHistory = queryManagerConfig.getMaxQueryHistory();
-        this.clientTimeout = queryManagerConfig.getClientTimeout();
+        this.clientTimeoutInNanos = toTimeStampInNanos(queryManagerConfig.getClientTimeout());
         this.maxTotalRunningTaskCountToKillQuery = queryManagerConfig.getMaxTotalRunningTaskCountToKillQuery();
         this.maxQueryRunningTaskCount = queryManagerConfig.getMaxQueryRunningTaskCount();
 
@@ -221,24 +223,24 @@ public class QueryTracker<T extends TrackedQuery>
             if (query.isDone()) {
                 continue;
             }
-            Duration queryMaxRunTime = getQueryMaxRunTime(query.getSession());
-            QueryLimit<Duration> queryMaxExecutionTime = getMinimum(
-                    createDurationLimit(getQueryMaxExecutionTime(query.getSession()), QUERY),
+            long queryMaxRunTimeInNanos = getQueryMaxRunTimeInNanos(query.getSession());
+            QueryLimit<Long> queryMaxExecutionTime = getMinimum(
+                    createDurationLimitInNanos(getQueryMaxExecutionTimeInNanos(query.getSession()), QUERY),
                     query.getResourceGroupQueryLimits()
                             .flatMap(ResourceGroupQueryLimits::getExecutionTimeLimit)
-                            .map(rgLimit -> createDurationLimit(rgLimit, RESOURCE_GROUP)).orElse(null));
+                            .map(rgLimit -> createDurationLimitInNanos(rgLimit.roundTo(NANOSECONDS), RESOURCE_GROUP)).orElse(null));
             long executionStartTime = query.getExecutionStartTimeInMillis();
             long createTimeInMillis = query.getCreateTimeInMillis();
-            if (executionStartTime > 0 && (executionStartTime + queryMaxExecutionTime.getLimit().toMillis()) < currentTimeMillis()) {
+            if (executionStartTime > 0 && (executionStartTime + NANOSECONDS.toMillis(queryMaxExecutionTime.getLimit())) < currentTimeMillis()) {
                 query.fail(
                         new PrestoException(EXCEEDED_TIME_LIMIT,
                                 format(
                                         "Query exceeded the maximum execution time limit of %s defined at the %s level",
-                                        queryMaxExecutionTime.getLimit(),
+                                        succinctNanos(queryMaxExecutionTime.getLimit()),
                                         queryMaxExecutionTime.getLimitSource().name())));
             }
-            if (createTimeInMillis + queryMaxRunTime.toMillis() < currentTimeMillis()) {
-                query.fail(new PrestoException(EXCEEDED_TIME_LIMIT, "Query exceeded maximum time limit of " + queryMaxRunTime));
+            if (createTimeInMillis + NANOSECONDS.toMillis(queryMaxRunTimeInNanos) < currentTimeMillis()) {
+                query.fail(new PrestoException(EXCEEDED_TIME_LIMIT, "Query exceeded maximum time limit of " + succinctNanos(queryMaxRunTimeInNanos)));
             }
         }
     }
@@ -328,7 +330,7 @@ public class QueryTracker<T extends TrackedQuery>
      */
     private void removeExpiredQueries()
     {
-        long timeHorizonInMillis = currentTimeMillis() - minQueryExpireAge.toMillis();
+        long timeHorizonInMillis = currentTimeMillis() - NANOSECONDS.toMillis(minQueryExpireAgeInNanos);
 
         // we're willing to keep queries beyond timeHorizon as long as we have fewer than maxQueryHistory
         while (expirationQueue.size() > maxQueryHistory) {
@@ -384,7 +386,7 @@ public class QueryTracker<T extends TrackedQuery>
 
     private boolean isAbandoned(T query)
     {
-        long oldestAllowedHeartbeatInMillis = currentTimeMillis() - clientTimeout.toMillis();
+        long oldestAllowedHeartbeatInMillis = currentTimeMillis() - NANOSECONDS.toMillis(clientTimeoutInNanos);
         long lastHeartbeat = query.getLastHeartbeatInMillis();
 
         return lastHeartbeat > 0 && lastHeartbeat < oldestAllowedHeartbeatInMillis;

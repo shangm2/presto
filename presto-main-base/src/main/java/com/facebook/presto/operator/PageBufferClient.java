@@ -24,7 +24,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 import org.apache.http.client.utils.URIBuilder;
 
 import javax.annotation.Nullable;
@@ -43,6 +42,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.spi.HostAddress.fromUri;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_BUFFER_CLOSE_FAILED;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_MISMATCH;
@@ -57,7 +57,6 @@ import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 @ThreadSafe
 public final class PageBufferClient
@@ -120,19 +119,19 @@ public final class PageBufferClient
 
     public PageBufferClient(
             RpcShuffleClient resultClient,
-            Duration maxErrorDuration,
+            long maxErrorDurationInNanos,
             boolean acknowledgePages,
             URI location,
             ClientCallback clientCallback,
             ScheduledExecutorService scheduler,
             Executor pageBufferClientCallbackExecutor)
     {
-        this(resultClient, maxErrorDuration, acknowledgePages, location, clientCallback, scheduler, Ticker.systemTicker(), pageBufferClientCallbackExecutor);
+        this(resultClient, maxErrorDurationInNanos, acknowledgePages, location, clientCallback, scheduler, Ticker.systemTicker(), pageBufferClientCallbackExecutor);
     }
 
     public PageBufferClient(
             RpcShuffleClient resultClient,
-            Duration maxErrorDuration,
+            long maxErrorDurationInNanos,
             boolean acknowledgePages,
             URI location,
             ClientCallback clientCallback,
@@ -146,9 +145,9 @@ public final class PageBufferClient
         this.clientCallback = requireNonNull(clientCallback, "clientCallback is null");
         this.scheduler = requireNonNull(scheduler, "scheduler is null");
         this.pageBufferClientCallbackExecutor = requireNonNull(pageBufferClientCallbackExecutor, "pageBufferClientCallbackExecutor is null");
-        requireNonNull(maxErrorDuration, "maxErrorDuration is null");
+        checkNonNegative(maxErrorDurationInNanos, "maxErrorDuration is negative");
         requireNonNull(ticker, "ticker is null");
-        this.backoff = new Backoff(maxErrorDuration, ticker);
+        this.backoff = new Backoff(maxErrorDurationInNanos, ticker);
     }
 
     public synchronized PageBufferClientStatus getStatus()
@@ -376,8 +375,8 @@ public final class PageBufferClient
                             WORKER_NODE_ERROR,
                             uri,
                             backoff.getFailureCount(),
-                            backoff.getFailureDuration().convertTo(SECONDS),
-                            backoff.getFailureRequestTimeTotal().convertTo(SECONDS));
+                            backoff.getFailureDurationInSeconds(),
+                            backoff.getFailureRequestTimeTotalInSeconds());
                     t = new PageTransportTimeoutException(fromUri(uri), message, t);
                 }
                 handleFailure(t, resultFuture);
@@ -417,8 +416,8 @@ public final class PageBufferClient
                     String message = format("Error closing remote buffer (%s - %s failures, failure duration %s, total failed request time %s)",
                             location,
                             backoff.getFailureCount(),
-                            backoff.getFailureDuration().convertTo(SECONDS),
-                            backoff.getFailureRequestTimeTotal().convertTo(SECONDS));
+                            backoff.getFailureDurationInSeconds(),
+                            backoff.getFailureRequestTimeTotalInSeconds());
                     t = new PrestoException(REMOTE_BUFFER_CLOSE_FAILED, message, t);
                 }
                 handleFailure(t, resultFuture);

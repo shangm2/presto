@@ -26,13 +26,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.facebook.presto.util.MoreMaps.mergeMaps;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.succinctBytes;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Double.max;
 import static java.lang.Math.sqrt;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.stream.Collectors.toMap;
 
 public class PlanNodeStats
@@ -40,12 +42,12 @@ public class PlanNodeStats
 {
     private final PlanNodeId planNodeId;
 
-    private final Duration planNodeScheduledTime;
-    private final Duration planNodeCpuTime;
-    private final Duration planNodeBlockedWallTime;
-    private final Duration planNodeAddInputWallTime;
-    private final Duration planNodeGetOutputWallTime;
-    private final Duration planNodeFinishWallTime;
+    private final long planNodeScheduledTimeInNanos;
+    private final long planNodeCpuTimeInNanos;
+    private final long planNodeBlockedWallTimeInNanos;
+    private final long planNodeAddInputWallTimeInNanos;
+    private final long planNodeGetOutputWallTimeInNanos;
+    private final long planNodeFinishWallTimeInNanos;
     private final long planNodeInputPositions;
     private final DataSize planNodeInputDataSize;
     private final long planNodeRawInputPositions;
@@ -60,6 +62,51 @@ public class PlanNodeStats
     private final long planNodeNullJoinProbeKeyCount;
     private final long planNodeJoinProbeKeyCount;
     private final Optional<DynamicFilterStats> dynamicFilterStats;
+
+    public PlanNodeStats(PlanNodeId planNodeId,
+            long planNodeScheduledTimeInNanos,
+            long planNodeCpuTimeInNanos,
+            long planNodeBlockedWallTimeInNanos,
+            long planNodeAddInputWallTimeInNanos,
+            long planNodeGetOutputWallTimeInNanos,
+            long planNodeFinishWallTimeInNanos,
+            long planNodeInputPositions,
+            DataSize planNodeInputDataSize,
+            long planNodeRawInputPositions,
+            DataSize planNodeRawInputDataSize,
+            long planNodeOutputPositions,
+            DataSize planNodeOutputDataSize,
+            DataSize planNodePeakMemorySize,
+            Map<String, OperatorInputStats> operatorInputStats,
+            long planNodeNullJoinBuildKeyCount,
+            long planNodeJoinBuildKeyCount,
+            long planNodeNullJoinProbeKeyCount,
+            long planNodeJoinProbeKeyCount,
+            Optional<DynamicFilterStats> dynamicFilterStats)
+    {
+        this.planNodeId = requireNonNull(planNodeId, "planNodeId is null");
+
+        this.planNodeScheduledTimeInNanos = checkNonNegative(planNodeScheduledTimeInNanos, "planNodeScheduledTimeInNanos is negative");
+        this.planNodeCpuTimeInNanos = checkNonNegative(planNodeCpuTimeInNanos, "planNodeCpuTimeInNanos is negative");
+        this.planNodeBlockedWallTimeInNanos = checkNonNegative(planNodeBlockedWallTimeInNanos, "planNodeBlockedWallTimeInNanos is negative");
+        this.planNodeAddInputWallTimeInNanos = checkNonNegative(planNodeAddInputWallTimeInNanos, "planNodeAddInputWallTimeInNanos is negative");
+        this.planNodeGetOutputWallTimeInNanos = checkNonNegative(planNodeGetOutputWallTimeInNanos, "planNodeGetOutputWallTimeInNanos is negative");
+        this.planNodeFinishWallTimeInNanos = checkNonNegative(planNodeFinishWallTimeInNanos, "planNodeFinishWallTimeInNanos is negative");
+        this.planNodeInputPositions = planNodeInputPositions;
+        this.planNodeInputDataSize = planNodeInputDataSize;
+        this.planNodeRawInputPositions = planNodeRawInputPositions;
+        this.planNodeRawInputDataSize = planNodeRawInputDataSize;
+        this.planNodeOutputPositions = planNodeOutputPositions;
+        this.planNodeOutputDataSize = planNodeOutputDataSize;
+
+        this.operatorInputStats = requireNonNull(operatorInputStats, "operatorInputStats is null");
+        this.planNodePeakMemorySize = planNodePeakMemorySize;
+        this.planNodeNullJoinBuildKeyCount = planNodeNullJoinBuildKeyCount;
+        this.planNodeJoinBuildKeyCount = planNodeJoinBuildKeyCount;
+        this.planNodeNullJoinProbeKeyCount = planNodeNullJoinProbeKeyCount;
+        this.planNodeJoinProbeKeyCount = planNodeJoinProbeKeyCount;
+        this.dynamicFilterStats = dynamicFilterStats;
+    }
 
     @JsonCreator
     public PlanNodeStats(
@@ -84,28 +131,26 @@ public class PlanNodeStats
             @JsonProperty("planNodeJoinProbeKeyCount") long planNodeJoinProbeKeyCount,
             @JsonProperty("dynamicFilterStats") Optional<DynamicFilterStats> dynamicFilterStats)
     {
-        this.planNodeId = requireNonNull(planNodeId, "planNodeId is null");
-
-        this.planNodeScheduledTime = requireNonNull(planNodeScheduledTime, "planNodeScheduledTime is null");
-        this.planNodeCpuTime = requireNonNull(planNodeCpuTime, "planNodeCpuTime is null");
-        this.planNodeBlockedWallTime = requireNonNull(planNodeBlockedWallTime, "planNodeBlockedWallTime is null");
-        this.planNodeAddInputWallTime = requireNonNull(planNodeAddInputWallTime, "planNodeAddInputWallTime is null");
-        this.planNodeGetOutputWallTime = requireNonNull(planNodeGetOutputWallTime, "planNodeGetOutputWallTime is null");
-        this.planNodeFinishWallTime = requireNonNull(planNodeFinishWallTime, "planNodeFinishWallTime is null");
-        this.planNodeInputPositions = planNodeInputPositions;
-        this.planNodeInputDataSize = planNodeInputDataSize;
-        this.planNodeRawInputPositions = planNodeRawInputPositions;
-        this.planNodeRawInputDataSize = planNodeRawInputDataSize;
-        this.planNodeOutputPositions = planNodeOutputPositions;
-        this.planNodeOutputDataSize = planNodeOutputDataSize;
-
-        this.operatorInputStats = requireNonNull(operatorInputStats, "operatorInputStats is null");
-        this.planNodePeakMemorySize = planNodePeakMemorySize;
-        this.planNodeNullJoinBuildKeyCount = planNodeNullJoinBuildKeyCount;
-        this.planNodeJoinBuildKeyCount = planNodeJoinBuildKeyCount;
-        this.planNodeNullJoinProbeKeyCount = planNodeNullJoinProbeKeyCount;
-        this.planNodeJoinProbeKeyCount = planNodeJoinProbeKeyCount;
-        this.dynamicFilterStats = dynamicFilterStats;
+        this(planNodeId,
+                toTimeStampInNanos(planNodeScheduledTime),
+                toTimeStampInNanos(planNodeCpuTime),
+                toTimeStampInNanos(planNodeBlockedWallTime),
+                toTimeStampInNanos(planNodeAddInputWallTime),
+                toTimeStampInNanos(planNodeGetOutputWallTime),
+                toTimeStampInNanos(planNodeFinishWallTime),
+                planNodeInputPositions,
+                planNodeInputDataSize,
+                planNodeRawInputPositions,
+                planNodeRawInputDataSize,
+                planNodeOutputPositions,
+                planNodeOutputDataSize,
+                planNodePeakMemorySize,
+                operatorInputStats,
+                planNodeNullJoinBuildKeyCount,
+                planNodeJoinBuildKeyCount,
+                planNodeNullJoinProbeKeyCount,
+                planNodeJoinProbeKeyCount,
+                dynamicFilterStats);
     }
 
     private static double computedStdDev(double sumSquared, double sum, long n)
@@ -125,37 +170,67 @@ public class PlanNodeStats
     @JsonProperty
     public Duration getPlanNodeScheduledTime()
     {
-        return planNodeScheduledTime;
+        return succinctNanos(planNodeScheduledTimeInNanos);
+    }
+
+    public long getPlanNodeScheduledTimeInNanos()
+    {
+        return planNodeScheduledTimeInNanos;
     }
 
     @JsonProperty
     public Duration getPlanNodeCpuTime()
     {
-        return planNodeCpuTime;
+        return succinctNanos(planNodeCpuTimeInNanos);
+    }
+
+    public long getPlanNodeCpuTimeInNanos()
+    {
+        return planNodeCpuTimeInNanos;
     }
 
     @JsonProperty
     public Duration getPlanNodeBlockedWallTime()
     {
-        return planNodeBlockedWallTime;
+        return succinctNanos(planNodeBlockedWallTimeInNanos);
+    }
+
+    public long getPlanNodeBlockedWallTimeInNanos()
+    {
+        return planNodeBlockedWallTimeInNanos;
     }
 
     @JsonProperty
     public Duration getPlanNodeAddInputWallTime()
     {
-        return planNodeAddInputWallTime;
+        return succinctNanos(planNodeAddInputWallTimeInNanos);
+    }
+
+    public long getPlanNodeAddInputWallTimeInNanos()
+    {
+        return planNodeAddInputWallTimeInNanos;
     }
 
     @JsonProperty
     public Duration getPlanNodeGetOutputWallTime()
     {
-        return planNodeGetOutputWallTime;
+        return succinctNanos(planNodeGetOutputWallTimeInNanos);
+    }
+
+    public long getPlanNodeGetOutputWallTimeInNanos()
+    {
+        return planNodeGetOutputWallTimeInNanos;
     }
 
     @JsonProperty
     public Duration getPlanNodeFinishWallTime()
     {
-        return planNodeFinishWallTime;
+        return succinctNanos(planNodeFinishWallTimeInNanos);
+    }
+
+    public long getPlanNodeFinishWallTimeInNanos()
+    {
+        return planNodeFinishWallTimeInNanos;
     }
 
     @JsonProperty
@@ -296,12 +371,12 @@ public class PlanNodeStats
 
         return new PlanNodeStats(
                 planNodeId,
-                new Duration(planNodeScheduledTime.toMillis() + other.getPlanNodeScheduledTime().toMillis(), MILLISECONDS),
-                new Duration(planNodeCpuTime.toMillis() + other.getPlanNodeCpuTime().toMillis(), MILLISECONDS),
-                new Duration(planNodeBlockedWallTime.toMillis() + other.getPlanNodeBlockedWallTime().toMillis(), MILLISECONDS),
-                new Duration(planNodeAddInputWallTime.toMillis() + other.getPlanNodeAddInputWallTime().toMillis(), MILLISECONDS),
-                new Duration(planNodeGetOutputWallTime.toMillis() + other.getPlanNodeGetOutputWallTime().toMillis(), MILLISECONDS),
-                new Duration(planNodeFinishWallTime.toMillis() + other.getPlanNodeFinishWallTime().toMillis(), MILLISECONDS),
+                planNodeScheduledTimeInNanos + other.getPlanNodeScheduledTimeInNanos(),
+                planNodeCpuTimeInNanos + other.getPlanNodeCpuTimeInNanos(),
+                planNodeBlockedWallTimeInNanos + other.getPlanNodeBlockedWallTimeInNanos(),
+                planNodeAddInputWallTimeInNanos + other.getPlanNodeAddInputWallTimeInNanos(),
+                planNodeGetOutputWallTimeInNanos + other.getPlanNodeGetOutputWallTimeInNanos(),
+                planNodeFinishWallTimeInNanos + other.getPlanNodeFinishWallTimeInNanos(),
                 planNodeInputPositions, planNodeInputDataSize,
                 planNodeRawInputPositions, planNodeRawInputDataSize,
                 planNodeOutputPositions, planNodeOutputDataSize,

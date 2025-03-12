@@ -51,7 +51,6 @@ import com.facebook.presto.spi.plan.PlanNodeId;
 import com.facebook.presto.sql.planner.PlanFragment;
 import com.google.common.collect.Multimap;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import io.airlift.units.Duration;
 import io.netty.channel.EventLoop;
 import io.netty.util.concurrent.AbstractEventExecutorGroup;
 import org.weakref.jmx.Managed;
@@ -69,6 +68,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
 import static com.facebook.presto.server.remotetask.HttpRemoteTaskWithEventLoop.createHttpRemoteTaskWithEventLoop;
 import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -86,13 +86,13 @@ public class HttpRemoteTaskFactory
     private final Codec<TaskUpdateRequest> taskUpdateRequestCodec;
     private final Codec<PlanFragment> planFragmentCodec;
     private final Codec<MetadataUpdates> metadataUpdatesCodec;
-    private final Duration maxErrorDuration;
-    private final Duration taskStatusRefreshMaxWait;
-    private final Duration taskInfoRefreshMaxWait;
+    private final long maxErrorDurationInNanos;
+    private final long taskStatusRefreshMaxWaitInNanos;
+    private final long taskInfoRefreshMaxWaitInNanos;
     private final HandleResolver handleResolver;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
 
-    private final Duration taskInfoUpdateInterval;
+    private final long taskInfoUpdateIntervalInNanos;
     private final ExecutorService coreExecutor;
     private final Executor executor;
     private final ThreadPoolExecutorMBean executorMBean;
@@ -137,10 +137,10 @@ public class HttpRemoteTaskFactory
     {
         this.httpClient = httpClient;
         this.locationFactory = locationFactory;
-        this.maxErrorDuration = config.getRemoteTaskMaxErrorDuration();
-        this.taskStatusRefreshMaxWait = taskConfig.getStatusRefreshMaxWait();
-        this.taskInfoUpdateInterval = taskConfig.getInfoUpdateInterval();
-        this.taskInfoRefreshMaxWait = taskConfig.getInfoRefreshMaxWait();
+        this.maxErrorDurationInNanos = toTimeStampInNanos(config.getRemoteTaskMaxErrorDuration());
+        this.taskStatusRefreshMaxWaitInNanos = toTimeStampInNanos(taskConfig.getStatusRefreshMaxWait());
+        this.taskInfoUpdateIntervalInNanos = toTimeStampInNanos(taskConfig.getInfoUpdateInterval());
+        this.taskInfoRefreshMaxWaitInNanos = taskConfig.getInfoRefreshMaxWaitInNanos();
         this.handleResolver = handleResolver;
         this.connectorTypeSerdeManager = connectorTypeSerdeManager;
 
@@ -253,10 +253,10 @@ public class HttpRemoteTaskFactory
                     initialSplits,
                     outputBuffers,
                     httpClient,
-                    maxErrorDuration,
-                    taskStatusRefreshMaxWait,
-                    taskInfoRefreshMaxWait,
-                    taskInfoUpdateInterval,
+                    maxErrorDurationInNanos,
+                    taskStatusRefreshMaxWaitInNanos,
+                    taskInfoRefreshMaxWaitInNanos,
+                    taskInfoUpdateIntervalInNanos,
                     summarizeTaskInfo,
                     taskStatusCodec,
                     taskInfoCodec,
@@ -295,10 +295,10 @@ public class HttpRemoteTaskFactory
                 executor,
                 updateScheduledExecutor,
                 errorScheduledExecutor,
-                maxErrorDuration,
-                taskStatusRefreshMaxWait,
-                taskInfoRefreshMaxWait,
-                taskInfoUpdateInterval,
+                maxErrorDurationInNanos,
+                taskStatusRefreshMaxWaitInNanos,
+                taskInfoRefreshMaxWaitInNanos,
+                taskInfoUpdateIntervalInNanos,
                 summarizeTaskInfo,
                 taskStatusCodec,
                 taskInfoCodec,

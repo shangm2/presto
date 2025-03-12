@@ -26,7 +26,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ListMultimap;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -46,7 +45,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.facebook.presto.memory.HighMemoryTaskKillerStrategy.FREE_MEMORY_ON_FREQUENT_FULL_GC;
@@ -56,6 +54,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableListMultimap.toImmutableListMultimap;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class HighMemoryTaskKiller
 {
@@ -66,8 +65,8 @@ public class HighMemoryTaskKiller
     private final SqlTaskManager sqlTaskManager;
     private final HighMemoryTaskKillerStrategy taskKillerStrategy;
     private final boolean taskKillerEnabled;
-    private final Duration taskKillerFrequentFullGCDurationThreshold;
-    private Duration lastFullGCTimestamp;
+    private final long taskKillerFrequentFullGCDurationThresholdInNanos;
+    private long lastFullGCTimestampInNanos;
     private long lastFullGCCollectedBytes;
     private final long reclaimMemoryThreshold;
     private final long heapMemoryThreshold;
@@ -83,7 +82,7 @@ public class HighMemoryTaskKiller
         this.taskKillerStrategy = taskManagerConfig.getHighMemoryTaskKillerStrategy();
         this.taskKillerEnabled = taskManagerConfig.isHighMemoryTaskKillerEnabled();
 
-        this.taskKillerFrequentFullGCDurationThreshold = taskManagerConfig.getHighMemoryTaskKillerFrequentFullGCDurationThreshold();
+        this.taskKillerFrequentFullGCDurationThresholdInNanos = taskManagerConfig.getHighMemoryTaskKillerFrequentFullGCDurationThreshold().roundTo(NANOSECONDS);
         this.reclaimMemoryThreshold = (long) (memoryMXBean.getHeapMemoryUsage().getMax() * taskManagerConfig.getHighMemoryTaskKillerGCReclaimMemoryThreshold());
 
         this.heapMemoryThreshold = (long) (memoryMXBean.getHeapMemoryUsage().getMax() * taskManagerConfig.getHighMemoryTaskKillerHeapMemoryThreshold());
@@ -167,13 +166,13 @@ public class HighMemoryTaskKiller
 
         if (taskKillerStrategy == FREE_MEMORY_ON_FREQUENT_FULL_GC) {
             long currentGarbageCollectedBytes = beforeGcDataSize.toBytes() - afterGcDataSize.toBytes();
-            Duration currentFullGCTimestamp = new Duration(ticker.read(), TimeUnit.NANOSECONDS);
+            long currentFullGCTimestampInNanos = ticker.read();
 
-            if (isFrequentFullGC(lastFullGCTimestamp, currentFullGCTimestamp) && !hasFullGCFreedEnoughBytes(currentGarbageCollectedBytes)) {
+            if (isFrequentFullGC(lastFullGCTimestampInNanos, currentFullGCTimestampInNanos) && !hasFullGCFreedEnoughBytes(currentGarbageCollectedBytes)) {
                 triggerTaskKiller = true;
             }
 
-            lastFullGCTimestamp = currentFullGCTimestamp;
+            lastFullGCTimestampInNanos = currentFullGCTimestampInNanos;
             lastFullGCCollectedBytes = currentGarbageCollectedBytes;
         }
         else if (taskKillerStrategy == FREE_MEMORY_ON_FULL_GC) {
@@ -214,11 +213,11 @@ public class HighMemoryTaskKiller
         return maxMemoryConsumpingQueryId;
     }
 
-    private boolean isFrequentFullGC(Duration lastFullGCTime, Duration currentFullGCTime)
+    private boolean isFrequentFullGC(long lastFullGCTimeInNanos, long currentFullGCTimeInNanos)
     {
-        long diffBetweenFullGCMilis = currentFullGCTime.toMillis() - lastFullGCTime.toMillis();
-        log.debug("Time difference between last 2 full GC in miliseconds: " + diffBetweenFullGCMilis);
-        if (diffBetweenFullGCMilis > taskKillerFrequentFullGCDurationThreshold.getValue(TimeUnit.MILLISECONDS)) {
+        long diffBetweenFullGCInNanos = currentFullGCTimeInNanos - lastFullGCTimeInNanos;
+        log.debug("Time difference between last 2 full GC in nanoseconds: " + diffBetweenFullGCInNanos);
+        if (diffBetweenFullGCInNanos > taskKillerFrequentFullGCDurationThresholdInNanos) {
             log.debug("Skip killing tasks Due to full GCs were not happening frequently.");
             return false;
         }

@@ -22,7 +22,6 @@ import com.facebook.presto.spi.PrestoException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.airlift.units.Duration;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -38,14 +37,17 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.function.Consumer;
 
 import static com.facebook.airlift.concurrent.Threads.threadsNamed;
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INSUFFICIENT_RESOURCES;
 import static com.facebook.presto.spi.StandardErrorCode.NO_CPP_SIDECARS;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ClusterSizeMonitor
 {
@@ -53,12 +55,12 @@ public class ClusterSizeMonitor
     private final boolean includeCoordinator;
     private final int workerMinCount;
     private final int workerMinCountActive;
-    private final Duration executionMaxWait;
+    private final long executionMaxWaitInNanos;
     private final int coordinatorMinCount;
     private final int coordinatorMinCountActive;
-    private final Duration coordinatorMaxWait;
+    private final long coordinatorMaxWaitInNanos;
 
-    private final Duration coordinatorSidecarMaxWait;
+    private final long coordinatorSidecarMaxWaitInNanos;
     private final int resourceManagerMinCountActive;
     private final ScheduledExecutorService executor;
 
@@ -94,11 +96,11 @@ public class ClusterSizeMonitor
                 requireNonNull(nodeSchedulerConfig, "nodeSchedulerConfig is null").isIncludeCoordinator(),
                 requireNonNull(queryManagerConfig, "queryManagerConfig is null").getRequiredWorkers(),
                 requireNonNull(nodeResourceStatusConfig, "nodeResourceStatusConfig is null").getRequiredWorkersActive(),
-                queryManagerConfig.getRequiredWorkersMaxWait(),
+                toTimeStampInNanos(queryManagerConfig.getRequiredWorkersMaxWait()),
                 queryManagerConfig.getRequiredCoordinators(),
                 nodeResourceStatusConfig.getRequiredCoordinatorsActive(),
-                queryManagerConfig.getRequiredCoordinatorsMaxWait(),
-                queryManagerConfig.getRequiredCoordinatorSidecarsMaxWait(),
+                toTimeStampInNanos(queryManagerConfig.getRequiredCoordinatorsMaxWait()),
+                toTimeStampInNanos(queryManagerConfig.getRequiredCoordinatorSidecarsMaxWait()),
                 nodeResourceStatusConfig.getRequiredResourceManagersActive(),
                 serverConfig.isCoordinatorSidecarEnabled());
     }
@@ -108,11 +110,11 @@ public class ClusterSizeMonitor
             boolean includeCoordinator,
             int workerMinCount,
             int workerMinCountActive,
-            Duration executionMaxWait,
+            long executionMaxWaitInNanos,
             int coordinatorMinCount,
             int coordinatorMinCountActive,
-            Duration coordinatorMaxWait,
-            Duration coordinatorSidecarMaxWait,
+            long coordinatorMaxWaitInNanos,
+            long coordinatorSidecarMaxWaitInNanos,
             int resourceManagerMinCountActive,
             boolean isCoordinatorSidecarEnabled)
     {
@@ -122,13 +124,13 @@ public class ClusterSizeMonitor
         this.workerMinCount = workerMinCount;
         checkArgument(workerMinCountActive >= 0, "executionMinCountActive is negative");
         this.workerMinCountActive = workerMinCountActive;
-        this.executionMaxWait = requireNonNull(executionMaxWait, "executionMaxWait is null");
+        this.executionMaxWaitInNanos = checkNonNegative(executionMaxWaitInNanos, "executionMaxWait is negative");
         checkArgument(coordinatorMinCount >= 0, "coordinatorMinCount is negative");
         this.coordinatorMinCount = coordinatorMinCount;
         checkArgument(coordinatorMinCountActive >= 0, "coordinatorMinCountActive is negative");
         this.coordinatorMinCountActive = coordinatorMinCountActive;
-        this.coordinatorMaxWait = requireNonNull(coordinatorMaxWait, "coordinatorMaxWait is null");
-        this.coordinatorSidecarMaxWait = requireNonNull(coordinatorSidecarMaxWait, "coordinatorSidecarMaxWait is null");
+        this.coordinatorMaxWaitInNanos = checkNonNegative(coordinatorMaxWaitInNanos, "coordinatorMaxWait is negative");
+        this.coordinatorSidecarMaxWaitInNanos = checkNonNegative(coordinatorSidecarMaxWaitInNanos, "coordinatorSidecarMaxWait is negative");
         checkArgument(resourceManagerMinCountActive >= 0, "resourceManagerMinCountActive is negative");
         this.resourceManagerMinCountActive = resourceManagerMinCountActive;
         this.executor = newSingleThreadScheduledExecutor(threadsNamed("node-monitor-%s"));
@@ -205,10 +207,10 @@ public class ClusterSizeMonitor
                     synchronized (this) {
                         future.setException(new PrestoException(
                                 GENERIC_INSUFFICIENT_RESOURCES,
-                                format("Insufficient active worker nodes. Waited %s for at least %s workers, but only %s workers are active", executionMaxWait, workerMinCount, currentWorkerCount)));
+                                format("Insufficient active worker nodes. Waited %s for at least %s workers, but only %s workers are active", executionMaxWaitInNanos, workerMinCount, currentWorkerCount)));
                     }
                 },
-                executionMaxWait.toMillis(),
+                NANOSECONDS.toMillis(executionMaxWaitInNanos),
                 MILLISECONDS);
 
         // remove future if finished (e.g., canceled, timed out)
@@ -235,10 +237,10 @@ public class ClusterSizeMonitor
                     synchronized (this) {
                         future.setException(new PrestoException(
                                 GENERIC_INSUFFICIENT_RESOURCES,
-                                format("Insufficient active coordinator nodes. Waited %s for at least %s coordinators, but only %s coordinators are active", executionMaxWait, 2, currentCoordinatorCount)));
+                                format("Insufficient active coordinator nodes. Waited %s for at least %s coordinators, but only %s coordinators are active", executionMaxWaitInNanos, 2, currentCoordinatorCount)));
                     }
                 },
-                coordinatorMaxWait.toMillis(),
+                NANOSECONDS.toMillis(coordinatorMaxWaitInNanos),
                 MILLISECONDS);
 
         // remove future if finished (e.g., canceled, timed out)
@@ -265,10 +267,10 @@ public class ClusterSizeMonitor
                     synchronized (this) {
                         future.setException(new PrestoException(
                                 NO_CPP_SIDECARS,
-                                format("Insufficient active coordinator sidecar nodes. Waited %s for at least 1 coordinator sidecars, but only 0 coordinator sidecars are active", coordinatorSidecarMaxWait)));
+                                format("Insufficient active coordinator sidecar nodes. Waited %s for at least 1 coordinator sidecars, but only 0 coordinator sidecars are active", coordinatorSidecarMaxWaitInNanos)));
                     }
                 },
-                coordinatorSidecarMaxWait.toMillis(),
+                NANOSECONDS.toMillis(coordinatorSidecarMaxWaitInNanos),
                 MILLISECONDS);
 
         // remove future if finished (e.g., canceled, timed out)

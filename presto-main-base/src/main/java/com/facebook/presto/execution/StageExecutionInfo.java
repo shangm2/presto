@@ -225,7 +225,6 @@ public class StageExecutionInfo
                 fullyBlocked && runningTasks > 0,
                 blockedReasons,
                 totalAllocation,
-
                 rawInputDataSize,
                 rawInputPositions,
                 processedInputDataSize,

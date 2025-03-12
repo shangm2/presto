@@ -21,7 +21,6 @@ import com.facebook.airlift.log.Logger;
 import com.facebook.presto.spi.NodeState;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import io.airlift.units.Duration;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
@@ -40,7 +39,7 @@ import static com.google.common.net.MediaType.JSON_UTF_8;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.units.Duration.nanosSince;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static javax.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 
 @ThreadSafe
@@ -71,14 +70,14 @@ public class HttpRemoteNodeState
     @Override
     public synchronized void asyncRefresh()
     {
-        Duration sinceUpdate = nanosSince(lastUpdateNanos.get());
+        long sinceUpdateInNanos = lastUpdateNanos.get();
         if (nanosSince(lastWarningLogged.get()).toMillis() > 1_000 &&
-                sinceUpdate.toMillis() > 10_000 &&
+                NANOSECONDS.toMillis(sinceUpdateInNanos) > 10_000 &&
                 future.get() != null) {
-            log.warn("Node state update request to %s has not returned in %s", stateInfoUri, sinceUpdate.toString(SECONDS));
+            log.warn("Node state update request to %s has not returned in %s seconds", stateInfoUri, NANOSECONDS.toSeconds(sinceUpdateInNanos));
             lastWarningLogged.set(System.nanoTime());
         }
-        if (sinceUpdate.toMillis() > 1_000 && future.get() == null) {
+        if (NANOSECONDS.toMillis(sinceUpdateInNanos) > 1_000 && future.get() == null) {
             Request request = prepareGet()
                     .setUri(stateInfoUri)
                     .setHeader(CONTENT_TYPE, JSON_UTF_8.toString())

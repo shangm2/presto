@@ -13,8 +13,6 @@
  */
 package com.facebook.presto.execution;
 
-import io.airlift.units.Duration;
-
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
@@ -36,9 +34,9 @@ public class QueryLimit<T extends Comparable<T>>
         this.source = requireNonNull(source, "source is null");
     }
 
-    public static QueryLimit<Duration> createDurationLimit(Duration limit, Source source)
+    public static QueryLimit<Long> createDurationLimitInNanos(Long limitInNanos, Source source)
     {
-        return new QueryLimit<>(limit, source);
+        return new QueryLimit<>(limitInNanos, source);
     }
 
     public static QueryLimit<Long> createDataSizeLimit(long limitInBytes, Source source)

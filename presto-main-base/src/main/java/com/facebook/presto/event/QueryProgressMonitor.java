@@ -15,7 +15,6 @@ package com.facebook.presto.event;
 
 import com.facebook.presto.dispatcher.DispatchManager;
 import com.facebook.presto.server.BasicQueryInfo;
-import io.airlift.units.Duration;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -26,8 +25,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.facebook.airlift.concurrent.Threads.daemonThreadsNamed;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class QueryProgressMonitor
 {
@@ -35,7 +36,7 @@ public class QueryProgressMonitor
 
     private final QueryMonitor queryMonitor;
     private final DispatchManager dispatchManager;
-    private final Duration queryProgressPublishInterval;
+    private final long queryProgressPublishIntervalInNanos;
 
     @GuardedBy("this")
     private ScheduledExecutorService queryProgressMonitorExecutor;
@@ -48,22 +49,22 @@ public class QueryProgressMonitor
     {
         this.queryMonitor = requireNonNull(queryMonitor, "queryMonitor is null");
         this.dispatchManager = requireNonNull(dispatchManager, "dispatchManager is null");
-        this.queryProgressPublishInterval = requireNonNull(queryMonitorConfig, "queryMonitorConfig is null").getQueryProgressPublishInterval();
+        this.queryProgressPublishIntervalInNanos = toTimeStampInNanos(requireNonNull(queryMonitorConfig, "queryMonitorConfig is null").getQueryProgressPublishInterval());
     }
 
     @PostConstruct
     public synchronized void start()
     {
-        if (queryProgressPublishInterval.getValue() > 0) {
+        if (queryProgressPublishIntervalInNanos > 0) {
             if (queryProgressMonitorExecutor == null) {
                 queryProgressMonitorExecutor = newSingleThreadScheduledExecutor(daemonThreadsNamed("query-progress-monitor-executor"));
             }
 
             queryProgressMonitorExecutor.scheduleWithFixedDelay(
                     this::publishQueryProgressEvent,
-                    (long) queryProgressPublishInterval.getValue(),
-                    (long) queryProgressPublishInterval.getValue(),
-                    queryProgressPublishInterval.getUnit());
+                    queryProgressPublishIntervalInNanos,
+                    queryProgressPublishIntervalInNanos,
+                    NANOSECONDS);
         }
     }
 

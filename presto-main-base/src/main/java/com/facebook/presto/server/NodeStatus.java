@@ -22,6 +22,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.airlift.units.Duration;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.util.Objects.requireNonNull;
 
 @ThriftStruct
@@ -31,7 +34,7 @@ public class NodeStatus
     private final NodeVersion nodeVersion;
     private final String environment;
     private final boolean coordinator;
-    private final Duration uptime;
+    private final long uptimeInNanos;
     private final String externalAddress;
     private final String internalAddress;
     private final MemoryInfo memoryInfo;
@@ -41,6 +44,37 @@ public class NodeStatus
     private final long heapUsed;
     private final long heapAvailable;
     private final long nonHeapUsed;
+
+    public NodeStatus(String nodeId,
+            NodeVersion nodeVersion,
+            String environment,
+            boolean coordinator,
+            long uptimeInNanos,
+            String externalAddress,
+            String internalAddress,
+            MemoryInfo memoryInfo,
+            int processors,
+            double processCpuLoad,
+            double systemCpuLoad,
+            long heapUsed,
+            long heapAvailable,
+            long nonHeapUsed)
+    {
+        this.nodeId = requireNonNull(nodeId, "nodeId is null");
+        this.nodeVersion = requireNonNull(nodeVersion, "nodeVersion is null");
+        this.environment = requireNonNull(environment, "environment is null");
+        this.coordinator = coordinator;
+        this.uptimeInNanos = checkNonNegative(uptimeInNanos, "uptimeInNanos is negative");
+        this.externalAddress = requireNonNull(externalAddress, "externalAddress is null");
+        this.internalAddress = requireNonNull(internalAddress, "internalAddress is null");
+        this.memoryInfo = requireNonNull(memoryInfo, "memoryInfo is null");
+        this.processors = processors;
+        this.processCpuLoad = processCpuLoad;
+        this.systemCpuLoad = systemCpuLoad;
+        this.heapUsed = heapUsed;
+        this.heapAvailable = heapAvailable;
+        this.nonHeapUsed = nonHeapUsed;
+    }
 
     @ThriftConstructor
     @JsonCreator
@@ -60,20 +94,20 @@ public class NodeStatus
             @JsonProperty("heapAvailable") long heapAvailable,
             @JsonProperty("nonHeapUsed") long nonHeapUsed)
     {
-        this.nodeId = requireNonNull(nodeId, "nodeId is null");
-        this.nodeVersion = requireNonNull(nodeVersion, "nodeVersion is null");
-        this.environment = requireNonNull(environment, "environment is null");
-        this.coordinator = coordinator;
-        this.uptime = requireNonNull(uptime, "uptime is null");
-        this.externalAddress = requireNonNull(externalAddress, "externalAddress is null");
-        this.internalAddress = requireNonNull(internalAddress, "internalAddress is null");
-        this.memoryInfo = requireNonNull(memoryInfo, "memoryInfo is null");
-        this.processors = processors;
-        this.processCpuLoad = processCpuLoad;
-        this.systemCpuLoad = systemCpuLoad;
-        this.heapUsed = heapUsed;
-        this.heapAvailable = heapAvailable;
-        this.nonHeapUsed = nonHeapUsed;
+        this(nodeId,
+                nodeVersion,
+                environment,
+                coordinator,
+                toTimeStampInNanos(uptime),
+                externalAddress,
+                internalAddress,
+                memoryInfo,
+                processors,
+                processCpuLoad,
+                systemCpuLoad,
+                heapUsed,
+                heapAvailable,
+                nonHeapUsed);
     }
 
     @ThriftField(1)
@@ -108,7 +142,12 @@ public class NodeStatus
     @JsonProperty
     public Duration getUptime()
     {
-        return uptime;
+        return succinctNanos(uptimeInNanos);
+    }
+
+    public long getUptimeInNanos()
+    {
+        return uptimeInNanos;
     }
 
     @ThriftField(6)

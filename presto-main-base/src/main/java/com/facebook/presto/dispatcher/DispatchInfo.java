@@ -14,57 +14,57 @@
 package com.facebook.presto.dispatcher;
 
 import com.facebook.presto.execution.ExecutionFailureInfo;
-import io.airlift.units.Duration;
 
 import java.util.Optional;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static java.util.Objects.requireNonNull;
 
 public class DispatchInfo
 {
     private final Optional<CoordinatorLocation> coordinatorLocation;
     private final Optional<ExecutionFailureInfo> failureInfo;
-    private final Duration elapsedTime;
-    private final Duration waitingForPrerequisitesTime;
-    private final Optional<Duration> queuedTime;
+    private final long elapsedTimeInNanos;
+    private final long waitingForPrerequisitesTimeInNanos;
+    private final long queuedTimeInNanos;
 
-    public static DispatchInfo waitingForPrerequisites(Duration elapsedTime, Duration waitingForPrerequisitesTime)
+    public static DispatchInfo waitingForPrerequisites(long elapsedTimeInNanos, long waitingForPrerequisitesTimeInNanos)
     {
-        return new DispatchInfo(Optional.empty(), Optional.empty(), elapsedTime, waitingForPrerequisitesTime, Optional.empty());
+        return new DispatchInfo(Optional.empty(), Optional.empty(), elapsedTimeInNanos, waitingForPrerequisitesTimeInNanos, 0);
     }
 
-    public static DispatchInfo queued(Duration elapsedTime, Duration waitingForPrerequisitesTime, Duration queuedTime)
+    public static DispatchInfo queued(long elapsedTimeInNanos, long waitingForPrerequisitesTimeInNanos, long queuedTimeInNanos)
     {
-        requireNonNull(queuedTime, "queuedTime is null");
-        return new DispatchInfo(Optional.empty(), Optional.empty(), elapsedTime, waitingForPrerequisitesTime, Optional.of(queuedTime));
+        checkNonNegative(queuedTimeInNanos, "queuedTime is negative");
+        return new DispatchInfo(Optional.empty(), Optional.empty(), elapsedTimeInNanos, waitingForPrerequisitesTimeInNanos, queuedTimeInNanos);
     }
 
-    public static DispatchInfo dispatched(CoordinatorLocation coordinatorLocation, Duration elapsedTime, Duration waitingForPrerequisitesTime, Duration queuedTime)
+    public static DispatchInfo dispatched(CoordinatorLocation coordinatorLocation, long elapsedTimeInNanos, long waitingForPrerequisitesTimeInNanos, long queuedTimeInNanos)
     {
         requireNonNull(coordinatorLocation, "coordinatorLocation is null");
-        requireNonNull(queuedTime, "queuedTime is null");
-        return new DispatchInfo(Optional.of(coordinatorLocation), Optional.empty(), elapsedTime, waitingForPrerequisitesTime, Optional.of(queuedTime));
+        checkNonNegative(queuedTimeInNanos, "queuedTime is negative");
+        return new DispatchInfo(Optional.of(coordinatorLocation), Optional.empty(), elapsedTimeInNanos, waitingForPrerequisitesTimeInNanos, queuedTimeInNanos);
     }
 
-    public static DispatchInfo failed(ExecutionFailureInfo failureInfo, Duration elapsedTime, Duration waitingForPrerequisitesTime, Duration queuedTime)
+    public static DispatchInfo failed(ExecutionFailureInfo failureInfo, long elapsedTimeInNanos, long waitingForPrerequisitesTimeInNanos, long queuedTimeInNanos)
     {
         requireNonNull(failureInfo, "coordinatorLocation is null");
-        requireNonNull(queuedTime, "queuedTime is null");
-        return new DispatchInfo(Optional.empty(), Optional.of(failureInfo), elapsedTime, waitingForPrerequisitesTime, Optional.of(queuedTime));
+        checkNonNegative(queuedTimeInNanos, "queuedTime is negative");
+        return new DispatchInfo(Optional.empty(), Optional.of(failureInfo), elapsedTimeInNanos, waitingForPrerequisitesTimeInNanos, queuedTimeInNanos);
     }
 
     private DispatchInfo(
             Optional<CoordinatorLocation> coordinatorLocation,
             Optional<ExecutionFailureInfo> failureInfo,
-            Duration elapsedTime,
-            Duration waitingForPrerequisitesTime,
-            Optional<Duration> queuedTime)
+            long elapsedTimeInNanos,
+            long waitingForPrerequisitesTimeInNanos,
+            long queuedTimeInNanos)
     {
         this.coordinatorLocation = requireNonNull(coordinatorLocation, "coordinatorLocation is null");
         this.failureInfo = requireNonNull(failureInfo, "failureInfo is null");
-        this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
-        this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTime is null");
-        this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
+        this.elapsedTimeInNanos = checkNonNegative(elapsedTimeInNanos, "elapsedTime is negative");
+        this.waitingForPrerequisitesTimeInNanos = checkNonNegative(waitingForPrerequisitesTimeInNanos, "waitingForPrerequisitesTime is negative");
+        this.queuedTimeInNanos = checkNonNegative(queuedTimeInNanos, "queuedTime is negative");
     }
 
     public Optional<CoordinatorLocation> getCoordinatorLocation()
@@ -77,18 +77,18 @@ public class DispatchInfo
         return failureInfo;
     }
 
-    public Duration getElapsedTime()
+    public long getElapsedTimeInNanos()
     {
-        return elapsedTime;
+        return elapsedTimeInNanos;
     }
 
-    public Duration getWaitingForPrerequisitesTime()
+    public long getWaitingForPrerequisitesTimeInNanos()
     {
-        return waitingForPrerequisitesTime;
+        return waitingForPrerequisitesTimeInNanos;
     }
 
-    public Optional<Duration> getQueuedTime()
+    public long getQueuedTimeInNanos()
     {
-        return queuedTime;
+        return queuedTimeInNanos;
     }
 }

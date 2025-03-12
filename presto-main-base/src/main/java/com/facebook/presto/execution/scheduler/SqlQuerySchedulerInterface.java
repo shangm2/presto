@@ -17,7 +17,6 @@ package com.facebook.presto.execution.scheduler;
 import com.facebook.presto.execution.BasicStageExecutionStats;
 import com.facebook.presto.execution.StageId;
 import com.facebook.presto.execution.StageInfo;
-import io.airlift.units.Duration;
 
 public interface SqlQuerySchedulerInterface
 {
@@ -27,7 +26,7 @@ public interface SqlQuerySchedulerInterface
 
     long getTotalMemoryReservation();
 
-    Duration getTotalCpuTime();
+    long getTotalCpuTimeInNanos();
 
     long getRawInputDataSizeInBytes();
 

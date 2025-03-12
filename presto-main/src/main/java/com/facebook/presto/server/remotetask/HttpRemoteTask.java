@@ -75,7 +75,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.sun.management.ThreadMXBean;
-import io.airlift.units.Duration;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 
 import javax.annotation.Nullable;
@@ -97,7 +96,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -111,6 +109,7 @@ import static com.facebook.airlift.http.client.Request.Builder.preparePost;
 import static com.facebook.airlift.http.client.StaticBodyGenerator.createStaticBodyGenerator;
 import static com.facebook.airlift.http.client.StatusResponseHandler.createStatusResponseHandler;
 import static com.facebook.presto.SystemSessionProperties.getMaxUnacknowledgedSplitsPerTask;
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.execution.TaskInfo.createInitialTask;
 import static com.facebook.presto.execution.TaskState.ABORTED;
 import static com.facebook.presto.execution.TaskState.FAILED;
@@ -138,9 +137,8 @@ import static java.lang.Math.addExact;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 public final class HttpRemoteTask
         implements RemoteTask
@@ -162,7 +160,7 @@ public final class HttpRemoteTask
 
     private final AtomicLong nextSplitId = new AtomicLong();
 
-    private final Duration maxErrorDuration;
+    private final long maxErrorDurationInNanos;
     private final RemoteTaskStats stats;
     private final TaskInfoFetcher taskInfoFetcher;
     private final ContinuousTaskStatusFetcher taskStatusFetcher;
@@ -246,10 +244,10 @@ public final class HttpRemoteTask
             Executor executor,
             ScheduledExecutorService updateScheduledExecutor,
             ScheduledExecutorService errorScheduledExecutor,
-            Duration maxErrorDuration,
-            Duration taskStatusRefreshMaxWait,
-            Duration taskInfoRefreshMaxWait,
-            Duration taskInfoUpdateInterval,
+            long maxErrorDurationInNanos,
+            long taskStatusRefreshMaxWaitInNanos,
+            long taskInfoRefreshMaxWaitInNanos,
+            long taskInfoUpdateIntervalInNanos,
             boolean summarizeTaskInfo,
             Codec<TaskStatus> taskStatusCodec,
             Codec<TaskInfo> taskInfoCodec,
@@ -287,9 +285,9 @@ public final class HttpRemoteTask
         requireNonNull(taskUpdateRequestCodec, "taskUpdateRequestCodec is null");
         requireNonNull(planFragmentCodec, "planFragmentCodec is null");
         requireNonNull(nodeStatsTracker, "nodeStatsTracker is null");
-        requireNonNull(maxErrorDuration, "maxErrorDuration is null");
+        checkNonNegative(maxErrorDurationInNanos, "maxErrorDurationInNanos is negative");
         requireNonNull(stats, "stats is null");
-        requireNonNull(taskInfoRefreshMaxWait, "taskInfoRefreshMaxWait is null");
+        checkNonNegative(taskInfoRefreshMaxWaitInNanos, "taskInfoRefreshMaxWaitInNanos is negative");
         requireNonNull(tableWriteInfo, "tableWriteInfo is null");
         requireNonNull(metadataManager, "metadataManager is null");
         requireNonNull(queryManager, "queryManager is null");
@@ -315,9 +313,9 @@ public final class HttpRemoteTask
             this.taskInfoJsonCodec = taskInfoJsonCodec;
             this.taskUpdateRequestCodec = taskUpdateRequestCodec;
             this.planFragmentCodec = planFragmentCodec;
-            this.updateErrorTracker = taskRequestErrorTracker(taskId, location, maxErrorDuration, errorScheduledExecutor, "updating task");
+            this.updateErrorTracker = taskRequestErrorTracker(taskId, location, maxErrorDurationInNanos, errorScheduledExecutor, "updating task");
             this.nodeStatsTracker = requireNonNull(nodeStatsTracker, "nodeStatsTracker is null");
-            this.maxErrorDuration = maxErrorDuration;
+            this.maxErrorDurationInNanos = maxErrorDurationInNanos;
             this.stats = stats;
             this.binaryTransportEnabled = binaryTransportEnabled;
             this.thriftTransportEnabled = thriftTransportEnabled;
@@ -365,11 +363,11 @@ public final class HttpRemoteTask
                     this::failTask,
                     taskId,
                     initialTask.getTaskStatus(),
-                    taskStatusRefreshMaxWait,
+                    taskStatusRefreshMaxWaitInNanos,
                     taskStatusCodec,
                     executor,
                     httpClient,
-                    maxErrorDuration,
+                    maxErrorDurationInNanos,
                     errorScheduledExecutor,
                     stats,
                     binaryTransportEnabled,
@@ -380,11 +378,11 @@ public final class HttpRemoteTask
                     this::failTask,
                     initialTask,
                     httpClient,
-                    taskInfoUpdateInterval,
-                    taskInfoRefreshMaxWait,
+                    taskInfoUpdateIntervalInNanos,
+                    taskInfoRefreshMaxWaitInNanos,
                     taskInfoCodec,
                     metadataUpdatesCodec,
-                    maxErrorDuration,
+                    maxErrorDurationInNanos,
                     summarizeTaskInfo,
                     executor,
                     updateScheduledExecutor,
@@ -555,7 +553,7 @@ public final class HttpRemoteTask
         RequestErrorTracker errorTracker = taskRequestErrorTracker(
                 taskId,
                 remoteSourceUri,
-                maxErrorDuration,
+                maxErrorDurationInNanos,
                 errorScheduledExecutor,
                 "Remove exchange remote source");
 
@@ -1113,13 +1111,7 @@ public final class HttpRemoteTask
 
     private static Backoff createCleanupBackoff()
     {
-        return new Backoff(10, new Duration(10, TimeUnit.MINUTES), Ticker.systemTicker(), ImmutableList.<Duration>builder()
-                .add(new Duration(0, MILLISECONDS))
-                .add(new Duration(100, MILLISECONDS))
-                .add(new Duration(500, MILLISECONDS))
-                .add(new Duration(1, SECONDS))
-                .add(new Duration(10, SECONDS))
-                .build());
+        return new Backoff(10, MINUTES.toNanos(10), Ticker.systemTicker(), new long[] {0L, 100L, 500L, 1_000L, 10_000L});
     }
 
     @Override
@@ -1217,8 +1209,8 @@ public final class HttpRemoteTask
 
         private void updateStats(long currentRequestStartNanos)
         {
-            Duration requestRoundTrip = Duration.nanosSince(currentRequestStartNanos);
-            stats.updateRoundTripMillis(requestRoundTrip.toMillis());
+            long requestRoundTrip = NANOSECONDS.toMillis(System.nanoTime() - currentRequestStartNanos);
+            stats.updateRoundTripMillis(requestRoundTrip);
         }
     }
 

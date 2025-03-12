@@ -260,7 +260,7 @@ public class TestSqlTaskManager
     public void testRemoveOldTasks()
             throws Exception
     {
-        try (SqlTaskManager sqlTaskManager = createSqlTaskManager(new TaskManagerConfig().setInfoMaxAge(new Duration(5, TimeUnit.MILLISECONDS)))) {
+        try (SqlTaskManager sqlTaskManager = createSqlTaskManager(new TaskManagerConfig().setInfoMaxAgeInNanos(new Duration(5, TimeUnit.MILLISECONDS)))) {
             TaskId taskId = TASK_ID;
 
             TaskInfo taskInfo = createTask(sqlTaskManager, taskId, createInitialEmptyOutputBuffers(PARTITIONED).withBuffer(OUT, 0).withNoMoreBufferIds());

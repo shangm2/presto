@@ -47,7 +47,6 @@ import com.facebook.presto.testing.TestingTransactionHandle;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import io.airlift.units.Duration;
 import org.testng.annotations.Test;
 
 import java.util.List;
@@ -62,7 +61,6 @@ import static com.facebook.presto.metadata.FunctionAndTypeManager.createTestFunc
 import static com.facebook.presto.sql.planner.SystemPartitioningHandle.SOURCE_DISTRIBUTION;
 import static com.facebook.presto.sql.planner.planPrinter.PlanPrinter.formattedFragmentString;
 import static io.airlift.slice.Slices.utf8Slice;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
@@ -248,12 +246,12 @@ public class TestPlanPrinter
                 operatorCls.getSimpleName(),
                 0L,
                 0L,
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
+                0L,
+                0L,
                 0,
                 0L,
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
+                0L,
+                0L,
                 0,
                 rawInputDataSize,
                 rawInputPositions,
@@ -261,17 +259,17 @@ public class TestPlanPrinter
                 inputPositions,
                 0.0,
                 0L,
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
+                0L,
+                0L,
                 0,
                 outputDataSize,
                 outputPositions,
                 0L,
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
                 0L,
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
+                0L,
+                0L,
+                0L,
+                0L,
                 0,
                 0L,
                 0L,
@@ -320,10 +318,10 @@ public class TestPlanPrinter
                 0L,
                 0L,
 
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
-                new Duration(0, NANOSECONDS),
+                0L,
+                0L,
+                0L,
+                0L,
                 false,
                 ImmutableSet.of(),
 

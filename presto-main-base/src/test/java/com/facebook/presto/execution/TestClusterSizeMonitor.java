@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.facebook.airlift.concurrent.MoreFutures.addExceptionCallback;
 import static com.facebook.airlift.concurrent.MoreFutures.addSuccessCallback;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -74,11 +75,11 @@ public class TestClusterSizeMonitor
                 false,
                 DESIRED_WORKER_COUNT,
                 DESIRED_WORKER_COUNT_ACTIVE,
-                new Duration(4, SECONDS),
+                new Duration(4, SECONDS).roundTo(NANOSECONDS),
                 DESIRED_COORDINATOR_COUNT,
                 DESIRED_COORDINATOR_COUNT_ACTIVE,
-                new Duration(4, SECONDS),
-                new Duration(4, SECONDS),
+                new Duration(4, SECONDS).roundTo(NANOSECONDS),
+                new Duration(4, SECONDS).roundTo(NANOSECONDS),
                 DESIRED_RESOURCE_MANAGER_COUNT_ACTIVE,
                 true);
 

@@ -32,4 +32,10 @@ public class TaskUtils
         long halfWaitMillis = waitTime.toMillis() / 2;
         return new Duration(halfWaitMillis + ThreadLocalRandom.current().nextLong(halfWaitMillis), MILLISECONDS);
     }
+
+    public static long randomizeWaitTimeInMillis(long waitTime)
+    {
+        long halfWaitMillis = waitTime / 2;
+        return halfWaitMillis + ThreadLocalRandom.current().nextLong(halfWaitMillis);
+    }
 }

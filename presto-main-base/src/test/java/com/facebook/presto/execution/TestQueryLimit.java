@@ -21,18 +21,19 @@ import static com.facebook.presto.execution.QueryLimit.Source.QUERY;
 import static com.facebook.presto.execution.QueryLimit.Source.RESOURCE_GROUP;
 import static com.facebook.presto.execution.QueryLimit.Source.SYSTEM;
 import static com.facebook.presto.execution.QueryLimit.createDataSizeLimit;
-import static com.facebook.presto.execution.QueryLimit.createDurationLimit;
+import static com.facebook.presto.execution.QueryLimit.createDurationLimitInNanos;
 import static com.facebook.presto.execution.QueryLimit.getMinimum;
 import static com.facebook.presto.testing.assertions.Assert.assertEquals;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertThrows;
 
 public class TestQueryLimit
 {
-    private static final QueryLimit<Duration> QUERY_LIMIT_DURATION = createDurationLimit(new Duration(1, HOURS), SYSTEM);
+    private static final QueryLimit<Long> QUERY_LIMIT_DURATION = createDurationLimitInNanos(new Duration(1, HOURS).roundTo(NANOSECONDS), SYSTEM);
     private static final QueryLimit<Long> QUERY_LIMIT_DATA_SIZE = createDataSizeLimit(new DataSize(1, MEGABYTE).toBytes(), RESOURCE_GROUP);
 
     @Test
@@ -47,14 +48,14 @@ public class TestQueryLimit
     {
         assertEquals(QUERY_LIMIT_DATA_SIZE.getLimitSource(), RESOURCE_GROUP);
         assertEquals(QUERY_LIMIT_DURATION.getLimitSource(), SYSTEM);
-        assertEquals(createDurationLimit(new Duration(1, HOURS), QUERY).getLimitSource(), QUERY);
+        assertEquals(createDurationLimitInNanos(new Duration(1, HOURS).roundTo(NANOSECONDS), QUERY).getLimitSource(), QUERY);
     }
 
     @Test
     public void testGetMinimum()
     {
-        QueryLimit<Duration> longLimit = createDurationLimit(new Duration(2, HOURS), SYSTEM);
-        QueryLimit<Duration> shortLimit = createDurationLimit(new Duration(1, MINUTES), RESOURCE_GROUP);
+        QueryLimit<Long> longLimit = createDurationLimitInNanos(new Duration(2, HOURS).roundTo(NANOSECONDS), SYSTEM);
+        QueryLimit<Long> shortLimit = createDurationLimitInNanos(new Duration(1, MINUTES).roundTo(NANOSECONDS), RESOURCE_GROUP);
         assertEquals(getMinimum(QUERY_LIMIT_DURATION, longLimit, shortLimit), shortLimit);
 
         QueryLimit<Long> largeLimit = createDataSizeLimit(new DataSize(2, MEGABYTE).toBytes(), QUERY);

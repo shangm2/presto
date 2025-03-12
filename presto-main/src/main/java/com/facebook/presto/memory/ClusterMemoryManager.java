@@ -46,7 +46,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Streams;
 import com.google.common.io.Closer;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 import org.weakref.jmx.JmxException;
 import org.weakref.jmx.MBeanExporter;
 import org.weakref.jmx.Managed;
@@ -95,12 +94,12 @@ import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static com.google.common.collect.MoreCollectors.toOptional;
 import static com.google.common.collect.Sets.difference;
 import static io.airlift.units.DataSize.succinctBytes;
-import static io.airlift.units.Duration.nanosSince;
 import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.util.AbstractMap.SimpleEntry;
 import static java.util.Comparator.comparingLong;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.function.Function.identity;
 import static org.weakref.jmx.ObjectNames.generatedNameOf;
 
@@ -122,7 +121,7 @@ public class ClusterMemoryManager
     private final long maxQueryTotalMemoryInBytes;
     private final boolean enabled;
     private final LowMemoryKiller lowMemoryKiller;
-    private final Duration killOnOutOfMemoryDelay;
+    private final long killOnOutOfMemoryDelayInNanos;
     private final String coordinatorId;
     private final AtomicLong memoryPoolAssignmentsVersion = new AtomicLong();
     private final AtomicLong clusterUserMemoryReservation = new AtomicLong();
@@ -181,7 +180,7 @@ public class ClusterMemoryManager
         this.maxQueryTotalMemoryInBytes = config.getMaxQueryTotalMemory().toBytes();
         this.coordinatorId = queryIdGenerator.getCoordinatorId();
         this.enabled = serverConfig.isCoordinator();
-        this.killOnOutOfMemoryDelay = config.getKillOnOutOfMemoryDelay();
+        this.killOnOutOfMemoryDelayInNanos = config.getKillOnOutOfMemoryDelay().roundTo(NANOSECONDS);
         this.isWorkScheduledOnCoordinator = schedulerConfig.isIncludeCoordinator();
         this.isBinaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
         if (this.isBinaryTransportEnabled) {
@@ -289,7 +288,7 @@ public class ClusterMemoryManager
         clusterUserMemoryReservation.set(totalUserMemoryBytes);
         clusterTotalMemoryReservation.set(totalMemoryBytes);
 
-        boolean killOnOomDelayPassed = nanosSince(lastTimeNotOutOfMemory).compareTo(killOnOutOfMemoryDelay) > 0;
+        boolean killOnOomDelayPassed = lastTimeNotOutOfMemory > killOnOutOfMemoryDelayInNanos;
         boolean lastKilledQueryGone = isLastKilledQueryGone();
         boolean shouldCallOomKiller = !(lowMemoryKiller instanceof NoneLowMemoryKiller) &&
                 outOfMemory &&

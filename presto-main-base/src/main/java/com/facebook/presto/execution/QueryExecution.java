@@ -27,7 +27,6 @@ import com.facebook.presto.sql.planner.Plan;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.units.Duration;
 
 import java.net.URI;
 import java.util.List;
@@ -62,7 +61,7 @@ public interface QueryExecution
 
     int getRetryCount();
 
-    Duration getTotalCpuTime();
+    long getTotalCpuTimeInNanos();
 
     long getRawInputDataSizeInBytes();
 

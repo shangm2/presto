@@ -30,12 +30,14 @@ import javax.annotation.concurrent.Immutable;
 import java.util.OptionalDouble;
 import java.util.Set;
 
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.util.DateTimeUtils.toTimeStampInMillis;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Lightweight version of QueryStats. Parts of the web UI depend on the fields
@@ -48,11 +50,11 @@ public class BasicQueryStats
     private final long createTimeInMillis;
     private final long endTimeInMillis;
 
-    private final Duration waitingForPrerequisitesTime;
-    private final Duration queuedTime;
-    private final Duration elapsedTime;
-    private final Duration executionTime;
-    private final Duration analysisTime;
+    private final long waitingForPrerequisitesTimeInNanos;
+    private final long queuedTimeInNanos;
+    private final long elapsedTimeInNanos;
+    private final long executionTimeInNanos;
+    private final long analysisTimeInNanos;
 
     private final int runningTasks;
     private final int peakRunningTasks;
@@ -73,8 +75,8 @@ public class BasicQueryStats
     private final DataSize peakTotalMemoryReservation;
     private final DataSize peakTaskTotalMemoryReservation;
     private final DataSize peakNodeTotalMemoryReservation;
-    private final Duration totalCpuTime;
-    private final Duration totalScheduledTime;
+    private final long totalCpuTimeInNanos;
+    private final long totalScheduledTimeInNanos;
 
     private final boolean fullyBlocked;
     private final Set<BlockedReason> blockedReasons;
@@ -86,11 +88,11 @@ public class BasicQueryStats
     public BasicQueryStats(
             long createTimeInMillis,
             long endTimeInMillis,
-            Duration waitingForPrerequisitesTime,
-            Duration queuedTime,
-            Duration elapsedTime,
-            Duration executionTime,
-            Duration analysisTime,
+            long waitingForPrerequisitesTimeInNanos,
+            long queuedTimeInNanos,
+            long elapsedTimeInNanos,
+            long executionTimeInNanos,
+            long analysisTimeInNanos,
             int runningTasks,
             int peakRunningTasks,
             int totalDrivers,
@@ -107,8 +109,8 @@ public class BasicQueryStats
             DataSize peakTotalMemoryReservation,
             DataSize peakTaskTotalMemoryReservation,
             DataSize peakNodeTotalMemoryReservation,
-            Duration totalCpuTime,
-            Duration totalScheduledTime,
+            long totalCpuTimeInNanos,
+            long totalScheduledTimeInNanos,
             boolean fullyBlocked,
             Set<BlockedReason> blockedReasons,
             DataSize totalAllocation,
@@ -117,11 +119,11 @@ public class BasicQueryStats
         this.createTimeInMillis = createTimeInMillis;
         this.endTimeInMillis = endTimeInMillis;
 
-        this.waitingForPrerequisitesTime = requireNonNull(waitingForPrerequisitesTime, "waitingForPrerequisitesTimex is null");
-        this.queuedTime = requireNonNull(queuedTime, "queuedTime is null");
-        this.elapsedTime = requireNonNull(elapsedTime, "elapsedTime is null");
-        this.executionTime = requireNonNull(executionTime, "executionTime is null");
-        this.analysisTime = requireNonNull(analysisTime, "analysisTime is null");
+        this.waitingForPrerequisitesTimeInNanos = checkNonNegative(waitingForPrerequisitesTimeInNanos, "waitingForPrerequisitesTimeInNanos is negative");
+        this.queuedTimeInNanos = checkNonNegative(queuedTimeInNanos, "queuedTimeInNanos is negative");
+        this.elapsedTimeInNanos = checkNonNegative(elapsedTimeInNanos, "elapsedTimeInNanos is negative");
+        this.executionTimeInNanos = checkNonNegative(executionTimeInNanos, "executionTimeInNanos is negative");
+        this.analysisTimeInNanos = checkNonNegative(analysisTimeInNanos, "analysisTimeInNanos is negative");
         this.runningTasks = runningTasks;
         this.peakRunningTasks = peakRunningTasks;
 
@@ -145,8 +147,8 @@ public class BasicQueryStats
         this.peakTotalMemoryReservation = peakTotalMemoryReservation;
         this.peakTaskTotalMemoryReservation = peakTaskTotalMemoryReservation;
         this.peakNodeTotalMemoryReservation = peakNodeTotalMemoryReservation;
-        this.totalCpuTime = totalCpuTime;
-        this.totalScheduledTime = totalScheduledTime;
+        this.totalCpuTimeInNanos = checkNonNegative(totalCpuTimeInNanos, "totalCpuTimeInNanos is negative");
+        this.totalScheduledTimeInNanos = checkNonNegative(totalScheduledTimeInNanos, "totalScheduledTimeInNanos is negative");
 
         this.fullyBlocked = fullyBlocked;
         this.blockedReasons = ImmutableSet.copyOf(requireNonNull(blockedReasons, "blockedReasons is null"));
@@ -191,11 +193,11 @@ public class BasicQueryStats
     {
         this(toTimeStampInMillis(createTime),
                 toTimeStampInMillis(endTime),
-                waitingForPrerequisitesTime,
-                queuedTime,
-                elapsedTime,
-                executionTime,
-                analysisTime,
+                toTimeStampInNanos(waitingForPrerequisitesTime),
+                toTimeStampInNanos(queuedTime),
+                toTimeStampInNanos(elapsedTime),
+                toTimeStampInNanos(executionTime),
+                toTimeStampInNanos(analysisTime),
                 runningTasks,
                 peakRunningTasks,
                 totalDrivers,
@@ -212,8 +214,8 @@ public class BasicQueryStats
                 peakTotalMemoryReservation,
                 peakTaskTotalMemoryReservation,
                 peakNodeTotalMemoryReservation,
-                totalCpuTime,
-                totalScheduledTime,
+                toTimeStampInNanos(totalCpuTime),
+                toTimeStampInNanos(totalScheduledTime),
                 fullyBlocked,
                 blockedReasons,
                 totalAllocation,
@@ -224,11 +226,11 @@ public class BasicQueryStats
     {
         this(queryStats.getCreateTimeInMillis(),
                 queryStats.getEndTimeInMillis(),
-                queryStats.getWaitingForPrerequisitesTime(),
-                queryStats.getQueuedTime(),
-                queryStats.getElapsedTime(),
-                queryStats.getExecutionTime(),
-                queryStats.getAnalysisTime(),
+                queryStats.getWaitingForPrerequisitesTimeInNanos(),
+                queryStats.getQueuedTimeInNanos(),
+                queryStats.getElapsedTimeInNanos(),
+                queryStats.getExecutionTimeInNanos(),
+                queryStats.getAnalysisTimeInNanos(),
                 queryStats.getRunningTasks(),
                 queryStats.getPeakRunningTasks(),
                 queryStats.getTotalDrivers(),
@@ -245,8 +247,8 @@ public class BasicQueryStats
                 queryStats.getPeakTotalMemoryReservation(),
                 queryStats.getPeakTaskTotalMemory(),
                 queryStats.getPeakNodeTotalMemory(),
-                queryStats.getTotalCpuTime(),
-                queryStats.getTotalScheduledTime(),
+                queryStats.getTotalCpuTimeInNanos(),
+                queryStats.getTotalScheduledTimeInNanos(),
                 queryStats.isFullyBlocked(),
                 queryStats.getBlockedReasons(),
                 queryStats.getTotalAllocation(),
@@ -259,11 +261,11 @@ public class BasicQueryStats
         return new BasicQueryStats(
                 now,
                 now,
-                new Duration(0, MILLISECONDS),
-                new Duration(0, MILLISECONDS),
-                new Duration(0, MILLISECONDS),
-                new Duration(0, MILLISECONDS),
-                new Duration(0, MILLISECONDS),
+                0L,
+                0L,
+                0L,
+                0L,
+                0L,
                 0,
                 0,
                 0,
@@ -280,8 +282,8 @@ public class BasicQueryStats
                 new DataSize(0, BYTE),
                 new DataSize(0, BYTE),
                 new DataSize(0, BYTE),
-                new Duration(0, MILLISECONDS),
-                new Duration(0, MILLISECONDS),
+                0L,
+                0L,
                 false,
                 ImmutableSet.of(),
                 new DataSize(0, BYTE),
@@ -316,21 +318,36 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getQueuedTime()
     {
-        return queuedTime;
+        return succinctNanos(queuedTimeInNanos);
+    }
+
+    public long getQueuedTimeInNanos()
+    {
+        return queuedTimeInNanos;
     }
 
     @ThriftField(4)
     @JsonProperty
     public Duration getElapsedTime()
     {
-        return elapsedTime;
+        return succinctNanos(elapsedTimeInNanos);
+    }
+
+    public long getElapsedTimeInNanos()
+    {
+        return elapsedTimeInNanos;
     }
 
     @ThriftField(5)
     @JsonProperty
     public Duration getExecutionTime()
     {
-        return executionTime;
+        return succinctNanos(executionTimeInNanos);
+    }
+
+    public long getExecutionTimeInNanos()
+    {
+        return executionTimeInNanos;
     }
 
     @ThriftField(6)
@@ -434,14 +451,24 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getTotalCpuTime()
     {
-        return totalCpuTime;
+        return succinctNanos(totalCpuTimeInNanos);
+    }
+
+    public long getTotalCpuTimeInNanos()
+    {
+        return totalCpuTimeInNanos;
     }
 
     @ThriftField(21)
     @JsonProperty
     public Duration getTotalScheduledTime()
     {
-        return totalScheduledTime;
+        return succinctNanos(totalScheduledTimeInNanos);
+    }
+
+    public long getTotalScheduledTimeInNanos()
+    {
+        return totalScheduledTimeInNanos;
     }
 
     @ThriftField(22)
@@ -476,7 +503,12 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getWaitingForPrerequisitesTime()
     {
-        return waitingForPrerequisitesTime;
+        return succinctNanos(waitingForPrerequisitesTimeInNanos);
+    }
+
+    public long getWaitingForPrerequisitesTimeInNanos()
+    {
+        return waitingForPrerequisitesTimeInNanos;
     }
 
     @ThriftField(27)
@@ -497,6 +529,11 @@ public class BasicQueryStats
     @JsonProperty
     public Duration getAnalysisTime()
     {
-        return analysisTime;
+        return succinctNanos(analysisTimeInNanos);
+    }
+
+    public long getAnalysisTimeInNanos()
+    {
+        return analysisTimeInNanos;
     }
 }

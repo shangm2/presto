@@ -53,10 +53,10 @@ public class TestStageExecutionStats
             15L,
             42L,
 
-            new Duration(15, NANOSECONDS),
-            new Duration(16, NANOSECONDS),
-            new Duration(17, NANOSECONDS),
-            new Duration(18, NANOSECONDS),
+            15,
+            16,
+            17,
+            18,
             false,
             ImmutableSet.of(),
 

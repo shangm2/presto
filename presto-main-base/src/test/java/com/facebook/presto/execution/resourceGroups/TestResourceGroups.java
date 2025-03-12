@@ -57,7 +57,7 @@ import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.Unit.GIGABYTE;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.Collections.reverse;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -312,7 +312,7 @@ public class TestResourceGroups
         root.setMaxQueuedQueries(1);
         root.setHardConcurrencyLimit(2);
 
-        MockManagedQueryExecution query1 = new MockManagedQueryExecution(1, "query_id", 1, new Duration(1, SECONDS));
+        MockManagedQueryExecution query1 = new MockManagedQueryExecution(1, "query_id", 1, new Duration(1, SECONDS).roundTo(NANOSECONDS));
         query1.startWaitingForPrerequisites();
         root.run(query1);
         assertEquals(query1.getState(), RUNNING);
@@ -423,7 +423,7 @@ public class TestResourceGroups
         root.setCpuQuotaGenerationMillisPerSecond(2000);
         root.setMaxQueuedQueries(1);
         root.setHardConcurrencyLimit(1);
-        MockManagedQueryExecution query1 = new MockManagedQueryExecution(1, "query_id", 1, new Duration(2, SECONDS));
+        MockManagedQueryExecution query1 = new MockManagedQueryExecution(1, "query_id", 1, new Duration(2, SECONDS).roundTo(NANOSECONDS));
         query1.startWaitingForPrerequisites();
         root.run(query1);
         assertEquals(query1.getState(), RUNNING);
@@ -1010,7 +1010,7 @@ public class TestResourceGroups
                     0,
                     group.getId().toString().replace(".", "") + Integer.toString(i),
                     queryPriority ? i + 1 : 1,
-                    new Duration(0, MILLISECONDS),
+                    0L,
                     group.getId());
             queries.add(query);
             group.run(query);

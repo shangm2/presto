@@ -32,13 +32,14 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newFixedThreadPool;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class ExchangeClientFactory
         implements ExchangeClientSupplier
 {
     private final DataSize maxBufferedBytes;
     private final int concurrentRequestMultiplier;
-    private final Duration maxErrorDuration;
+    private final long maxErrorDurationInNanos;
     private final RpcShuffleClientProvider rpcShuffleClientProvider;
     private final DataSize maxResponseSize;
     private final boolean acknowledgePages;
@@ -69,7 +70,7 @@ public class ExchangeClientFactory
             DataSize maxBufferedBytes,
             DataSize maxResponseSize,
             int concurrentRequestMultiplier,
-            Duration maxErrorDuration,
+            Duration maxErrorDurationInNanos,
             boolean acknowledgePages,
             int pageBufferClientMaxCallbackThreads,
             double responseSizeExponentialMovingAverageDecayingAlpha,
@@ -78,7 +79,7 @@ public class ExchangeClientFactory
     {
         this.maxBufferedBytes = requireNonNull(maxBufferedBytes, "maxBufferedBytes is null");
         this.concurrentRequestMultiplier = concurrentRequestMultiplier;
-        this.maxErrorDuration = requireNonNull(maxErrorDuration, "maxErrorDuration is null");
+        this.maxErrorDurationInNanos = requireNonNull(maxErrorDurationInNanos, "maxErrorDuration is null").roundTo(NANOSECONDS);
         this.acknowledgePages = acknowledgePages;
         this.rpcShuffleClientProvider = requireNonNull(rpcShuffleClientProvider, "rpcShuffleClientProvider is null");
 
@@ -121,7 +122,7 @@ public class ExchangeClientFactory
                 maxBufferedBytes,
                 maxResponseSize,
                 concurrentRequestMultiplier,
-                maxErrorDuration,
+                maxErrorDurationInNanos,
                 acknowledgePages,
                 responseSizeExponentialMovingAverageDecayingAlpha,
                 rpcShuffleClientProvider,

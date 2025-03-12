@@ -20,7 +20,6 @@ import com.facebook.presto.spi.QueryId;
 import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.facebook.presto.sql.planner.Plan;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.units.Duration;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -102,9 +101,9 @@ public class MockQueryExecution
     }
 
     @Override
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
-        return null;
+        return 0;
     }
 
     @Override

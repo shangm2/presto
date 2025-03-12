@@ -38,7 +38,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Ordering;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 import org.weakref.jmx.Flatten;
 import org.weakref.jmx.Managed;
 import org.weakref.jmx.Nested;
@@ -59,7 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static com.facebook.airlift.concurrent.Threads.threadsNamed;
-import static com.facebook.presto.SystemSessionProperties.getQueryMaxCpuTime;
+import static com.facebook.presto.SystemSessionProperties.getQueryMaxCpuTimeInNanos;
 import static com.facebook.presto.SystemSessionProperties.getQueryMaxOutputPositions;
 import static com.facebook.presto.SystemSessionProperties.getQueryMaxOutputSize;
 import static com.facebook.presto.SystemSessionProperties.getQueryMaxScanRawInputBytes;
@@ -68,16 +67,19 @@ import static com.facebook.presto.SystemSessionProperties.isCteMaterializationAp
 import static com.facebook.presto.execution.QueryLimit.Source.QUERY;
 import static com.facebook.presto.execution.QueryLimit.Source.RESOURCE_GROUP;
 import static com.facebook.presto.execution.QueryLimit.Source.SYSTEM;
-import static com.facebook.presto.execution.QueryLimit.createDurationLimit;
+import static com.facebook.presto.execution.QueryLimit.createDurationLimitInNanos;
 import static com.facebook.presto.execution.QueryLimit.getMinimum;
 import static com.facebook.presto.execution.QueryState.RUNNING;
 import static com.facebook.presto.spi.StandardErrorCode.EXCEEDED_OUTPUT_POSITIONS_LIMIT;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.util.concurrent.Futures.immediateFailedFuture;
 import static io.airlift.units.DataSize.Unit.BYTE;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @ThreadSafe
 public class SqlQueryManager
@@ -90,7 +92,7 @@ public class SqlQueryManager
     private final EmbedVersion embedVersion;
     private final QueryTracker<QueryExecution> queryTracker;
 
-    private final Duration maxQueryCpuTime;
+    private final long maxQueryCpuTimeInNanos;
     private final DataSize maxQueryScanPhysicalBytes;
 
     private final DataSize maxWrittenIntermediatePhysicalBytes;
@@ -118,7 +120,7 @@ public class SqlQueryManager
         this.queryMonitor = requireNonNull(queryMonitor, "queryMonitor is null");
         this.embedVersion = requireNonNull(embedVersion, "embedVersion is null");
 
-        this.maxQueryCpuTime = queryManagerConfig.getQueryMaxCpuTime();
+        this.maxQueryCpuTimeInNanos = toTimeStampInNanos(queryManagerConfig.getQueryMaxCpuTime());
         this.maxQueryScanPhysicalBytes = queryManagerConfig.getQueryMaxScanRawInputBytes();
         this.maxWrittenIntermediatePhysicalBytes = queryManagerConfig.getQueryMaxWrittenIntermediateBytes();
         this.maxQueryOutputPositions = queryManagerConfig.getQueryMaxOutputPositions();
@@ -404,16 +406,16 @@ public class SqlQueryManager
     private void enforceCpuLimits()
     {
         for (QueryExecution query : queryTracker.getAllQueries()) {
-            Duration cpuTime = query.getTotalCpuTime();
-            QueryLimit<Duration> queryMaxCpuTimeLimit = getMinimum(
-                    createDurationLimit(maxQueryCpuTime, SYSTEM),
+            long cpuTime = query.getTotalCpuTimeInNanos();
+            QueryLimit<Long> queryMaxCpuTimeLimitInNanos = getMinimum(
+                    createDurationLimitInNanos(maxQueryCpuTimeInNanos, SYSTEM),
                     query.getResourceGroupQueryLimits()
                             .flatMap(ResourceGroupQueryLimits::getCpuTimeLimit)
-                            .map(rgLimit -> createDurationLimit(rgLimit, RESOURCE_GROUP))
+                            .map(rgLimit -> createDurationLimitInNanos(rgLimit.roundTo(NANOSECONDS), RESOURCE_GROUP))
                             .orElse(null),
-                    createDurationLimit(getQueryMaxCpuTime(query.getSession()), QUERY));
-            if (cpuTime.compareTo(queryMaxCpuTimeLimit.getLimit()) > 0) {
-                query.fail(new ExceededCpuLimitException(queryMaxCpuTimeLimit.getLimit(), queryMaxCpuTimeLimit.getLimitSource().name()));
+                    createDurationLimitInNanos(getQueryMaxCpuTimeInNanos(query.getSession()), QUERY));
+            if (cpuTime > queryMaxCpuTimeLimitInNanos.getLimit()) {
+                query.fail(new ExceededCpuLimitException(succinctNanos(queryMaxCpuTimeLimitInNanos.getLimit()), queryMaxCpuTimeLimitInNanos.getLimitSource().name()));
             }
         }
     }

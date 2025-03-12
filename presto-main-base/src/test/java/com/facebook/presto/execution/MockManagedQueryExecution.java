@@ -25,7 +25,6 @@ import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -41,15 +40,13 @@ import static com.facebook.presto.execution.QueryState.RUNNING;
 import static com.facebook.presto.execution.QueryState.WAITING_FOR_PREREQUISITES;
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 import static io.airlift.units.DataSize.Unit.BYTE;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class MockManagedQueryExecution
         implements ManagedQueryExecution
 {
     private final List<StateChangeListener<QueryState>> listeners = new ArrayList<>();
     private final long memoryUsage;
-    private final Duration cpuUsage;
+    private final long cpuUsageInNanos;
     private final Session session;
     private QueryState state = WAITING_FOR_PREREQUISITES;
     private Throwable failureCause;
@@ -63,18 +60,18 @@ public class MockManagedQueryExecution
 
     public MockManagedQueryExecution(long memoryUsage, String queryId, int priority)
     {
-        this(memoryUsage, queryId, priority, new Duration(0, MILLISECONDS));
+        this(memoryUsage, queryId, priority, 0L);
     }
 
-    public MockManagedQueryExecution(long memoryUsage, String queryId, int priority, Duration cpuUsage)
+    public MockManagedQueryExecution(long memoryUsage, String queryId, int priority, long cpuUsageInNanos)
     {
-        this(memoryUsage, queryId, priority, cpuUsage, null);
+        this(memoryUsage, queryId, priority, cpuUsageInNanos, null);
     }
 
-    public MockManagedQueryExecution(long memoryUsage, String queryId, int priority, Duration cpuUsage, ResourceGroupId resourceGroupId)
+    public MockManagedQueryExecution(long memoryUsage, String queryId, int priority, long cpuUsageInNanos, ResourceGroupId resourceGroupId)
     {
         this.memoryUsage = memoryUsage;
-        this.cpuUsage = cpuUsage;
+        this.cpuUsageInNanos = cpuUsageInNanos;
         this.session = testSessionBuilder()
                 .setSystemProperty(QUERY_PRIORITY, String.valueOf(priority))
                 .build();
@@ -125,11 +122,11 @@ public class MockManagedQueryExecution
                 new BasicQueryStats(
                         1L,
                         2L,
-                        new Duration(2, NANOSECONDS),
-                        new Duration(3, NANOSECONDS),
-                        new Duration(4, NANOSECONDS),
-                        new Duration(5, NANOSECONDS),
-                        new Duration(1, NANOSECONDS),
+                        2,
+                        3,
+                        4,
+                        5,
+                        1,
                         5,
                         5,
                         6,
@@ -146,8 +143,8 @@ public class MockManagedQueryExecution
                         new DataSize(20, BYTE),
                         new DataSize(21, BYTE),
                         new DataSize(42, BYTE),
-                        new Duration(22, NANOSECONDS),
-                        new Duration(23, NANOSECONDS),
+                        22,
+                        23,
                         false,
                         ImmutableSet.of(),
                         new DataSize(24, BYTE),
@@ -171,9 +168,9 @@ public class MockManagedQueryExecution
     }
 
     @Override
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
-        return cpuUsage;
+        return cpuUsageInNanos;
     }
 
     public QueryState getState()

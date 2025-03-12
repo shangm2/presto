@@ -26,9 +26,11 @@ import io.airlift.units.Duration;
 import java.util.Optional;
 
 import static com.facebook.airlift.json.JsonCodec.jsonCodec;
+import static com.facebook.presto.common.Utils.checkNonNegative;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.toIntExact;
-import static java.util.Objects.requireNonNull;
 
 @ThriftStruct
 public class TableFinishInfo
@@ -39,10 +41,10 @@ public class TableFinishInfo
 
     private final String serializedConnectorOutputMetadata;
     private final boolean jsonLengthLimitExceeded;
-    private final Duration statisticsWallTime;
-    private final Duration statisticsCpuTime;
+    private final long statisticsWallTimeInNanos;
+    private final long statisticsCpuTimeInNanos;
 
-    public TableFinishInfo(Optional<ConnectorOutputMetadata> metadata, Duration statisticsWallTime, Duration statisticsCpuTime)
+    public TableFinishInfo(Optional<ConnectorOutputMetadata> metadata, long statisticsWallTimeInNanos, long statisticsCpuTimeInNanos)
     {
         String serializedConnectorOutputMetadata = null;
         boolean jsonLengthLimitExceeded = false;
@@ -59,8 +61,16 @@ public class TableFinishInfo
         }
         this.serializedConnectorOutputMetadata = serializedConnectorOutputMetadata;
         this.jsonLengthLimitExceeded = jsonLengthLimitExceeded;
-        this.statisticsWallTime = requireNonNull(statisticsWallTime, "statisticsWallTime is null");
-        this.statisticsCpuTime = requireNonNull(statisticsCpuTime, "statisticsCpuTime is null");
+        this.statisticsWallTimeInNanos = checkNonNegative(statisticsWallTimeInNanos, "statisticsWallTime is negative");
+        this.statisticsCpuTimeInNanos = checkNonNegative(statisticsCpuTimeInNanos, "statisticsCpuTime is negative");
+    }
+
+    public TableFinishInfo(String serializedConnectorOutputMetadata, boolean jsonLengthLimitExceeded, long statisticsWallTimeInNanos, long statisticsCpuTimeInNanos)
+    {
+        this.serializedConnectorOutputMetadata = serializedConnectorOutputMetadata;
+        this.jsonLengthLimitExceeded = jsonLengthLimitExceeded;
+        this.statisticsWallTimeInNanos = checkNonNegative(statisticsWallTimeInNanos, "statisticsWallTimeInNanos is negative");
+        this.statisticsCpuTimeInNanos = checkNonNegative(statisticsCpuTimeInNanos, "statisticsCpuTimeInNanos is negative");
     }
 
     @JsonCreator
@@ -71,10 +81,7 @@ public class TableFinishInfo
             @JsonProperty("statisticsWallTime") Duration statisticsWallTime,
             @JsonProperty("statisticsCpuTime") Duration statisticsCpuTime)
     {
-        this.serializedConnectorOutputMetadata = serializedConnectorOutputMetadata;
-        this.jsonLengthLimitExceeded = jsonLengthLimitExceeded;
-        this.statisticsWallTime = requireNonNull(statisticsWallTime, "statisticsWallTime is null");
-        this.statisticsCpuTime = requireNonNull(statisticsCpuTime, "statisticsCpuTime is null");
+        this(serializedConnectorOutputMetadata, jsonLengthLimitExceeded, toTimeStampInNanos(statisticsWallTime), toTimeStampInNanos(statisticsCpuTime));
     }
 
     @JsonProperty
@@ -95,14 +102,24 @@ public class TableFinishInfo
     @ThriftField(3)
     public Duration getStatisticsWallTime()
     {
-        return statisticsWallTime;
+        return succinctNanos(statisticsWallTimeInNanos);
+    }
+
+    public long getStatisticsWallTimeInNanos()
+    {
+        return statisticsWallTimeInNanos;
     }
 
     @JsonProperty
     @ThriftField(4)
     public Duration getStatisticsCpuTime()
     {
-        return statisticsCpuTime;
+        return succinctNanos(statisticsCpuTimeInNanos);
+    }
+
+    public long getStatisticsCpuTimeInNanos()
+    {
+        return statisticsCpuTimeInNanos;
     }
 
     @Override

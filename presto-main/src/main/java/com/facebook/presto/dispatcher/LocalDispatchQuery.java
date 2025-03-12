@@ -34,7 +34,6 @@ import com.facebook.presto.spi.resourceGroups.ResourceGroupQueryLimits;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import io.airlift.units.Duration;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -52,7 +51,6 @@ import static com.facebook.presto.spi.StandardErrorCode.USER_CANCELED;
 import static com.facebook.presto.util.Failures.toFailure;
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class LocalDispatchQuery
         implements DispatchQuery
@@ -250,15 +248,15 @@ public class LocalDispatchQuery
         if (queryInfo.getState() == FAILED) {
             ExecutionFailureInfo failureInfo = stateMachine.getFailureInfo()
                     .orElseGet(() -> toFailure(new PrestoException(GENERIC_INTERNAL_ERROR, "Query failed for an unknown reason")));
-            return DispatchInfo.failed(failureInfo, queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
+            return DispatchInfo.failed(failureInfo, queryInfo.getQueryStats().getElapsedTimeInNanos(), queryInfo.getQueryStats().getWaitingForPrerequisitesTimeInNanos(), queryInfo.getQueryStats().getQueuedTimeInNanos());
         }
         if (dispatched) {
-            return DispatchInfo.dispatched(new LocalCoordinatorLocation(), queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
+            return DispatchInfo.dispatched(new LocalCoordinatorLocation(), queryInfo.getQueryStats().getElapsedTimeInNanos(), queryInfo.getQueryStats().getWaitingForPrerequisitesTimeInNanos(), queryInfo.getQueryStats().getQueuedTimeInNanos());
         }
         if (queryInfo.getState() == QUEUED) {
-            return DispatchInfo.queued(queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime(), queryInfo.getQueryStats().getQueuedTime());
+            return DispatchInfo.queued(queryInfo.getQueryStats().getElapsedTimeInNanos(), queryInfo.getQueryStats().getWaitingForPrerequisitesTimeInNanos(), queryInfo.getQueryStats().getQueuedTimeInNanos());
         }
-        return DispatchInfo.waitingForPrerequisites(queryInfo.getQueryStats().getElapsedTime(), queryInfo.getQueryStats().getWaitingForPrerequisitesTime());
+        return DispatchInfo.waitingForPrerequisites(queryInfo.getQueryStats().getElapsedTimeInNanos(), queryInfo.getQueryStats().getWaitingForPrerequisitesTimeInNanos());
     }
 
     @Override
@@ -292,11 +290,11 @@ public class LocalDispatchQuery
     }
 
     @Override
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
         return tryGetQueryExecution()
-                .map(QueryExecution::getTotalCpuTime)
-                .orElseGet(() -> new Duration(0, MILLISECONDS));
+                .map(QueryExecution::getTotalCpuTimeInNanos)
+                .orElse(0L);
     }
 
     @Override

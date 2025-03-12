@@ -72,8 +72,10 @@ import static com.facebook.presto.server.TaskResourceUtils.convertToThriftTaskIn
 import static com.facebook.presto.server.TaskResourceUtils.isThriftRequest;
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
 import static com.facebook.presto.util.TaskUtils.randomizeWaitTime;
+import static com.facebook.presto.util.TaskUtils.randomizeWaitTimeInMillis;
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -157,7 +159,7 @@ public class TaskResource
     public void getTaskInfo(
             @PathParam("taskId") final TaskId taskId,
             @HeaderParam(PRESTO_CURRENT_STATE) TaskState currentState,
-            @HeaderParam(PRESTO_MAX_WAIT) Duration maxWait,
+            @HeaderParam(PRESTO_MAX_WAIT) long maxWaitInNanos,
             @Context UriInfo uriInfo,
             @Context HttpHeaders httpHeaders,
             @Suspended AsyncResponse asyncResponse)
@@ -166,7 +168,7 @@ public class TaskResource
 
         boolean isThriftRequest = isThriftRequest(httpHeaders);
 
-        if (currentState == null || maxWait == null) {
+        if (currentState == null || maxWaitInNanos == 0) {
             TaskInfo taskInfo = taskManager.getTaskInfo(taskId);
             if (shouldSummarize(uriInfo)) {
                 taskInfo = taskInfo.summarize();
@@ -179,7 +181,7 @@ public class TaskResource
             return;
         }
 
-        Duration waitTime = randomizeWaitTime(maxWait);
+        Duration waitTime = randomizeWaitTime(succinctNanos(maxWaitInNanos));
         ListenableFuture<TaskInfo> futureTaskInfo = addTimeout(
                 taskManager.getTaskInfo(taskId, currentState),
                 () -> taskManager.getTaskInfo(taskId),
@@ -210,30 +212,30 @@ public class TaskResource
     public void getTaskStatus(
             @PathParam("taskId") TaskId taskId,
             @HeaderParam(PRESTO_CURRENT_STATE) TaskState currentState,
-            @HeaderParam(PRESTO_MAX_WAIT) Duration maxWait,
+            @HeaderParam(PRESTO_MAX_WAIT) Long maxWaitInMillis,
             @Context UriInfo uriInfo,
             @Suspended AsyncResponse asyncResponse)
     {
         requireNonNull(taskId, "taskId is null");
 
-        if (currentState == null || maxWait == null) {
+        if (currentState == null || maxWaitInMillis == null) {
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
             asyncResponse.resume(taskStatus);
             return;
         }
 
-        Duration waitTime = randomizeWaitTime(maxWait);
+        long waitTimeInMillis = randomizeWaitTimeInMillis(maxWaitInMillis);
         // TODO: With current implementation, a newly completed driver group won't trigger immediate HTTP response,
         // leading to a slight delay of approx 1 second, which is not a major issue for any query that are heavy weight enough
         // to justify group-by-group execution. In order to fix this, REST endpoint /v1/{task}/status will need change.
         ListenableFuture<TaskStatus> futureTaskStatus = addTimeout(
                 taskManager.getTaskStatus(taskId, currentState),
                 () -> taskManager.getTaskStatus(taskId),
-                waitTime,
+                new Duration(waitTimeInMillis, MILLISECONDS),
                 timeoutExecutor);
 
         // For hard timeout, add an additional time to max wait for thread scheduling contention and GC
-        Duration timeout = new Duration(waitTime.toMillis() + ADDITIONAL_WAIT_TIME.toMillis(), MILLISECONDS);
+        Duration timeout = new Duration(waitTimeInMillis + ADDITIONAL_WAIT_TIME.toMillis(), MILLISECONDS);
         bindAsyncResponse(asyncResponse, futureTaskStatus, responseExecutor)
                 .withTimeout(timeout);
     }

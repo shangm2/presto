@@ -54,6 +54,7 @@ import static com.facebook.presto.operator.TestingTaskBuffer.PAGE;
 import static com.facebook.presto.testing.TestingTaskContext.createTaskContext;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
@@ -90,7 +91,7 @@ public class TestExchangeOperator
                 new DataSize(32, MEGABYTE),
                 new DataSize(10, MEGABYTE),
                 3,
-                new Duration(1, TimeUnit.MINUTES),
+                new Duration(1, TimeUnit.MINUTES).roundTo(NANOSECONDS),
                 true,
                 0.2,
                 new HttpShuffleClientProvider(httpClient),

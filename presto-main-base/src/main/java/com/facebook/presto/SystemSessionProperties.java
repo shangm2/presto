@@ -77,6 +77,7 @@ import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinDistributionTy
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinReorderingStrategy.ELIMINATE_CROSS_JOINS;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.PartialAggregationStrategy.ALWAYS;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.PartialAggregationStrategy.NEVER;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.lang.Boolean.TRUE;
@@ -2114,14 +2115,14 @@ public final class SystemSessionProperties
         return session.getSystemProperty(QUERY_MAX_TOTAL_MEMORY_PER_NODE, DataSize.class);
     }
 
-    public static Duration getQueryMaxRunTime(Session session)
+    public static long getQueryMaxRunTimeInNanos(Session session)
     {
-        return session.getSystemProperty(QUERY_MAX_RUN_TIME, Duration.class);
+        return toTimeStampInNanos(session.getSystemProperty(QUERY_MAX_RUN_TIME, Duration.class));
     }
 
-    public static Duration getQueryMaxExecutionTime(Session session)
+    public static long getQueryMaxExecutionTimeInNanos(Session session)
     {
-        return session.getSystemProperty(QUERY_MAX_EXECUTION_TIME, Duration.class);
+        return toTimeStampInNanos(session.getSystemProperty(QUERY_MAX_EXECUTION_TIME, Duration.class));
     }
 
     public static boolean resourceOvercommit(Session session)
@@ -2210,9 +2211,9 @@ public final class SystemSessionProperties
         return session.getSystemProperty(SPLIT_CONCURRENCY_ADJUSTMENT_INTERVAL, Duration.class);
     }
 
-    public static Duration getQueryMaxCpuTime(Session session)
+    public static long getQueryMaxCpuTimeInNanos(Session session)
     {
-        return session.getSystemProperty(QUERY_MAX_CPU_TIME, Duration.class);
+        return toTimeStampInNanos(session.getSystemProperty(QUERY_MAX_CPU_TIME, Duration.class));
     }
 
     public static DataSize getQueryMaxWrittenIntermediateBytesLimit(Session session)

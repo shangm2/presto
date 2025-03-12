@@ -74,7 +74,7 @@ import static com.facebook.airlift.concurrent.MoreFutures.addTimeout;
 import static com.facebook.airlift.concurrent.Threads.threadsNamed;
 import static com.facebook.airlift.http.server.AsyncResponseHandler.bindAsyncResponse;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_PREFIX_URL;
-import static com.facebook.presto.server.protocol.QueryResourceUtil.NO_DURATION;
+import static com.facebook.presto.server.protocol.QueryResourceUtil.NO_DURATION_IN_NANOS;
 import static com.facebook.presto.server.protocol.QueryResourceUtil.abortIfPrefixUrlInvalid;
 import static com.facebook.presto.server.protocol.QueryResourceUtil.createQueuedQueryResults;
 import static com.facebook.presto.server.protocol.QueryResourceUtil.getQueuedUri;
@@ -188,6 +188,7 @@ public class QueuedStatementResource
      * Presto performs lazy execution. The submission of a query returns
      * a placeholder for the result set, but the query gets
      * scheduled/dispatched only when the client polls for results
+     *
      * @param statement The statement or sql query string submitted
      * @param xForwardedProto Forwarded protocol (http or https)
      * @param servletRequest The http request
@@ -278,6 +279,7 @@ public class QueuedStatementResource
 
     /**
      * HTTP endpoint for re-processing a failed query
+     *
      * @param queryId Query Identifier of the query to be retried
      * @param xForwardedProto Forwarded protocol (http or https)
      * @param uriInfo {@link javax.ws.rs.core.UriInfo}
@@ -327,6 +329,7 @@ public class QueuedStatementResource
 
     /**
      * HTTP endpoint for retrieving the status of a submitted query
+     *
      * @param queryId Query Identifier of query whose status is polled
      * @param token Monotonically increasing token that identifies the next batch of query results
      * @param slug Unique security token generated for each query that controls access to that query's results
@@ -376,6 +379,7 @@ public class QueuedStatementResource
 
     /**
      * HTTP endpoint to cancel execution of a query in flight
+     *
      * @param queryId Query Identifier of query to be canceled
      * @param token Monotonically increasing token that identifies the next batch of query results
      * @param slug Unique security token generated for each query that controls access to that query's results
@@ -546,6 +550,7 @@ public class QueuedStatementResource
 
         /**
          * Returns a placeholder for query results for the client to poll
+         *
          * @param uriInfo {@link javax.ws.rs.core.UriInfo}
          * @param xForwardedProto Forwarded protocol (http or https)
          * @return {@link com.facebook.presto.client.QueryResults}
@@ -559,7 +564,7 @@ public class QueuedStatementResource
                     uriInfo,
                     xForwardedProto,
                     xPrestoPrefixUrl,
-                    DispatchInfo.waitingForPrerequisites(NO_DURATION, NO_DURATION),
+                    DispatchInfo.waitingForPrerequisites(NO_DURATION_IN_NANOS, NO_DURATION_IN_NANOS),
                     binaryResults);
         }
 
@@ -589,7 +594,7 @@ public class QueuedStatementResource
                             uriInfo,
                             xForwardedProto,
                             xPrestoPrefixUrl,
-                            DispatchInfo.waitingForPrerequisites(NO_DURATION, NO_DURATION),
+                            DispatchInfo.waitingForPrerequisites(NO_DURATION_IN_NANOS, NO_DURATION_IN_NANOS),
                             binaryResults);
                     return immediateFuture(withCompressionConfiguration(Response.ok(queryResults), compressionEnabled).build());
                 }
@@ -646,9 +651,9 @@ public class QueuedStatementResource
                     uriInfo,
                     xForwardedProto,
                     xPrestoPrefixUrl,
-                    dispatchInfo.getElapsedTime(),
-                    dispatchInfo.getQueuedTime(),
-                    dispatchInfo.getWaitingForPrerequisitesTime());
+                    dispatchInfo.getElapsedTimeInNanos(),
+                    dispatchInfo.getQueuedTimeInNanos(),
+                    dispatchInfo.getWaitingForPrerequisitesTimeInNanos());
         }
 
         private static String createSlug()

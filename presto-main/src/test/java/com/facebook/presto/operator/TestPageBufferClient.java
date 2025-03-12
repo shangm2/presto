@@ -58,6 +58,7 @@ import static com.facebook.presto.spi.StandardErrorCode.PAGE_TRANSPORT_TIMEOUT;
 import static com.facebook.presto.util.Failures.WORKER_NODE_ERROR;
 import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertEquals;
 
 public class TestPageBufferClient
@@ -103,7 +104,7 @@ public class TestPageBufferClient
         URI location = URI.create("http://localhost:8080");
         PageBufferClient client = new PageBufferClient(
                 new HttpRpcShuffleClient(new TestingHttpClient(processor, scheduler), location),
-                new Duration(1, TimeUnit.MINUTES),
+                new Duration(1, TimeUnit.MINUTES).roundTo(NANOSECONDS),
                 true,
                 location,
                 callback,
@@ -189,7 +190,7 @@ public class TestPageBufferClient
         URI location = URI.create("http://localhost:8080");
         PageBufferClient client = new PageBufferClient(
                 new HttpRpcShuffleClient(new TestingHttpClient(processor, scheduler), location),
-                new Duration(1, TimeUnit.MINUTES),
+                new Duration(1, TimeUnit.MINUTES).roundTo(NANOSECONDS),
                 true,
                 location,
                 callback,
@@ -230,7 +231,7 @@ public class TestPageBufferClient
         URI location = URI.create("http://localhost:8080");
         PageBufferClient client = new PageBufferClient(
                 new HttpRpcShuffleClient(new TestingHttpClient(processor, scheduler), location),
-                new Duration(1, TimeUnit.MINUTES),
+                new Duration(1, TimeUnit.MINUTES).roundTo(NANOSECONDS),
                 true,
                 location,
                 callback,
@@ -299,7 +300,7 @@ public class TestPageBufferClient
         URI location = URI.create("http://localhost:8080");
         PageBufferClient client = new PageBufferClient(
                 new HttpRpcShuffleClient(new TestingHttpClient(processor, scheduler), location),
-                new Duration(1, TimeUnit.MINUTES),
+                new Duration(1, TimeUnit.MINUTES).roundTo(NANOSECONDS),
                 true,
                 location,
                 callback,
@@ -354,7 +355,7 @@ public class TestPageBufferClient
         URI location = URI.create("http://localhost:8080");
         PageBufferClient client = new PageBufferClient(
                 new HttpRpcShuffleClient(new TestingHttpClient(processor, scheduler), location),
-                new Duration(30, TimeUnit.SECONDS),
+                new Duration(30, TimeUnit.SECONDS).roundTo(NANOSECONDS),
                 true,
                 location,
                 callback,

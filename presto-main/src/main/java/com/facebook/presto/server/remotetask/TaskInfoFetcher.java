@@ -44,7 +44,6 @@ import com.facebook.presto.server.thrift.ThriftHttpResponseHandler;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.GuardedBy;
 
@@ -64,6 +63,7 @@ import static com.facebook.airlift.http.client.ResponseHandlerUtils.propagate;
 import static com.facebook.airlift.http.client.StaticBodyGenerator.createStaticBodyGenerator;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.server.RequestErrorTracker.taskRequestErrorTracker;
 import static com.facebook.presto.server.RequestHelpers.setContentTypeHeaders;
 import static com.facebook.presto.server.TaskResourceUtils.convertFromThriftTaskInfo;
@@ -74,6 +74,7 @@ import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
 import static io.airlift.units.Duration.nanosSince;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class TaskInfoFetcher
         implements SimpleHttpResponseCallback<TaskInfo>
@@ -86,7 +87,7 @@ public class TaskInfoFetcher
     private final Codec<MetadataUpdates> metadataUpdatesCodec;
 
     private final long updateIntervalMillis;
-    private final Duration taskInfoRefreshMaxWait;
+    private final long taskInfoRefreshMaxWaitInNanos;
     private final AtomicLong lastUpdateNanos = new AtomicLong();
 
     private final ScheduledExecutorService updateScheduledExecutor;
@@ -127,11 +128,11 @@ public class TaskInfoFetcher
             Consumer<Throwable> onFail,
             TaskInfo initialTask,
             HttpClient httpClient,
-            Duration updateInterval,
-            Duration taskInfoRefreshMaxWait,
+            long updateIntervalInNanos,
+            long taskInfoRefreshMaxWaitInNanos,
             Codec<TaskInfo> taskInfoCodec,
             Codec<MetadataUpdates> metadataUpdatesCodec,
-            Duration maxErrorDuration,
+            long maxErrorDurationInNanos,
             boolean summarizeTaskInfo,
             Executor executor,
             ScheduledExecutorService updateScheduledExecutor,
@@ -157,10 +158,10 @@ public class TaskInfoFetcher
 
         this.metadataUpdatesCodec = requireNonNull(metadataUpdatesCodec, "metadataUpdatesCodec is null");
 
-        this.updateIntervalMillis = requireNonNull(updateInterval, "updateInterval is null").toMillis();
-        this.taskInfoRefreshMaxWait = requireNonNull(taskInfoRefreshMaxWait, "taskInfoRefreshMaxWait is null");
+        this.updateIntervalMillis = NANOSECONDS.toMillis(checkNonNegative(updateIntervalInNanos, "updateInterval is negative"));
+        this.taskInfoRefreshMaxWaitInNanos = checkNonNegative(taskInfoRefreshMaxWaitInNanos, "taskInfoRefreshMaxWaitInNanos is negative");
         this.updateScheduledExecutor = requireNonNull(updateScheduledExecutor, "updateScheduledExecutor is null");
-        this.errorTracker = taskRequestErrorTracker(taskId, initialTask.getTaskStatus().getSelf(), maxErrorDuration, errorScheduledExecutor, "getting info for task");
+        this.errorTracker = taskRequestErrorTracker(taskId, initialTask.getTaskStatus().getSelf(), maxErrorDurationInNanos, errorScheduledExecutor, "getting info for task");
 
         this.summarizeTaskInfo = summarizeTaskInfo;
 
@@ -292,9 +293,9 @@ public class TaskInfoFetcher
             responseHandler = createAdaptingJsonResponseHandler((JsonCodec<TaskInfo>) taskInfoCodec);
         }
 
-        if (taskInfoRefreshMaxWait.toMillis() != 0L) {
+        if (taskInfoRefreshMaxWaitInNanos != 0L) {
             requestBuilder.setHeader(PRESTO_CURRENT_STATE, taskStatus.getState().toString())
-                    .setHeader(PRESTO_MAX_WAIT, taskInfoRefreshMaxWait.toString());
+                    .setHeader(PRESTO_MAX_WAIT, String.valueOf(taskInfoRefreshMaxWaitInNanos));
         }
 
         Request request = requestBuilder.setUri(uri).build();

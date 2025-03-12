@@ -36,7 +36,6 @@ import com.facebook.presto.spi.PrestoException;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.units.Duration;
 import io.netty.channel.EventLoop;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -46,6 +45,7 @@ import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.server.RequestErrorTracker.taskRequestErrorTracker;
 import static com.facebook.presto.server.RequestHelpers.getBinaryTransportBuilder;
 import static com.facebook.presto.server.RequestHelpers.getJsonTransportBuilder;
@@ -59,6 +59,7 @@ import static com.google.common.base.Verify.verify;
 import static io.airlift.units.Duration.nanosSince;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 class ContinuousTaskStatusFetcherWithEventLoop
         implements SimpleHttpResponseCallback<TaskStatus>
@@ -70,7 +71,7 @@ class ContinuousTaskStatusFetcherWithEventLoop
     private final StateMachine<TaskStatus> taskStatus;
     private final Codec<TaskStatus> taskStatusCodec;
 
-    private final Duration refreshMaxWait;
+    private final long refreshMaxWaitInNanos;
     private final EventLoop taskEventLoop;
     private final HttpClient httpClient;
     private final RequestErrorTracker errorTracker;
@@ -87,11 +88,11 @@ class ContinuousTaskStatusFetcherWithEventLoop
             Consumer<Throwable> onFail,
             TaskId taskId,
             TaskStatus initialTaskStatus,
-            Duration refreshMaxWait,
+            long refreshMaxWaitInNanos,
             Codec<TaskStatus> taskStatusCodec,
             EventLoop taskEventLoop,
             HttpClient httpClient,
-            Duration maxErrorDuration,
+            long maxErrorDurationInNanos,
             RemoteTaskStats stats,
             boolean binaryTransportEnabled,
             boolean thriftTransportEnabled,
@@ -103,13 +104,13 @@ class ContinuousTaskStatusFetcherWithEventLoop
         this.onFail = requireNonNull(onFail, "onFail is null");
         this.taskStatus = new StateMachine<>("task-" + taskId, taskEventLoop, initialTaskStatus);
 
-        this.refreshMaxWait = requireNonNull(refreshMaxWait, "refreshMaxWait is null");
+        this.refreshMaxWaitInNanos = checkNonNegative(refreshMaxWaitInNanos, "refreshMaxWaitInNanos is negative");
         this.taskStatusCodec = requireNonNull(taskStatusCodec, "taskStatusCodec is null");
 
         this.taskEventLoop = requireNonNull(taskEventLoop, "taskEventLoop is null");
         this.httpClient = requireNonNull(httpClient, "httpClient is null");
 
-        this.errorTracker = taskRequestErrorTracker(taskId, initialTaskStatus.getSelf(), maxErrorDuration, taskEventLoop, "getting task status");
+        this.errorTracker = taskRequestErrorTracker(taskId, initialTaskStatus.getSelf(), maxErrorDurationInNanos, taskEventLoop, "getting task status");
         this.stats = requireNonNull(stats, "stats is null");
         this.binaryTransportEnabled = binaryTransportEnabled;
         this.thriftTransportEnabled = thriftTransportEnabled;
@@ -181,7 +182,7 @@ class ContinuousTaskStatusFetcherWithEventLoop
 
         Request request = requestBuilder.setUri(uriBuilderFrom(taskStatus.getSelf()).appendPath("status").build())
                 .setHeader(PRESTO_CURRENT_STATE, taskStatus.getState().toString())
-                .setHeader(PRESTO_MAX_WAIT, refreshMaxWait.toString())
+                .setHeader(PRESTO_MAX_WAIT, String.valueOf(NANOSECONDS.toMillis(refreshMaxWaitInNanos)))
                 .build();
 
         errorTracker.startRequest();

@@ -134,8 +134,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static com.facebook.presto.Session.SessionBuilder;
-import static com.facebook.presto.SystemSessionProperties.getQueryMaxExecutionTime;
-import static com.facebook.presto.SystemSessionProperties.getQueryMaxRunTime;
+import static com.facebook.presto.SystemSessionProperties.getQueryMaxExecutionTimeInNanos;
+import static com.facebook.presto.SystemSessionProperties.getQueryMaxRunTimeInNanos;
 import static com.facebook.presto.execution.QueryState.FAILED;
 import static com.facebook.presto.execution.QueryState.PLANNING;
 import static com.facebook.presto.execution.StageInfo.getAllStages;
@@ -155,6 +155,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Ticker.systemTicker;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.airlift.units.Duration.succinctNanos;
 import static java.lang.Math.max;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -651,9 +652,9 @@ public class PrestoSparkQueryExecutionFactory
                             warningCollector)));
 
             // including queueing time
-            Duration queryMaxRunTime = getQueryMaxRunTime(session);
+            Duration queryMaxRunTime = succinctNanos(getQueryMaxRunTimeInNanos(session));
             // excluding queueing time
-            Duration queryMaxExecutionTime = getQueryMaxExecutionTime(session);
+            Duration queryMaxExecutionTime = succinctNanos(getQueryMaxExecutionTimeInNanos(session));
             // pick a smaller one as we are not tracking queueing for Presto on Spark
             Duration queryTimeout = queryMaxRunTime.compareTo(queryMaxExecutionTime) < 0 ? queryMaxRunTime : queryMaxExecutionTime;
 

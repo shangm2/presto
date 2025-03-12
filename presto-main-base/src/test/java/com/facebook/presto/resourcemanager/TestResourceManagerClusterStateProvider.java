@@ -64,6 +64,7 @@ import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static io.airlift.units.DataSize.succinctBytes;
 import static java.lang.String.format;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
@@ -749,11 +750,11 @@ public class TestResourceManagerClusterStateProvider
                 new BasicQueryStats(
                         new DateTime("1991-09-06T05:00").getMillis(),
                         new DateTime("1991-09-06T05:01").getMillis(),
-                        Duration.valueOf("6m"),
-                        Duration.valueOf("8m"),
-                        Duration.valueOf("7m"),
-                        Duration.valueOf("34m"),
-                        Duration.valueOf("10m"),
+                        Duration.valueOf("6m").roundTo(NANOSECONDS),
+                        Duration.valueOf("8m").roundTo(NANOSECONDS),
+                        Duration.valueOf("7m").roundTo(NANOSECONDS),
+                        Duration.valueOf("34m").roundTo(NANOSECONDS),
+                        Duration.valueOf("10m").roundTo(NANOSECONDS),
                         11,
                         12,
                         13,
@@ -770,8 +771,8 @@ public class TestResourceManagerClusterStateProvider
                         DataSize.valueOf("26GB"),
                         DataSize.valueOf("27GB"),
                         DataSize.valueOf("28GB"),
-                        Duration.valueOf("23m"),
-                        Duration.valueOf("24m"),
+                        Duration.valueOf("23m").roundTo(NANOSECONDS),
+                        Duration.valueOf("24m").roundTo(NANOSECONDS),
                         true,
                         ImmutableSet.of(WAITING_FOR_MEMORY),
                         DataSize.valueOf("123MB"),

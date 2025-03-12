@@ -578,16 +578,16 @@ public final class HttpRequestSessionContext
             try {
                 switch (name.toUpperCase()) {
                     case ResourceEstimates.EXECUTION_TIME:
-                        builder.setExecutionTime(Duration.valueOf(value));
+                        builder.setExecutionTimeInNanos(Duration.valueOf(value));
                         break;
                     case ResourceEstimates.CPU_TIME:
-                        builder.setCpuTime(Duration.valueOf(value));
+                        builder.setCpuTimeInNanos(Duration.valueOf(value));
                         break;
                     case ResourceEstimates.PEAK_MEMORY:
-                        builder.setPeakMemory(DataSize.valueOf(value));
+                        builder.setPeakMemoryInBytes(DataSize.valueOf(value));
                         break;
                     case ResourceEstimates.PEAK_TASK_MEMORY:
-                        builder.setPeakTaskMemory(DataSize.valueOf(value));
+                        builder.setPeakTaskMemoryInBytes(DataSize.valueOf(value));
                         break;
                     default:
                         throw badRequest(format("Unsupported resource name %s", name));

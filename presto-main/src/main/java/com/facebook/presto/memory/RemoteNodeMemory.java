@@ -26,7 +26,6 @@ import com.facebook.presto.metadata.InternalNode;
 import com.facebook.presto.server.smile.BaseResponse;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
-import io.airlift.units.Duration;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
@@ -47,7 +46,7 @@ import static com.facebook.presto.server.smile.SmileBodyGenerator.smileBodyGener
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.units.Duration.nanosSince;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 @ThreadSafe
 public class RemoteNodeMemory
@@ -99,14 +98,14 @@ public class RemoteNodeMemory
 
     public void asyncRefresh(MemoryPoolAssignmentsRequest assignments)
     {
-        Duration sinceUpdate = nanosSince(lastUpdateNanos.get());
+        long sinceUpdateInNanos = lastUpdateNanos.get();
         if (nanosSince(lastWarningLogged.get()).toMillis() > 1_000 &&
-                sinceUpdate.toMillis() > 10_000 &&
+                NANOSECONDS.toMillis(sinceUpdateInNanos) > 10_000 &&
                 future.get() != null) {
-            log.warn("Memory info update request to %s has not returned in %s", memoryInfoUri, sinceUpdate.toString(SECONDS));
+            log.warn("Memory info update request to %s has not returned in %s seconds", memoryInfoUri, NANOSECONDS.toSeconds(sinceUpdateInNanos));
             lastWarningLogged.set(System.nanoTime());
         }
-        if (sinceUpdate.toMillis() > 1_000 && future.get() == null) {
+        if (NANOSECONDS.toMillis(sinceUpdateInNanos) > 1_000 && future.get() == null) {
             Request request = setContentTypeHeaders(isBinaryTransportEnabled, preparePost())
                     .setUri(memoryInfoUri)
                     .setBodyGenerator(createBodyGenerator(assignments))

@@ -61,6 +61,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -557,7 +558,7 @@ public class TestExchangeClient
                 bufferCapacity,
                 maxResponseSize,
                 1,
-                new Duration(1, MINUTES),
+                new Duration(1, MINUTES).roundTo(NANOSECONDS),
                 true,
                 0.2,
                 new HttpShuffleClientProvider(new TestingHttpClient(processor, testingHttpClientExecutor)),

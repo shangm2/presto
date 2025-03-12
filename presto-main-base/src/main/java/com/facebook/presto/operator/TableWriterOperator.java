@@ -61,11 +61,13 @@ import static com.facebook.airlift.concurrent.MoreFutures.toListenableFuture;
 import static com.facebook.presto.SystemSessionProperties.isStatisticsCpuTimerEnabled;
 import static com.facebook.presto.common.RuntimeMetricName.WRITTEN_FILES_COUNT;
 import static com.facebook.presto.common.RuntimeUnit.NONE;
+import static com.facebook.presto.common.Utils.checkNonNegative;
 import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.VarbinaryType.VARBINARY;
 import static com.facebook.presto.operator.TableWriterUtils.STATS_START_CHANNEL;
 import static com.facebook.presto.operator.TableWriterUtils.createStatisticsPage;
 import static com.facebook.presto.spi.StandardErrorCode.CONSTRAINT_VIOLATION;
+import static com.facebook.presto.util.DurationUtils.toTimeStampInNanos;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -73,12 +75,12 @@ import static com.google.common.util.concurrent.Futures.allAsList;
 import static io.airlift.slice.Slices.wrappedBuffer;
 import static io.airlift.units.Duration.succinctNanos;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class TableWriterOperator
         implements Operator
 {
     public static final String OPERATOR_TYPE = "TableWriterOperator";
+
     public static class TableWriterOperatorFactory
             implements OperatorFactory
     {
@@ -508,9 +510,20 @@ public class TableWriterOperator
             implements Mergeable<TableWriterInfo>, OperatorInfo
     {
         private final long pageSinkPeakMemoryUsage;
-        private final Duration statisticsWallTime;
-        private final Duration statisticsCpuTime;
-        private final Duration validationCpuTime;
+        private final long statisticsWallTimeInNanos;
+        private final long statisticsCpuTimeInNanos;
+        private final long validationCpuTimeInNanos;
+
+        public TableWriterInfo(long pageSinkPeakMemoryUsage,
+                long statisticsWallTimeInNanos,
+                long statisticsCpuTimeInNanos,
+                long validationCpuTimeInNanos)
+        {
+            this.pageSinkPeakMemoryUsage = pageSinkPeakMemoryUsage;
+            this.statisticsWallTimeInNanos = checkNonNegative(statisticsWallTimeInNanos, "statisticsWallTimeInNanos is negative");
+            this.statisticsCpuTimeInNanos = checkNonNegative(statisticsCpuTimeInNanos, "statisticsCpuTimeInNanos is negative");
+            this.validationCpuTimeInNanos = checkNonNegative(validationCpuTimeInNanos, "validationCpuTimeInNanos is negative");
+        }
 
         @JsonCreator
         @ThriftConstructor
@@ -520,10 +533,7 @@ public class TableWriterOperator
                 @JsonProperty("statisticsCpuTime") Duration statisticsCpuTime,
                 @JsonProperty("validationCpuTime") Duration validationCpuTime)
         {
-            this.pageSinkPeakMemoryUsage = pageSinkPeakMemoryUsage;
-            this.statisticsWallTime = requireNonNull(statisticsWallTime, "statisticsWallTime is null");
-            this.statisticsCpuTime = requireNonNull(statisticsCpuTime, "statisticsCpuTime is null");
-            this.validationCpuTime = requireNonNull(validationCpuTime, "validationCpuTime is null");
+            this(pageSinkPeakMemoryUsage, toTimeStampInNanos(statisticsWallTime), toTimeStampInNanos(statisticsCpuTime), toTimeStampInNanos(validationCpuTime));
         }
 
         @JsonProperty
@@ -537,21 +547,36 @@ public class TableWriterOperator
         @ThriftField(2)
         public Duration getStatisticsWallTime()
         {
-            return statisticsWallTime;
+            return succinctNanos(statisticsWallTimeInNanos);
+        }
+
+        public long getStatisticsWallTimeInNanos()
+        {
+            return statisticsWallTimeInNanos;
         }
 
         @JsonProperty
         @ThriftField(3)
         public Duration getStatisticsCpuTime()
         {
-            return statisticsCpuTime;
+            return succinctNanos(statisticsCpuTimeInNanos);
+        }
+
+        public long getStatisticsCpuTimeInNanos()
+        {
+            return statisticsCpuTimeInNanos;
         }
 
         @JsonProperty
         @ThriftField(4)
         public Duration getValidationCpuTime()
         {
-            return validationCpuTime;
+            return succinctNanos(validationCpuTimeInNanos);
+        }
+
+        public long getValidationCpuTimeInNanos()
+        {
+            return validationCpuTimeInNanos;
         }
 
         @Override
@@ -559,9 +584,9 @@ public class TableWriterOperator
         {
             return new TableWriterInfo(
                     Math.max(pageSinkPeakMemoryUsage, other.pageSinkPeakMemoryUsage),
-                    succinctNanos(statisticsWallTime.roundTo(NANOSECONDS) + other.statisticsWallTime.roundTo(NANOSECONDS)),
-                    succinctNanos(statisticsCpuTime.roundTo(NANOSECONDS) + other.statisticsCpuTime.roundTo(NANOSECONDS)),
-                    succinctNanos(validationCpuTime.roundTo(NANOSECONDS) + other.validationCpuTime.roundTo(NANOSECONDS)));
+                    statisticsWallTimeInNanos + other.statisticsWallTimeInNanos,
+                    statisticsCpuTimeInNanos + other.statisticsCpuTimeInNanos,
+                    validationCpuTimeInNanos + other.validationCpuTimeInNanos);
         }
 
         @Override
@@ -575,9 +600,9 @@ public class TableWriterOperator
         {
             return toStringHelper(this)
                     .add("pageSinkPeakMemoryUsage", pageSinkPeakMemoryUsage)
-                    .add("statisticsWallTime", statisticsWallTime)
-                    .add("statisticsCpuTime", statisticsCpuTime)
-                    .add("validationCpuTime", validationCpuTime)
+                    .add("statisticsWallTime", statisticsWallTimeInNanos)
+                    .add("statisticsCpuTime", statisticsCpuTimeInNanos)
+                    .add("validationCpuTime", validationCpuTimeInNanos)
                     .toString();
         }
     }

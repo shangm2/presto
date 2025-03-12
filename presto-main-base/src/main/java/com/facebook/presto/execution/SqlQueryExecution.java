@@ -64,7 +64,6 @@ import com.facebook.presto.sql.planner.optimizations.PlanOptimizer;
 import com.facebook.presto.sql.planner.sanity.PlanChecker;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
@@ -104,7 +103,6 @@ import static com.facebook.presto.util.AnalyzerUtil.getAnalyzerContext;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 @ThreadSafe
 public class SqlQueryExecution
@@ -362,17 +360,17 @@ public class SqlQueryExecution
      * Gets the total cputime spent in executing the query
      */
     @Override
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
         SqlQuerySchedulerInterface scheduler = queryScheduler.get();
         Optional<QueryInfo> finalQueryInfo = stateMachine.getFinalQueryInfo();
         if (finalQueryInfo.isPresent()) {
-            return finalQueryInfo.get().getQueryStats().getTotalCpuTime();
+            return finalQueryInfo.get().getQueryStats().getTotalCpuTimeInNanos();
         }
         if (scheduler == null) {
-            return new Duration(0, SECONDS);
+            return 0L;
         }
-        return scheduler.getTotalCpuTime();
+        return scheduler.getTotalCpuTimeInNanos();
     }
 
     @Override

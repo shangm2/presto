@@ -55,7 +55,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import org.weakref.jmx.Flatten;
 import org.weakref.jmx.Managed;
@@ -99,6 +98,7 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class SqlTaskManager
         implements TaskManager, Closeable
@@ -111,8 +111,8 @@ public class SqlTaskManager
     private final ScheduledExecutorService taskManagementExecutor;
     private final ScheduledExecutorService driverYieldExecutor;
 
-    private final Duration infoCacheTime;
-    private final Duration clientTimeout;
+    private final long infoCacheTimeInNanos;
+    private final long clientTimeoutInNanos;
 
     private final LocalMemoryManager localMemoryManager;
     private final JsonCodec<List<TaskMemoryReservationSummary>> memoryReservationSummaryJsonCodec;
@@ -151,8 +151,8 @@ public class SqlTaskManager
     {
         requireNonNull(nodeInfo, "nodeInfo is null");
         requireNonNull(config, "config is null");
-        infoCacheTime = config.getInfoMaxAge();
-        clientTimeout = config.getClientTimeout();
+        infoCacheTimeInNanos = config.getInfoMaxAgeInNanos();
+        clientTimeoutInNanos = config.getClientTimeout().roundTo(NANOSECONDS);
 
         long maxBufferSizeInBytes = config.getSinkMaxBufferSize().toBytes();
 
@@ -449,7 +449,7 @@ public class SqlTaskManager
         requireNonNull(taskId, "taskId is null");
         requireNonNull(bufferId, "bufferId is null");
         checkArgument(startingSequenceId >= 0, "startingSequenceId is negative");
-        requireNonNull(maxSizeInBytes, "maxSize is null");
+        checkArgument(maxSizeInBytes >= 0, "maxSizeInBytes is negative");
 
         return tasks.getUnchecked(taskId).getTaskResults(bufferId, startingSequenceId, maxSizeInBytes);
     }
@@ -506,7 +506,7 @@ public class SqlTaskManager
 
     public void removeOldTasks()
     {
-        long oldestAllowedTaskInMillis = currentTimeMillis() - infoCacheTime.toMillis();
+        long oldestAllowedTaskInMillis = currentTimeMillis() - NANOSECONDS.toMillis(infoCacheTimeInNanos);
         for (TaskInfo taskInfo : filter(transform(tasks.asMap().values(), SqlTask::getTaskInfo), notNull())) {
             TaskId taskId = taskInfo.getTaskId();
             try {
@@ -524,7 +524,7 @@ public class SqlTaskManager
     public void failAbandonedTasks()
     {
         long nowInMills = currentTimeMillis();
-        long oldestAllowedHeartbeatInMillis = nowInMills - clientTimeout.toMillis();
+        long oldestAllowedHeartbeatInMillis = nowInMills - NANOSECONDS.toMillis(clientTimeoutInNanos);
         for (SqlTask sqlTask : tasks.asMap().values()) {
             try {
                 TaskInfo taskInfo = sqlTask.getTaskInfo();

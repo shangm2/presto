@@ -23,7 +23,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.DataSize;
-import io.airlift.units.Duration;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
@@ -78,7 +77,7 @@ public class ExchangeClient
     private final long bufferCapacity;
     private final DataSize maxResponseSize;
     private final int concurrentRequestMultiplier;
-    private final Duration maxErrorDuration;
+    private final long maxErrorDurationInNanos;
     private final boolean acknowledgePages;
     private final RpcShuffleClientProvider rpcShuffleClientProvider;
     private final ScheduledExecutorService scheduler;
@@ -121,7 +120,7 @@ public class ExchangeClient
             DataSize bufferCapacity,
             DataSize maxResponseSize,
             int concurrentRequestMultiplier,
-            Duration maxErrorDuration,
+            long maxErrorDurationInNanos,
             boolean acknowledgePages,
             double responseSizeExponentialMovingAverageDecayingAlpha,
             RpcShuffleClientProvider rpcShuffleClientProvider,
@@ -133,7 +132,7 @@ public class ExchangeClient
         this.bufferCapacity = bufferCapacity.toBytes();
         this.maxResponseSize = maxResponseSize;
         this.concurrentRequestMultiplier = concurrentRequestMultiplier;
-        this.maxErrorDuration = maxErrorDuration;
+        this.maxErrorDurationInNanos = maxErrorDurationInNanos;
         this.acknowledgePages = acknowledgePages;
         this.rpcShuffleClientProvider = rpcShuffleClientProvider;
         this.scheduler = scheduler;
@@ -186,7 +185,7 @@ public class ExchangeClient
 
         PageBufferClient client = new PageBufferClient(
                 rpcShuffleClientProvider.get(location),
-                maxErrorDuration,
+                maxErrorDurationInNanos,
                 acknowledgePages,
                 location,
                 new ExchangeClientCallback(),

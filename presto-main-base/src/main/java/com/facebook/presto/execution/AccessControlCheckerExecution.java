@@ -36,7 +36,6 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.Inject;
-import io.airlift.units.Duration;
 
 import javax.annotation.Nullable;
 
@@ -52,7 +51,6 @@ import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class AccessControlCheckerExecution
         implements QueryExecution
@@ -161,9 +159,9 @@ public class AccessControlCheckerExecution
     }
 
     @Override
-    public Duration getTotalCpuTime()
+    public long getTotalCpuTimeInNanos()
     {
-        return new Duration(0, NANOSECONDS);
+        return 0L;
     }
 
     @Override
