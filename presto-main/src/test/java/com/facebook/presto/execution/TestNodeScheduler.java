@@ -99,6 +99,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static java.util.concurrent.Executors.newScheduledThreadPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
@@ -175,14 +176,14 @@ public class TestNodeScheduler
 
         private BasicQueryStats getBasicQueryStats(Duration executionTime)
         {
-            Duration defaultDuration = Duration.valueOf("5m");
+            long defaultDuration = Duration.valueOf("5m").roundTo(NANOSECONDS);
             return new BasicQueryStats(
                     0,
                     0,
                     defaultDuration,
                     defaultDuration,
                     defaultDuration,
-                    executionTime,
+                    executionTime.roundTo(NANOSECONDS),
                     defaultDuration,
                     0,
                     0,
@@ -200,8 +201,8 @@ public class TestNodeScheduler
                     null,
                     null,
                     null,
-                    null,
-                    null,
+                    0L,
+                    0L,
                     false,
                     ImmutableSet.of(),
                     DataSize.valueOf("1MB"),

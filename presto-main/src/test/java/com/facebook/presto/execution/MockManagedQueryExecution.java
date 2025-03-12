@@ -42,7 +42,6 @@ import static com.facebook.presto.execution.QueryState.WAITING_FOR_PREREQUISITES
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class MockManagedQueryExecution
         implements ManagedQueryExecution
@@ -125,11 +124,11 @@ public class MockManagedQueryExecution
                 new BasicQueryStats(
                         1L,
                         2L,
-                        new Duration(2, NANOSECONDS),
-                        new Duration(3, NANOSECONDS),
-                        new Duration(4, NANOSECONDS),
-                        new Duration(5, NANOSECONDS),
-                        new Duration(1, NANOSECONDS),
+                        2,
+                        3,
+                        4,
+                        5,
+                        1,
                         5,
                         5,
                         6,
@@ -146,8 +145,8 @@ public class MockManagedQueryExecution
                         new DataSize(20, BYTE),
                         new DataSize(21, BYTE),
                         new DataSize(42, BYTE),
-                        new Duration(22, NANOSECONDS),
-                        new Duration(23, NANOSECONDS),
+                        22,
+                        23,
                         false,
                         ImmutableSet.of(),
                         new DataSize(24, BYTE),

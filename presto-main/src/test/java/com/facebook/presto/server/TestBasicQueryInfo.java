@@ -37,6 +37,7 @@ import java.util.OptionalDouble;
 
 import static com.facebook.presto.SessionTestUtils.TEST_SESSION;
 import static com.facebook.presto.execution.QueryState.RUNNING;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertEquals;
 
 public class TestBasicQueryInfo
@@ -61,17 +62,17 @@ public class TestBasicQueryInfo
                                 new DateTime("1991-09-06T05:01").getMillis(),
                                 new DateTime("1991-09-06T05:02").getMillis(),
                                 new DateTime("1991-09-06T06:00").getMillis(),
-                                Duration.valueOf("8m"),
-                                Duration.valueOf("5m"),
-                                Duration.valueOf("7m"),
-                                Duration.valueOf("34m"),
-                                Duration.valueOf("5m"),
-                                Duration.valueOf("6m"),
-                                Duration.valueOf("35m"),
-                                Duration.valueOf("44m"),
-                                Duration.valueOf("9m"),
-                                Duration.valueOf("10m"),
-                                Duration.valueOf("11m"),
+                                Duration.valueOf("8m").roundTo(NANOSECONDS),
+                                Duration.valueOf("5m").roundTo(NANOSECONDS),
+                                Duration.valueOf("7m").roundTo(NANOSECONDS),
+                                Duration.valueOf("34m").roundTo(NANOSECONDS),
+                                Duration.valueOf("5m").roundTo(NANOSECONDS),
+                                Duration.valueOf("6m").roundTo(NANOSECONDS),
+                                Duration.valueOf("35m").roundTo(NANOSECONDS),
+                                Duration.valueOf("44m").roundTo(NANOSECONDS),
+                                Duration.valueOf("9m").roundTo(NANOSECONDS),
+                                Duration.valueOf("10m").roundTo(NANOSECONDS),
+                                Duration.valueOf("11m").roundTo(NANOSECONDS),
                                 13,
                                 14,
                                 21,
@@ -91,10 +92,10 @@ public class TestBasicQueryInfo
                                 DataSize.valueOf("26GB"),
                                 DataSize.valueOf("42GB"),
                                 true,
-                                Duration.valueOf("23m"),
-                                Duration.valueOf("24m"),
-                                Duration.valueOf("0m"),
-                                Duration.valueOf("26m"),
+                                Duration.valueOf("23m").roundTo(NANOSECONDS),
+                                Duration.valueOf("24m").roundTo(NANOSECONDS),
+                                Duration.valueOf("0m").roundTo(NANOSECONDS),
+                                Duration.valueOf("26m").roundTo(NANOSECONDS),
                                 true,
                                 ImmutableSet.of(BlockedReason.WAITING_FOR_MEMORY),
                                 DataSize.valueOf("123MB"),

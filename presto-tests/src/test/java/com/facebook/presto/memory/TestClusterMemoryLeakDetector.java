@@ -35,6 +35,7 @@ import static com.facebook.presto.execution.QueryState.FINISHED;
 import static com.facebook.presto.execution.QueryState.RUNNING;
 import static com.facebook.presto.memory.LocalMemoryManager.GENERAL_POOL;
 import static com.facebook.presto.operator.BlockedReason.WAITING_FOR_MEMORY;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.testng.Assert.assertEquals;
 
 @Test
@@ -84,11 +85,11 @@ public class TestClusterMemoryLeakDetector
                 new BasicQueryStats(
                         DateTime.parse("1991-09-06T05:00-05:30").getMillis(),
                         DateTime.parse("1991-09-06T05:01-05:30").getMillis(),
-                        Duration.valueOf("4m"),
-                        Duration.valueOf("8m"),
-                        Duration.valueOf("7m"),
-                        Duration.valueOf("34m"),
-                        Duration.valueOf("10m"),
+                        Duration.valueOf("4m").roundTo(NANOSECONDS),
+                        Duration.valueOf("8m").roundTo(NANOSECONDS),
+                        Duration.valueOf("7m").roundTo(NANOSECONDS),
+                        Duration.valueOf("34m").roundTo(NANOSECONDS),
+                        Duration.valueOf("10m").roundTo(NANOSECONDS),
                         11,
                         12,
                         13,
@@ -105,8 +106,8 @@ public class TestClusterMemoryLeakDetector
                         DataSize.valueOf("26GB"),
                         DataSize.valueOf("27GB"),
                         DataSize.valueOf("42GB"),
-                        Duration.valueOf("23m"),
-                        Duration.valueOf("24m"),
+                        Duration.valueOf("23m").roundTo(NANOSECONDS),
+                        Duration.valueOf("24m").roundTo(NANOSECONDS),
                         true,
                         ImmutableSet.of(WAITING_FOR_MEMORY),
                         DataSize.valueOf("123MB"),
