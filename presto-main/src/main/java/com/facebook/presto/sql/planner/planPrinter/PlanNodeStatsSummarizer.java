@@ -39,6 +39,7 @@ import static com.google.common.collect.Lists.reverse;
 import static io.airlift.units.DataSize.Unit.BYTE;
 import static io.airlift.units.DataSize.succinctDataSize;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.stream.Collectors.toList;
 
 public class PlanNodeStatsSummarizer
@@ -114,15 +115,15 @@ public class PlanNodeStatsSummarizer
                 PlanNodeId planNodeId = operatorStats.getPlanNodeId();
                 planNodeIds.add(planNodeId);
 
-                long scheduledMillis = operatorStats.getAddInputWall().toMillis() + operatorStats.getGetOutputWall().toMillis() + operatorStats.getFinishWall().toMillis();
+                long scheduledMillis = NANOSECONDS.toMillis(operatorStats.getAddInputWallInNanos() + operatorStats.getGetOutputWallInNanos() + operatorStats.getFinishWallInNanos());
                 planNodeScheduledMillis.merge(planNodeId, scheduledMillis, Long::sum);
 
-                long cpuMillis = operatorStats.getAddInputCpu().toMillis() + operatorStats.getGetOutputCpu().toMillis() + operatorStats.getFinishCpu().toMillis();
+                long cpuMillis = NANOSECONDS.toMillis(operatorStats.getAddInputCpuInNanos() + operatorStats.getGetOutputCpuInNanos() + operatorStats.getFinishCpuInNanos());
                 planNodeCpuMillis.merge(planNodeId, cpuMillis, Long::sum);
-                planNodeBlockedMillis.merge(planNodeId, operatorStats.getBlockedWall().toMillis(), Long::sum);
-                planNodeAddInputMillis.merge(planNodeId, operatorStats.getAddInputWall().toMillis(), Long::sum);
-                planNodeFinishMillis.merge(planNodeId, operatorStats.getFinishWall().toMillis(), Long::sum);
-                planNodeGetOutputMillis.merge(planNodeId, operatorStats.getGetOutputWall().toMillis(), Long::sum);
+                planNodeBlockedMillis.merge(planNodeId, NANOSECONDS.toMillis(operatorStats.getBlockedWallInNanos()), Long::sum);
+                planNodeAddInputMillis.merge(planNodeId, NANOSECONDS.toMillis(operatorStats.getAddInputWallInNanos()), Long::sum);
+                planNodeFinishMillis.merge(planNodeId, NANOSECONDS.toMillis(operatorStats.getFinishWallInNanos()), Long::sum);
+                planNodeGetOutputMillis.merge(planNodeId, NANOSECONDS.toMillis(operatorStats.getGetOutputWallInNanos()), Long::sum);
                 planNodePeakMemory.merge(planNodeId, operatorStats.getPeakTotalMemoryReservationInBytes(), Math::max);
 
                 // A pipeline like hash build before join might link to another "internal" pipelines which provide actual input for this plan node

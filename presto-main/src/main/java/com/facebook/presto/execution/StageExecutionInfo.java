@@ -42,13 +42,11 @@ import static com.facebook.presto.common.RuntimeUnit.NANO;
 import static com.facebook.presto.common.RuntimeUnit.NONE;
 import static com.facebook.presto.execution.StageExecutionState.FINISHED;
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static io.airlift.units.Duration.succinctDuration;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class StageExecutionInfo
 {
@@ -119,10 +117,10 @@ public class StageExecutionInfo
                 taskStatsAggregator.totalMemoryReservation,
                 peakUserMemoryReservation,
                 peakNodeTotalMemoryReservation,
-                succinctDuration(taskStatsAggregator.totalScheduledTime, NANOSECONDS),
-                succinctDuration(taskStatsAggregator.totalCpuTime, NANOSECONDS),
-                succinctDuration(taskStatsAggregator.retriedCpuTime, NANOSECONDS),
-                succinctDuration(taskStatsAggregator.totalBlockedTime, NANOSECONDS),
+                taskStatsAggregator.totalScheduledTime,
+                taskStatsAggregator.totalCpuTime,
+                taskStatsAggregator.retriedCpuTime,
+                taskStatsAggregator.totalBlockedTime,
                 taskStatsAggregator.fullyBlocked && taskStatsAggregator.runningTaskCount > 0,
                 taskStatsAggregator.blockedReasons,
 
