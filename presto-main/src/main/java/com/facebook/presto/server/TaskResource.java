@@ -16,6 +16,7 @@ package com.facebook.presto.server;
 import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.log.Logger;
 import com.facebook.presto.Session;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
 import com.facebook.presto.execution.TaskId;
@@ -25,6 +26,7 @@ import com.facebook.presto.execution.TaskState;
 import com.facebook.presto.execution.TaskStatus;
 import com.facebook.presto.execution.buffer.OutputBufferInfo;
 import com.facebook.presto.execution.buffer.OutputBuffers.OutputBufferId;
+import com.facebook.presto.experimental.auto_gen.ThriftTaskStatus;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.metadata.MetadataUpdates;
 import com.facebook.presto.metadata.SessionPropertyManager;
@@ -68,6 +70,7 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_COMPLETE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_REMAINING_BYTES;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
+import static com.facebook.presto.experimental.ThriftTaskStatusUtils.fromTaskStatus;
 import static com.facebook.presto.server.TaskResourceUtils.convertToThriftTaskInfo;
 import static com.facebook.presto.server.TaskResourceUtils.isThriftRequest;
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
@@ -87,6 +90,7 @@ import static javax.ws.rs.core.MediaType.APPLICATION_JSON;
 public class TaskResource
 {
     private static final Duration ADDITIONAL_WAIT_TIME = new Duration(5, SECONDS);
+    private static final Logger log = Logger.get(TaskResource.class);
 
     private final TaskManager taskManager;
     private final SessionPropertyManager sessionPropertyManager;
@@ -212,12 +216,21 @@ public class TaskResource
             @HeaderParam(PRESTO_CURRENT_STATE) TaskState currentState,
             @HeaderParam(PRESTO_MAX_WAIT) Duration maxWait,
             @Context UriInfo uriInfo,
+            @Context HttpHeaders httpHeaders,
             @Suspended AsyncResponse asyncResponse)
     {
         requireNonNull(taskId, "taskId is null");
 
+        boolean isThriftRequest = isThriftRequest(httpHeaders);
+        log.info("what kind of request: " + isThriftRequest);
+
         if (currentState == null || maxWait == null) {
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
+            if (isThriftRequest) {
+                ThriftTaskStatus thriftTaskStatus = fromTaskStatus(taskStatus);
+                asyncResponse.resume(thriftTaskStatus);
+                return;
+            }
             asyncResponse.resume(taskStatus);
             return;
         }
@@ -234,8 +247,15 @@ public class TaskResource
 
         // For hard timeout, add an additional time to max wait for thread scheduling contention and GC
         Duration timeout = new Duration(waitTime.toMillis() + ADDITIONAL_WAIT_TIME.toMillis(), MILLISECONDS);
-        bindAsyncResponse(asyncResponse, futureTaskStatus, responseExecutor)
-                .withTimeout(timeout);
+        if (isThriftRequest) {
+            ListenableFuture<ThriftTaskStatus> futureThriftTaskStatus = Futures.transform(futureTaskStatus, taskStatus -> fromTaskStatus(taskStatus), directExecutor());
+            bindAsyncResponse(asyncResponse, futureThriftTaskStatus, responseExecutor)
+                    .withTimeout(timeout);
+        }
+        else {
+            bindAsyncResponse(asyncResponse, futureTaskStatus, responseExecutor)
+                    .withTimeout(timeout);
+        }
     }
 
     @POST
