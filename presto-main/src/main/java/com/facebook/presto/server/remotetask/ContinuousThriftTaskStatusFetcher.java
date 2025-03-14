@@ -27,11 +27,12 @@ import com.facebook.drift.transport.netty.codec.Protocol;
 import com.facebook.presto.execution.StateMachine;
 import com.facebook.presto.execution.TaskId;
 import com.facebook.presto.execution.TaskStatus;
+import com.facebook.presto.experimental.ExperimentalThriftResponseHandler;
+import com.facebook.presto.experimental.auto_gen.ThriftTaskStatus;
 import com.facebook.presto.server.RequestErrorTracker;
 import com.facebook.presto.server.SimpleHttpResponseCallback;
 import com.facebook.presto.server.SimpleHttpResponseHandler;
 import com.facebook.presto.server.smile.BaseResponse;
-import com.facebook.presto.server.thrift.ThriftHttpResponseHandler;
 import com.facebook.presto.spi.HostAddress;
 import com.facebook.presto.spi.PrestoException;
 import com.google.common.util.concurrent.FutureCallback;
@@ -50,7 +51,9 @@ import java.util.function.Consumer;
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
+import static com.facebook.presto.experimental.ThriftTaskStatusUtils.toTaskStatus;
 import static com.facebook.presto.server.RequestErrorTracker.taskRequestErrorTracker;
 import static com.facebook.presto.server.RequestHelpers.getBinaryTransportBuilder;
 import static com.facebook.presto.server.RequestHelpers.getJsonTransportBuilder;
@@ -65,7 +68,7 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 class ContinuousTaskStatusFetcher
-        implements SimpleHttpResponseCallback<TaskStatus>
+        implements SimpleHttpResponseCallback<ThriftTaskStatus>
 {
     private static final Logger log = Logger.get(ContinuousTaskStatusFetcher.class);
 
@@ -82,6 +85,7 @@ class ContinuousTaskStatusFetcher
     private final boolean binaryTransportEnabled;
     private final boolean thriftTransportEnabled;
     private final Protocol thriftProtocol;
+    private final boolean experimentalThriftEnabled;
 
     private final AtomicLong currentRequestStartNanos = new AtomicLong();
 
@@ -104,7 +108,8 @@ class ContinuousTaskStatusFetcher
             RemoteTaskStats stats,
             boolean binaryTransportEnabled,
             boolean thriftTransportEnabled,
-            Protocol thriftProtocol)
+            Protocol thriftProtocol,
+            boolean experimentalThriftEnabled)
     {
         requireNonNull(initialTaskStatus, "initialTaskStatus is null");
 
@@ -123,6 +128,7 @@ class ContinuousTaskStatusFetcher
         this.binaryTransportEnabled = binaryTransportEnabled;
         this.thriftTransportEnabled = thriftTransportEnabled;
         this.thriftProtocol = requireNonNull(thriftProtocol, "thriftProtocol is null");
+        this.experimentalThriftEnabled = experimentalThriftEnabled;
     }
 
     public synchronized void start()
@@ -166,10 +172,16 @@ class ContinuousTaskStatusFetcher
             errorRateLimit.addListener(this::scheduleNextRequest, executor);
             return;
         }
-
+        log.info("experimentalThriftEnabled: " + experimentalThriftEnabled);
+        log.info("thriftTransportEnabled: " + thriftTransportEnabled);
+        log.info("binaryTransportEnabled: " + binaryTransportEnabled);
         Request.Builder requestBuilder;
         ResponseHandler responseHandler;
-        if (thriftTransportEnabled) {
+        if (experimentalThriftEnabled) {
+            requestBuilder = ThriftRequestUtils.prepareThriftGet(Protocol.BINARY);
+            responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskStatus.class);
+        }
+        else if (thriftTransportEnabled) {
             requestBuilder = ThriftRequestUtils.prepareThriftGet(thriftProtocol);
             responseHandler = new ThriftResponseHandler(unwrapThriftCodec(taskStatusCodec));
         }
@@ -182,21 +194,18 @@ class ContinuousTaskStatusFetcher
             responseHandler = createAdaptingJsonResponseHandler((JsonCodec<TaskStatus>) taskStatusCodec);
         }
 
+        log.info("self: " + taskStatus.getSelf());
+        log.info("uri:" + uriBuilderFrom(taskStatus.getSelf()));
         Request request = requestBuilder.setUri(uriBuilderFrom(taskStatus.getSelf()).appendPath("status").build())
                 .setHeader(PRESTO_CURRENT_STATE, taskStatus.getState().toString())
                 .setHeader(PRESTO_MAX_WAIT, refreshMaxWait.toString())
+                .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftEnabled))
                 .build();
 
         errorTracker.startRequest();
         future = httpClient.executeAsync(request, responseHandler);
         currentRequestStartNanos.set(System.nanoTime());
-        FutureCallback callback;
-        if (thriftTransportEnabled) {
-            callback = new ThriftHttpResponseHandler(this, request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR);
-        }
-        else {
-            callback = new SimpleHttpResponseHandler<>(this, request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR);
-        }
+        FutureCallback callback = new SimpleHttpResponseHandler<>(this, request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR);
 
         Futures.addCallback(
                 future,
@@ -210,12 +219,12 @@ class ContinuousTaskStatusFetcher
     }
 
     @Override
-    public void success(TaskStatus value)
+    public void success(ThriftTaskStatus value)
     {
         try (SetThreadName ignored = new SetThreadName("ContinuousTaskStatusFetcher-%s", taskId)) {
             updateStats(currentRequestStartNanos.get());
             try {
-                updateTaskStatus(value);
+                updateTaskStatus(toTaskStatus(value));
                 errorTracker.requestSucceeded();
             }
             finally {
