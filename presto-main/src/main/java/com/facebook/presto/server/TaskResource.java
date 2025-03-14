@@ -35,6 +35,10 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TTransportException;
 
 import javax.annotation.security.RolesAllowed;
 import javax.inject.Inject;
@@ -77,6 +81,8 @@ import static com.facebook.presto.server.TaskResourceUtils.isThriftRequest;
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
 import static com.facebook.presto.util.TaskUtils.randomizeWaitTime;
 import static com.google.common.collect.Iterables.transform;
+import static com.google.common.net.HttpHeaders.CONTENT_LENGTH;
+import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -231,7 +237,20 @@ public class TaskResource
             if (isExperimental) {
                 ThriftTaskStatus thriftTaskStatus = fromTaskStatus(taskStatus);
                 log.info(format("respond with thrift task status for task id:%s with value:%s", taskId, thriftTaskStatus));
-                asyncResponse.resume(thriftTaskStatus);
+                try {
+                    TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+                    byte[] responseBody = serializer.serialize(thriftTaskStatus);
+                    Response.ResponseBuilder responseBuilder = Response.ok(responseBody)
+                            .header(CONTENT_TYPE, APPLICATION_THRIFT_BINARY)
+                            .header(CONTENT_LENGTH, responseBody.length);
+                    asyncResponse.resume(responseBuilder.build());
+                }
+                catch (TTransportException e) {
+                    log.error("Can not have serializer " + e);
+                }
+                catch (TException e) {
+                    log.error("Can not serialize data" + e);
+                }
                 return;
             }
             log.info(format("respond with regular task status for task id:%s with value:%s", taskId, taskStatus));
