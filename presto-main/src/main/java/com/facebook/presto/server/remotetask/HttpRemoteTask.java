@@ -220,6 +220,7 @@ public final class HttpRemoteTask
 
     private final boolean binaryTransportEnabled;
     private final boolean thriftTransportEnabled;
+    private final boolean experimentalThriftEnabled;
     private final boolean taskInfoThriftTransportEnabled;
     private final Protocol thriftProtocol;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
@@ -261,6 +262,7 @@ public final class HttpRemoteTask
             RemoteTaskStats stats,
             boolean binaryTransportEnabled,
             boolean thriftTransportEnabled,
+            boolean experimentalThriftEnabled,
             boolean taskInfoThriftTransportEnabled,
             Protocol thriftProtocol,
             TableWriteInfo tableWriteInfo,
@@ -321,6 +323,7 @@ public final class HttpRemoteTask
             this.stats = stats;
             this.binaryTransportEnabled = binaryTransportEnabled;
             this.thriftTransportEnabled = thriftTransportEnabled;
+            this.experimentalThriftEnabled = experimentalThriftEnabled;
             this.taskInfoThriftTransportEnabled = taskInfoThriftTransportEnabled;
             this.thriftProtocol = thriftProtocol;
             this.connectorTypeSerdeManager = connectorTypeSerdeManager;
@@ -374,7 +377,8 @@ public final class HttpRemoteTask
                     stats,
                     binaryTransportEnabled,
                     thriftTransportEnabled,
-                    thriftProtocol);
+                    thriftProtocol,
+                    experimentalThriftEnabled);
 
             this.taskInfoFetcher = new TaskInfoFetcher(
                     this::failTask,

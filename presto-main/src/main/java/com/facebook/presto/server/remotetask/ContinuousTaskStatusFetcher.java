@@ -18,6 +18,7 @@ import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.http.client.Request;
 import com.facebook.airlift.http.client.ResponseHandler;
 import com.facebook.airlift.http.client.thrift.ThriftRequestUtils;
+import com.facebook.airlift.http.client.thrift.ThriftResponseHandler;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
@@ -50,6 +51,7 @@ import java.util.function.Consumer;
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
 import static com.facebook.presto.experimental.ThriftTaskStatusUtils.toTaskStatus;
 import static com.facebook.presto.server.RequestErrorTracker.taskRequestErrorTracker;
@@ -57,6 +59,7 @@ import static com.facebook.presto.server.RequestHelpers.getBinaryTransportBuilde
 import static com.facebook.presto.server.RequestHelpers.getJsonTransportBuilder;
 import static com.facebook.presto.server.smile.AdaptingJsonResponseHandler.createAdaptingJsonResponseHandler;
 import static com.facebook.presto.server.smile.FullSmileResponseHandler.createFullSmileResponseHandler;
+import static com.facebook.presto.server.thrift.ThriftCodecWrapper.unwrapThriftCodec;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_MISMATCH;
 import static com.facebook.presto.util.Failures.REMOTE_TASK_MISMATCH_ERROR;
@@ -82,6 +85,7 @@ class ContinuousTaskStatusFetcher
     private final boolean binaryTransportEnabled;
     private final boolean thriftTransportEnabled;
     private final Protocol thriftProtocol;
+    private final boolean experimentalThriftEnabled;
 
     private final AtomicLong currentRequestStartNanos = new AtomicLong();
 
@@ -104,7 +108,8 @@ class ContinuousTaskStatusFetcher
             RemoteTaskStats stats,
             boolean binaryTransportEnabled,
             boolean thriftTransportEnabled,
-            Protocol thriftProtocol)
+            Protocol thriftProtocol,
+            boolean experimentalThriftEnabled)
     {
         requireNonNull(initialTaskStatus, "initialTaskStatus is null");
 
@@ -123,6 +128,7 @@ class ContinuousTaskStatusFetcher
         this.binaryTransportEnabled = binaryTransportEnabled;
         this.thriftTransportEnabled = thriftTransportEnabled;
         this.thriftProtocol = requireNonNull(thriftProtocol, "thriftProtocol is null");
+        this.experimentalThriftEnabled = experimentalThriftEnabled;
     }
 
     public synchronized void start()
@@ -166,16 +172,18 @@ class ContinuousTaskStatusFetcher
             errorRateLimit.addListener(this::scheduleNextRequest, executor);
             return;
         }
-
+        log.info("experimentalThriftEnabled: " + experimentalThriftEnabled);
         log.info("thriftTransportEnabled: " + thriftTransportEnabled);
         log.info("binaryTransportEnabled: " + binaryTransportEnabled);
         Request.Builder requestBuilder;
         ResponseHandler responseHandler;
-        if (thriftTransportEnabled) {
-//            requestBuilder = ThriftRequestUtils.prepareThriftGet(thriftProtocol);
-//            responseHandler = new ThriftResponseHandler(unwrapThriftCodec(taskStatusCodec));
+        if (experimentalThriftEnabled) {
             requestBuilder = ThriftRequestUtils.prepareThriftGet(Protocol.BINARY);
             responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskStatus.class);
+        }
+        else if (thriftTransportEnabled) {
+            requestBuilder = ThriftRequestUtils.prepareThriftGet(thriftProtocol);
+            responseHandler = new ThriftResponseHandler(unwrapThriftCodec(taskStatusCodec));
         }
         else if (binaryTransportEnabled) {
             requestBuilder = getBinaryTransportBuilder(prepareGet());
@@ -186,9 +194,12 @@ class ContinuousTaskStatusFetcher
             responseHandler = createAdaptingJsonResponseHandler((JsonCodec<TaskStatus>) taskStatusCodec);
         }
 
+        log.info("self: " + taskStatus.getSelf());
+        log.info("uri:" + uriBuilderFrom(taskStatus.getSelf()));
         Request request = requestBuilder.setUri(uriBuilderFrom(taskStatus.getSelf()).appendPath("status").build())
                 .setHeader(PRESTO_CURRENT_STATE, taskStatus.getState().toString())
                 .setHeader(PRESTO_MAX_WAIT, refreshMaxWait.toString())
+                .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftEnabled))
                 .build();
 
         errorTracker.startRequest();

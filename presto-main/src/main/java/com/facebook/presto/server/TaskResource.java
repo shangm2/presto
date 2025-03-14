@@ -69,6 +69,7 @@ import static com.facebook.presto.PrestoMediaTypes.APPLICATION_JACKSON_SMILE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_COMPLETE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_REMAINING_BYTES;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
+import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
 import static com.facebook.presto.experimental.ThriftTaskStatusUtils.fromTaskStatus;
 import static com.facebook.presto.server.TaskResourceUtils.convertToThriftTaskInfo;
@@ -215,18 +216,18 @@ public class TaskResource
             @PathParam("taskId") TaskId taskId,
             @HeaderParam(PRESTO_CURRENT_STATE) TaskState currentState,
             @HeaderParam(PRESTO_MAX_WAIT) Duration maxWait,
+            @HeaderParam(PRESTO_EXPERIMENTAL) boolean isExperimental,
             @Context UriInfo uriInfo,
             @Context HttpHeaders httpHeaders,
             @Suspended AsyncResponse asyncResponse)
     {
         requireNonNull(taskId, "taskId is null");
 
-        boolean isThriftRequest = isThriftRequest(httpHeaders);
-        log.info("what kind of request: " + isThriftRequest);
+        log.info("isExperimental: " + isExperimental);
 
         if (currentState == null || maxWait == null) {
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
-            if (isThriftRequest) {
+            if (isExperimental) {
                 ThriftTaskStatus thriftTaskStatus = fromTaskStatus(taskStatus);
                 asyncResponse.resume(thriftTaskStatus);
                 return;
@@ -247,7 +248,7 @@ public class TaskResource
 
         // For hard timeout, add an additional time to max wait for thread scheduling contention and GC
         Duration timeout = new Duration(waitTime.toMillis() + ADDITIONAL_WAIT_TIME.toMillis(), MILLISECONDS);
-        if (isThriftRequest) {
+        if (isExperimental) {
             ListenableFuture<ThriftTaskStatus> futureThriftTaskStatus = Futures.transform(futureTaskStatus, taskStatus -> fromTaskStatus(taskStatus), directExecutor());
             bindAsyncResponse(asyncResponse, futureThriftTaskStatus, responseExecutor)
                     .withTimeout(timeout);
