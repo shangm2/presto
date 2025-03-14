@@ -17,17 +17,14 @@ import com.facebook.airlift.concurrent.SetThreadName;
 import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.http.client.Request;
 import com.facebook.airlift.http.client.ResponseHandler;
-import com.facebook.airlift.http.client.thrift.ThriftRequestUtils;
-import com.facebook.airlift.http.client.thrift.ThriftResponseHandler;
 import com.facebook.airlift.json.Codec;
-import com.facebook.airlift.json.JsonCodec;
-import com.facebook.airlift.json.smile.SmileCodec;
 import com.facebook.airlift.log.Logger;
 import com.facebook.drift.transport.netty.codec.Protocol;
 import com.facebook.presto.execution.StateMachine;
 import com.facebook.presto.execution.TaskId;
 import com.facebook.presto.execution.TaskStatus;
 import com.facebook.presto.experimental.ExperimentalThriftResponseHandler;
+import com.facebook.presto.experimental.ThriftTaskStateUtils;
 import com.facebook.presto.experimental.auto_gen.ThriftTaskStatus;
 import com.facebook.presto.server.RequestErrorTracker;
 import com.facebook.presto.server.SimpleHttpResponseCallback;
@@ -42,6 +39,7 @@ import io.airlift.units.Duration;
 
 import javax.annotation.concurrent.GuardedBy;
 
+import java.net.URI;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -50,31 +48,26 @@ import java.util.function.Consumer;
 
 import static com.facebook.airlift.http.client.HttpUriBuilder.uriBuilderFrom;
 import static com.facebook.airlift.http.client.Request.Builder.prepareGet;
-import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
+import static com.facebook.airlift.http.client.thrift.ThriftRequestUtils.APPLICATION_THRIFT_BINARY;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
-import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
-import static com.facebook.presto.experimental.ThriftTaskStatusUtils.toTaskStatus;
 import static com.facebook.presto.server.RequestErrorTracker.taskRequestErrorTracker;
-import static com.facebook.presto.server.RequestHelpers.getBinaryTransportBuilder;
-import static com.facebook.presto.server.RequestHelpers.getJsonTransportBuilder;
-import static com.facebook.presto.server.smile.AdaptingJsonResponseHandler.createAdaptingJsonResponseHandler;
-import static com.facebook.presto.server.smile.FullSmileResponseHandler.createFullSmileResponseHandler;
-import static com.facebook.presto.server.thrift.ThriftCodecWrapper.unwrapThriftCodec;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_MISMATCH;
 import static com.facebook.presto.util.Failures.REMOTE_TASK_MISMATCH_ERROR;
+import static com.google.common.net.HttpHeaders.ACCEPT;
+import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static io.airlift.units.Duration.nanosSince;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-class ContinuousTaskStatusFetcher
+class ContinuousThriftTaskStatusFetcher
         implements SimpleHttpResponseCallback<ThriftTaskStatus>
 {
-    private static final Logger log = Logger.get(ContinuousTaskStatusFetcher.class);
+    private static final Logger log = Logger.get(ContinuousThriftTaskStatusFetcher.class);
 
     private final TaskId taskId;
     private final Consumer<Throwable> onFail;
-    private final StateMachine<TaskStatus> taskStatus;
+    private final StateMachine<ThriftTaskStatus> taskStatus;
     private final Codec<TaskStatus> taskStatusCodec;
 
     private final Duration refreshMaxWait;
@@ -93,12 +86,12 @@ class ContinuousTaskStatusFetcher
     private boolean running;
 
     @GuardedBy("this")
-    private ListenableFuture<BaseResponse<TaskStatus>> future;
+    private ListenableFuture<BaseResponse<ThriftTaskStatus>> future;
 
-    public ContinuousTaskStatusFetcher(
+    public ContinuousThriftTaskStatusFetcher(
             Consumer<Throwable> onFail,
             TaskId taskId,
-            TaskStatus initialTaskStatus,
+            ThriftTaskStatus initialTaskStatus,
             Duration refreshMaxWait,
             Codec<TaskStatus> taskStatusCodec,
             Executor executor,
@@ -123,7 +116,7 @@ class ContinuousTaskStatusFetcher
         this.executor = requireNonNull(executor, "executor is null");
         this.httpClient = requireNonNull(httpClient, "httpClient is null");
 
-        this.errorTracker = taskRequestErrorTracker(taskId, initialTaskStatus.getSelf(), maxErrorDuration, errorScheduledExecutor, "getting task status");
+        this.errorTracker = taskRequestErrorTracker(taskId, URI.create(initialTaskStatus.getSelf()), maxErrorDuration, errorScheduledExecutor, "getting task status");
         this.stats = requireNonNull(stats, "stats is null");
         this.binaryTransportEnabled = binaryTransportEnabled;
         this.thriftTransportEnabled = thriftTransportEnabled;
@@ -154,8 +147,8 @@ class ContinuousTaskStatusFetcher
     private synchronized void scheduleNextRequest()
     {
         // stopped or done?
-        TaskStatus taskStatus = getTaskStatus();
-        if (!running || taskStatus.getState().isDone()) {
+        ThriftTaskStatus taskStatus = getTaskStatus();
+        if (!running || ThriftTaskStateUtils.isDone(taskStatus.getState())) {
             return;
         }
 
@@ -177,28 +170,18 @@ class ContinuousTaskStatusFetcher
         log.info("binaryTransportEnabled: " + binaryTransportEnabled);
         Request.Builder requestBuilder;
         ResponseHandler responseHandler;
-        if (experimentalThriftEnabled) {
-            requestBuilder = ThriftRequestUtils.prepareThriftGet(Protocol.BINARY);
-            responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskStatus.class);
-        }
-        else if (thriftTransportEnabled) {
-            requestBuilder = ThriftRequestUtils.prepareThriftGet(thriftProtocol);
-            responseHandler = new ThriftResponseHandler(unwrapThriftCodec(taskStatusCodec));
-        }
-        else if (binaryTransportEnabled) {
-            requestBuilder = getBinaryTransportBuilder(prepareGet());
-            responseHandler = createFullSmileResponseHandler((SmileCodec<TaskStatus>) taskStatusCodec);
-        }
-        else {
-            requestBuilder = getJsonTransportBuilder(prepareGet());
-            responseHandler = createAdaptingJsonResponseHandler((JsonCodec<TaskStatus>) taskStatusCodec);
-        }
+
+        requestBuilder = prepareGet()
+                .setHeader(CONTENT_TYPE, APPLICATION_THRIFT_BINARY)
+                .setHeader(ACCEPT, APPLICATION_THRIFT_BINARY);
+        responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskStatus.class);
 
         log.info("self: " + taskStatus.getSelf());
-        log.info("uri:" + uriBuilderFrom(taskStatus.getSelf()));
-        Request request = requestBuilder.setUri(uriBuilderFrom(taskStatus.getSelf()).appendPath("status").build())
-                .setHeader(PRESTO_CURRENT_STATE, taskStatus.getState().toString())
-                .setHeader(PRESTO_MAX_WAIT, refreshMaxWait.toString())
+        URI uri = URI.create(taskStatus.getSelf());
+        log.info("uri:" + uri);
+        Request request = requestBuilder.setUri(uriBuilderFrom(uri).appendPath("status").build())
+//                .setHeader(PRESTO_CURRENT_STATE, toTaskState(taskStatus.getState()).toString())
+//                .setHeader(PRESTO_MAX_WAIT, refreshMaxWait.toString())
                 .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftEnabled))
                 .build();
 
@@ -213,7 +196,7 @@ class ContinuousTaskStatusFetcher
                 executor);
     }
 
-    TaskStatus getTaskStatus()
+    ThriftTaskStatus getTaskStatus()
     {
         return taskStatus.get();
     }
@@ -221,10 +204,11 @@ class ContinuousTaskStatusFetcher
     @Override
     public void success(ThriftTaskStatus value)
     {
-        try (SetThreadName ignored = new SetThreadName("ContinuousTaskStatusFetcher-%s", taskId)) {
+        try (SetThreadName ignored = new SetThreadName("ContinuousThriftTaskStatusFetcher-%s", taskId)) {
+            log.info("success with ThriftTaskStatus: " + value);
             updateStats(currentRequestStartNanos.get());
             try {
-                updateTaskStatus(toTaskStatus(value));
+                updateTaskStatus(value);
                 errorTracker.requestSucceeded();
             }
             finally {
@@ -236,21 +220,17 @@ class ContinuousTaskStatusFetcher
     @Override
     public void failed(Throwable cause)
     {
-        try (SetThreadName ignored = new SetThreadName("ContinuousTaskStatusFetcher-%s", taskId)) {
+        try (SetThreadName ignored = new SetThreadName("ContinuousThriftTaskStatusFetcher-%s", taskId)) {
             updateStats(currentRequestStartNanos.get());
             try {
                 // if task not already done, record error
-                TaskStatus taskStatus = getTaskStatus();
-                if (!taskStatus.getState().isDone()) {
+                ThriftTaskStatus taskStatus = getTaskStatus();
+                if (!ThriftTaskStateUtils.isDone(taskStatus.getState())) {
                     errorTracker.requestFailed(cause);
                 }
             }
             catch (Error e) {
-                onFail.accept(e);
-                throw e;
-            }
-            catch (RuntimeException e) {
-                onFail.accept(e);
+                log.error(e);
             }
             finally {
                 scheduleNextRequest();
@@ -267,7 +247,7 @@ class ContinuousTaskStatusFetcher
         }
     }
 
-    void updateTaskStatus(TaskStatus newValue)
+    void updateTaskStatus(ThriftTaskStatus newValue)
     {
         // change to new value if old value is not changed and new value has a newer version
         AtomicBoolean taskMismatch = new AtomicBoolean();
@@ -281,7 +261,7 @@ class ContinuousTaskStatusFetcher
                 return false;
             }
 
-            if (oldValue.getState().isDone()) {
+            if (ThriftTaskStateUtils.isDone(oldValue.getState())) {
                 // never update if the task has reached a terminal state
                 return false;
             }
@@ -296,7 +276,7 @@ class ContinuousTaskStatusFetcher
             // This will also set the task status to FAILED state directly.
             // Additionally, this will issue a DELETE for the task to the worker.
             // While sending the DELETE is not required, it is preferred because a task was created by the previous request.
-            onFail.accept(new PrestoException(REMOTE_TASK_MISMATCH, format("%s (%s)", REMOTE_TASK_MISMATCH_ERROR, HostAddress.fromUri(getTaskStatus().getSelf()))));
+            onFail.accept(new PrestoException(REMOTE_TASK_MISMATCH, format("%s (%s)", REMOTE_TASK_MISMATCH_ERROR, HostAddress.fromUri(URI.create(getTaskStatus().getSelf())))));
         }
     }
 
@@ -310,7 +290,7 @@ class ContinuousTaskStatusFetcher
      * be taken to avoid leaking {@code this} when adding a listener in a constructor. Additionally, it is
      * possible notifications are observed out of order due to the asynchronous execution.
      */
-    public void addStateChangeListener(StateMachine.StateChangeListener<TaskStatus> stateChangeListener)
+    public void addStateChangeListener(StateMachine.StateChangeListener<ThriftTaskStatus> stateChangeListener)
     {
         taskStatus.addStateChangeListener(stateChangeListener);
     }

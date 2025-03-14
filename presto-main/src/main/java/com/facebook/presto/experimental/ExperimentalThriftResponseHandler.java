@@ -25,6 +25,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 
 import static com.google.common.io.ByteStreams.toByteArray;
 import static java.util.Objects.requireNonNull;
@@ -54,10 +55,12 @@ public class ExperimentalThriftResponseHandler<T extends TBase<?, ?>>
             throws RuntimeException
     {
         try {
-            if (response.getStatusCode() != 200) {
-                throw new RuntimeException("Thrift request failed with response code " + response.getStatusCode());
-            }
+            log.info("Thrift request with response code " + response.getStatusCode());
+
             byte[] responseBody = readResponseBytes(response);
+
+            log.info("Thrift request with response body " + Arrays.toString(responseBody));
+
             if (responseBody == null || responseBody.length == 0) {
                 throw new RuntimeException("Thrift response body is empty");
             }
@@ -68,6 +71,8 @@ public class ExperimentalThriftResponseHandler<T extends TBase<?, ?>>
 
             TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
             deserializer.deserialize(instance, responseBody);
+
+            log.info("Thrift response body deserialized: " + instance);
             return instance;
         }
         catch (TException e) {

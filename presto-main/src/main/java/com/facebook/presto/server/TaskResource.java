@@ -78,6 +78,7 @@ import static com.facebook.presto.server.security.RoleType.INTERNAL;
 import static com.facebook.presto.util.TaskUtils.randomizeWaitTime;
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -229,9 +230,11 @@ public class TaskResource
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
             if (isExperimental) {
                 ThriftTaskStatus thriftTaskStatus = fromTaskStatus(taskStatus);
+                log.info(format("respond with thrift task status for task id:%s with value:%s", taskId, thriftTaskStatus));
                 asyncResponse.resume(thriftTaskStatus);
                 return;
             }
+            log.info(format("respond with regular task status for task id:%s with value:%s", taskId, taskStatus));
             asyncResponse.resume(taskStatus);
             return;
         }
