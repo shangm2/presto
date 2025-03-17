@@ -16,6 +16,7 @@ package com.facebook.presto.server;
 import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.json.smile.SmileCodec;
 import com.facebook.airlift.log.Logger;
 import com.facebook.presto.Session;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
@@ -27,6 +28,8 @@ import com.facebook.presto.execution.TaskStatus;
 import com.facebook.presto.execution.buffer.OutputBufferInfo;
 import com.facebook.presto.execution.buffer.OutputBuffers.OutputBufferId;
 import com.facebook.presto.experimental.auto_gen.ThriftTaskStatus;
+import com.facebook.presto.experimental.auto_gen.ThriftTaskUpdateRequest;
+import com.facebook.presto.experimental.utils.ThriftTaskStatusUtils;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.metadata.MetadataUpdates;
 import com.facebook.presto.metadata.SessionPropertyManager;
@@ -36,6 +39,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
+import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -76,7 +80,8 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_REMAINING_B
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
-import static com.facebook.presto.experimental.ThriftTaskStatusUtils.fromTaskStatus;
+import static com.facebook.presto.experimental.utils.ThriftTaskStatusUtils.fromTaskStatus;
+import static com.facebook.presto.experimental.utils.ThriftTaskUpdateRequestUtils.toTaskUpdateRequest;
 import static com.facebook.presto.server.TaskResourceUtils.convertToThriftTaskInfo;
 import static com.facebook.presto.server.TaskResourceUtils.isThriftRequest;
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
@@ -106,6 +111,8 @@ public class TaskResource
     private final Executor responseExecutor;
     private final ScheduledExecutorService timeoutExecutor;
     private final Codec<PlanFragment> planFragmentCodec;
+    private final JsonCodec<TaskUpdateRequest> taskUpdateRequestJsonCodec;
+    private final SmileCodec<TaskUpdateRequest> taskUpdateRequestSmileCodec;
     private final HandleResolver handleResolver;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
 
@@ -116,6 +123,8 @@ public class TaskResource
             @ForAsyncRpc BoundedExecutor responseExecutor,
             @ForAsyncRpc ScheduledExecutorService timeoutExecutor,
             JsonCodec<PlanFragment> planFragmentJsonCodec,
+            JsonCodec<TaskUpdateRequest> taskUpdateRequestJsonCodec,
+            SmileCodec<TaskUpdateRequest> taskUpdateRequestSmileCodec,
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager)
     {
@@ -124,6 +133,8 @@ public class TaskResource
         this.responseExecutor = requireNonNull(responseExecutor, "responseExecutor is null");
         this.timeoutExecutor = requireNonNull(timeoutExecutor, "timeoutExecutor is null");
         this.planFragmentCodec = planFragmentJsonCodec;
+        this.taskUpdateRequestJsonCodec = taskUpdateRequestJsonCodec;
+        this.taskUpdateRequestSmileCodec = taskUpdateRequestSmileCodec;
         this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
         this.connectorTypeSerdeManager = requireNonNull(connectorTypeSerdeManager, "connectorTypeSerdeManager is null");
     }
@@ -142,12 +153,45 @@ public class TaskResource
 
     @POST
     @Path("{taskId}")
-    @Consumes({APPLICATION_JSON, APPLICATION_JACKSON_SMILE})
-    @Produces({APPLICATION_JSON, APPLICATION_JACKSON_SMILE})
-    public Response createOrUpdateTask(@PathParam("taskId") TaskId taskId, TaskUpdateRequest taskUpdateRequest, @Context UriInfo uriInfo)
+    @Consumes({APPLICATION_JSON, APPLICATION_JACKSON_SMILE, APPLICATION_THRIFT_BINARY})
+    @Produces({APPLICATION_JSON, APPLICATION_JACKSON_SMILE, APPLICATION_THRIFT_BINARY})
+    public Response createOrUpdateTask(
+            @PathParam("taskId") TaskId taskId,
+            @HeaderParam(PRESTO_EXPERIMENTAL) boolean isExperimental,
+            byte[] requestBody,
+            @Context HttpHeaders httpHeaders,
+            @Context UriInfo uriInfo)
     {
-        requireNonNull(taskUpdateRequest, "taskUpdateRequest is null");
+        requireNonNull(requestBody, "taskUpdateRequest is null");
 
+        String contentType = httpHeaders.getHeaderString(HttpHeaders.CONTENT_TYPE);
+        log.info("Content-type: %s", contentType);
+        TaskUpdateRequest taskUpdateRequest = null;
+        if (isExperimental) {
+            TDeserializer deserializer = null;
+            try {
+                deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+                ThriftTaskUpdateRequest thriftTaskUpdateRequest = new ThriftTaskUpdateRequest();
+                deserializer.deserialize(thriftTaskUpdateRequest, requestBody);
+                taskUpdateRequest = toTaskUpdateRequest(thriftTaskUpdateRequest);
+                log.info("deserialize taskUpdateRequest in thrift");
+            }
+            catch (TTransportException e) {
+                throw new RuntimeException("Can not create deserializer for taskUpdate" + e);
+            }
+            catch (TException e) {
+                throw new RuntimeException("Can not deserialize taskUpdate" + e);
+            }
+        }
+        else if (contentType.contains("json")) {
+            taskUpdateRequest = taskUpdateRequestJsonCodec.fromJson(requestBody);
+        }
+        else if (contentType.contains("smile")) {
+            taskUpdateRequest = taskUpdateRequestSmileCodec.fromSmile(requestBody);
+        }
+        else {
+            throw new RuntimeException("Can not understand the content-type");
+        }
         Session session = taskUpdateRequest.getSession().toSession(sessionPropertyManager, taskUpdateRequest.getExtraCredentials());
         TaskInfo taskInfo = taskManager.updateTask(session,
                 taskId,
@@ -268,7 +312,7 @@ public class TaskResource
         // For hard timeout, add an additional time to max wait for thread scheduling contention and GC
         Duration timeout = new Duration(waitTime.toMillis() + ADDITIONAL_WAIT_TIME.toMillis(), MILLISECONDS);
         if (isExperimental) {
-            ListenableFuture<ThriftTaskStatus> futureThriftTaskStatus = Futures.transform(futureTaskStatus, taskStatus -> fromTaskStatus(taskStatus), directExecutor());
+            ListenableFuture<ThriftTaskStatus> futureThriftTaskStatus = Futures.transform(futureTaskStatus, ThriftTaskStatusUtils::fromTaskStatus, directExecutor());
             bindAsyncResponse(asyncResponse, futureThriftTaskStatus, responseExecutor)
                     .withTimeout(timeout);
         }

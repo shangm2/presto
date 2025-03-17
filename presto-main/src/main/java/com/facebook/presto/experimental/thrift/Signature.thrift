@@ -1,6 +1,7 @@
 namespace java com.facebook.presto.experimental
 namespace cpp protocol
 
+include "Common.thrift"
 include "TypeSignature.thrift"
 
 enum ThriftFunctionKind {
@@ -24,11 +25,11 @@ struct ThriftLongVariableConstraint {
 }
 
 struct ThriftSignature {
-  1: ThriftQualifiedObjectName name;
+  1: Common.ThriftQualifiedObjectName name;
   2: ThriftFunctionKind kind;
   3: list<ThriftTypeVariableConstraint> typeVariableConstraints;
   4: list<ThriftLongVariableConstraint> longVariableConstraints;
-  5: ThriftTypeSignature returnType;
-  6: list<ThriftTypeSignature> argumentTypes;
+  5: TypeSignature.ThriftTypeSignature returnType;
+  6: list<TypeSignature.ThriftTypeSignature> argumentTypes;
   7: bool variableArity;
 }

@@ -16,12 +16,6 @@ enum ThriftErrorCause {
     EXCEEDS_BROADCAST_MEMORY_LIMIT = 2;
 }
 
-enum ThriftBufferType {
-  BROADCAST = 0,
-  PARTITIONED = 1,
-  ARBITRARY = 2
-}
-
 enum ThriftErrorType {
   USER_ERROR = 0,
   INTERNAL_ERROR = 1,
@@ -38,19 +32,6 @@ enum ThriftSelectedRoleType {
 struct ThriftSelectedRole {
   1: ThriftSelectedRoleType type;
   2: optional string role;
-}
-
-struct ThriftOutputBufferId {
-  1: required i32 id;
-}
-
-struct ThriftOutputBuffers {
-  1: ThriftBufferType type;
-  2: bool noMoreBufferIds;
-  3: i64 version;
-  4: map<ThriftOutputBufferId, string> buffers;
-  5: optional i32 totalBufferCount;
-  6: optional i32 totalPartitionCount;
 }
 
 struct ThriftErrorCode {
@@ -73,48 +54,13 @@ struct ThriftHostAddress {
 struct ThriftExecutionFailureInfo {
   1: string type;
   2: string message;
-  3: optional ThriftExecutionFailureInfo cause;
+  3: ThriftExecutionFailureInfo cause;
   4: list<ThriftExecutionFailureInfo> suppressed;
   5: list<string> stack;
   6: ThriftErrorLocation errorLocation;
   7: ThriftErrorCode errorCode;
   8: ThriftHostAddress remoteHost;
   9: ThriftErrorCause errorCause;
-}
-
-struct ThriftPlanNodeId {
-  1: string id;
-}
-
-struct ThriftLifespan {
-  1: bool grouped;
-  2: optional i32 groupId;
-}
-
-struct ThriftScheduledSplit {
-  1: i64 sequenceId;
-  2: ThriftSplit split;
-  3: ThriftLifespan lifespan;
-}
-
-struct ThriftSplit {
-  1: string connectorId;
-  2: binary connectorSplit;
-  3: bool remoteSplit;
-  4: optional double splitWeight;
-}
-
-struct ThriftTaskSource {
-  1: ThriftPlanNodeId planNodeId;
-  2: list<ThriftScheduledSplit> splits;
-  3: bool noMoreSplits;
-}
-
-struct ThriftTableWriteInfo {
-  1: string catalogName;
-  2: string schemaName;
-  3: string tableName;
-  4: bool writtenByQuery;
 }
 
 struct ThriftResourceEstimates {
@@ -127,10 +73,15 @@ struct ThriftResourceEstimates {
 struct ThriftTransactionId {
   1: i64 mostSignificantBits;
   2: i64 leastSignificantBits;
-  3: optional string stringRepresentation;
 }
 
 struct ThriftTimeZoneKey {
-  1: i16 key;
-  2: string id;
+  1: string id;
+  2: i16 key;
+}
+
+struct ThriftQualifiedObjectName {
+  1: string catalogName;
+  2: string schemaName;
+  3: string objectName;
 }

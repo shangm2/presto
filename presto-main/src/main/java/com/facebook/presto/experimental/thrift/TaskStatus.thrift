@@ -2,6 +2,7 @@ namespace java com.facebook.presto.experimental
 namespace cpp protocol
 
 include "Common.thrift"
+include "Connector.thrift"
 
 struct ThriftTaskStatus {
     1: i64 taskInstanceIdLeastSignificantBits;
@@ -9,7 +10,7 @@ struct ThriftTaskStatus {
     3: i64 version;
     4: Common.ThriftTaskState state;
     5: string self;
-    6: set<Common.ThriftLifespan> completedDriverGroups;
+    6: set<Connector.ThriftLifespan> completedDriverGroups;
     7: list<Common.ThriftExecutionFailureInfo> failures;
     8: i32 queuedPartitionedDrivers;
     9: i32 runningPartitionedDrivers;

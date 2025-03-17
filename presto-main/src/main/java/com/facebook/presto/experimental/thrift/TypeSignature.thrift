@@ -1,9 +1,9 @@
 namespace java com.facebook.presto.experimental
 namespace cpp protocol
 
-include "TypeSignatureReference.thrift"
+include "Common.thrift"
 
-enum ParameterKind {
+enum ThriftParameterKind {
     TYPE = 1,
     NAMED_TYPE = 2,
     LONG = 3,
@@ -13,15 +13,14 @@ enum ParameterKind {
     DISTINCT_TYPE = 7;
 }
 
-struct ThriftQualifiedObjectName {
-  1: string catalogName;
-  2: string schemaName;
-  3: string objectName;
+struct ThriftRowFieldName {
+  1: string name;
+  2: bool delimited;
 }
 
 struct ThriftTypeSignatureBase {
   1: optional string standardTypeBase;
-  2: optional ThriftQualifiedObjectName typeName;
+  2: optional Common.ThriftQualifiedObjectName typeName;
 }
 
 struct ThriftVarcharEnumMap {
@@ -35,21 +34,21 @@ struct ThriftLongEnumMap {
 }
 
 struct ThriftNamedTypeSignature {
-  1: required string name;
+  1: optional ThriftRowFieldName rowFieldName;
   2: ThriftTypeSignature typeSignature;
 }
 
 struct ThriftDistinctTypeInfo {
-  1: ThriftQualifiedObjectName name;
+  1: Common.ThriftQualifiedObjectName name;
   2: ThriftTypeSignature baseType;
   3: bool isOrderable;
-  4: optional ThriftQualifiedObjectName topMostAncestor;
-  5: list<ThriftQualifiedObjectName> otherAncestors;
+  4: Common.ThriftQualifiedObjectName topMostAncestor;
+  5: list<Common.ThriftQualifiedObjectName> otherAncestors;
 }
 
-union ThriftTypeSignatureParameter {
-  1: ParameterKind kind;
-  2: TypeSignatureReference.ThriftTypeSignatureReference typeSignature;
+union ThriftTypeSignatureParameterUnion {
+  1: ThriftParameterKind kind;
+  2: ThriftTypeSignature typeSignature;
   3: ThriftNamedTypeSignature namedTypeSignature;
   4: i64 longLiteral;
   5: string variable;
@@ -58,10 +57,13 @@ union ThriftTypeSignatureParameter {
   8: ThriftDistinctTypeInfo distinctTypeInfo;
 }
 
+struct ThriftTypeSignatureParameter {
+  1: ThriftParameterKind kind;
+  2: ThriftTypeSignatureParameterUnion thriftTypeSignatureParameterUnion
+}
+
 struct ThriftTypeSignature {
   1: ThriftTypeSignatureBase base;
   2: list<ThriftTypeSignatureParameter> parameters;
   3: bool calculated;
-
-  4: string stringRepresentation;
 }

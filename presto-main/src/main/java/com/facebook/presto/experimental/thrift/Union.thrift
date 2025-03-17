@@ -1,0 +1,8 @@
+namespace java com.facebook.presto.experimental
+namespace cpp protocol
+
+typedef string ThriftConnectorTableHandle
+typedef string ThriftConnectorTransactionHandle
+typedef string ThriftExecutionWriterTarget
+typedef string ThriftSplitContext
+typedef string ThriftConnectorSplit

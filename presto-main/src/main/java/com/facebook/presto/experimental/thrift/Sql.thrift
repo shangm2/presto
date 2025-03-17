@@ -1,12 +1,12 @@
 namespace java com.facebook.presto.experimental
 namespace cpp protocol
 
+include "Common.thrift"
 include "TypeSignature.thrift"
 include "Signature.thrift"
-include "Sql.thrift"
 
 struct ThriftSqlFunctionId {
-  1: TypeSignature.ThriftQualifiedObjectName functionName;
+  1: Common.ThriftQualifiedObjectName functionName;
   2: list<TypeSignature.ThriftTypeSignature> argumentTypes;
 }
 
@@ -15,9 +15,7 @@ struct ThriftParameter {
   2: TypeSignature.ThriftTypeSignature type;
 }
 
-struct ThriftLanguage {
-  1: string language
-}
+typedef string ThriftLanguage
 
 enum ThriftDeterminism {
   DETERMINISTIC = 0,
@@ -36,12 +34,17 @@ struct ThriftRoutineCharacteristics {
 }
 
 struct ThriftFunctionVersion {
-  1: optional string version;
+  1: string version;
 }
 
 struct ThriftSqlFunctionHandle {
   1: ThriftSqlFunctionId functionId;
   2: string version;
+}
+
+struct ThriftAggregationFunctionMetadata {
+  1: TypeSignature.ThriftTypeSignature intermediateType;
+  2: bool isOrderSensitive;
 }
 
 struct ThriftSqlInvokedFunction {
@@ -50,9 +53,10 @@ struct ThriftSqlInvokedFunction {
   3: ThriftRoutineCharacteristics routineCharacteristics;
   4: string body;
   5: bool variableArity;
-  6: TypeSignature.ThriftSignature signature;
+  6: Signature.ThriftSignature signature;
   7: ThriftSqlFunctionId functionId;
   8: ThriftFunctionVersion functionVersion;
   9: optional ThriftSqlFunctionHandle functionHandle;
+  10: optional ThriftAggregationFunctionMetadata aggregationMetadata;
 }
 
