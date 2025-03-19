@@ -30,6 +30,9 @@ public class ThriftTransactionIdUtils
 
     public static ThriftTransactionId fromTransactionId(TransactionId transactionId)
     {
+        if (transactionId == null) {
+            return null;
+        }
         return new ThriftTransactionId(transactionId.getUuid().getMostSignificantBits(), transactionId.getUuid().getLeastSignificantBits());
     }
 }

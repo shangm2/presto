@@ -27,6 +27,9 @@ public class ThriftTypeSignatureParameterUtils
 
     public static TypeSignatureParameter toTypeSignatureParameter(ThriftTypeSignatureParameter thriftTypeSignatureParameter)
     {
+        if (thriftTypeSignatureParameter == null) {
+            return null;
+        }
         return new TypeSignatureParameter(
                 toParameterKind(thriftTypeSignatureParameter.getKind()),
                 toTypeSignatureParameterUnion(thriftTypeSignatureParameter.getThriftTypeSignatureParameterUnion()));
@@ -34,6 +37,9 @@ public class ThriftTypeSignatureParameterUtils
 
     public static ThriftTypeSignatureParameter fromTypeSignatureParameter(TypeSignatureParameter typeSignatureParameter)
     {
+        if (typeSignatureParameter == null) {
+            return null;
+        }
         return new ThriftTypeSignatureParameter(
                 fromParameterKind(typeSignatureParameter.getKind()),
                 fromTypeSignatureParameterUnion(typeSignatureParameter.getValue()));

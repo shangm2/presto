@@ -27,6 +27,9 @@ public class ThriftRoutineCharacteristicsUtils
 
     public static ThriftRoutineCharacteristics fromRoutineCharacteristics(RoutineCharacteristics routineCharacteristics)
     {
+        if (routineCharacteristics == null) {
+            return null;
+        }
         return new ThriftRoutineCharacteristics(
                 routineCharacteristics.getLanguage().getLanguage(),
                 fromDeterminism(routineCharacteristics.getDeterminism()),
@@ -35,6 +38,9 @@ public class ThriftRoutineCharacteristicsUtils
 
     public static RoutineCharacteristics toRoutineCharacteristics(ThriftRoutineCharacteristics thriftRoutineCharacteristics)
     {
+        if (thriftRoutineCharacteristics == null) {
+            return null;
+        }
         return new RoutineCharacteristics(
                 new RoutineCharacteristics.Language(thriftRoutineCharacteristics.getLanguage()),
                 toDeterminism(thriftRoutineCharacteristics.getDeterminism()),

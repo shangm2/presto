@@ -78,6 +78,9 @@ public class ThriftTaskStatusUtils
 
     public static ThriftTaskStatus fromTaskStatus(TaskStatus taskStatus)
     {
+        if (taskStatus == null) {
+            return null;
+        }
         return new ThriftTaskStatus(
                 taskStatus.getTaskInstanceIdLeastSignificantBits(),
                 taskStatus.getTaskInstanceIdMostSignificantBits(),
@@ -104,6 +107,9 @@ public class ThriftTaskStatusUtils
 
     public static TaskStatus toTaskStatus(ThriftTaskStatus thriftTaskStatus)
     {
+        if (thriftTaskStatus == null) {
+            return null;
+        }
         try {
             URI location = new URI(thriftTaskStatus.getSelf());
 

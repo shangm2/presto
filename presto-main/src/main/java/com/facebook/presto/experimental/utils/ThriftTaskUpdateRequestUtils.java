@@ -31,6 +31,9 @@ public class ThriftTaskUpdateRequestUtils
 
     public static TaskUpdateRequest toTaskUpdateRequest(ThriftTaskUpdateRequest thriftTaskUpdateRequest)
     {
+        if (thriftTaskUpdateRequest == null) {
+            return null;
+        }
         return new TaskUpdateRequest(
                 toSessionRepresentation(thriftTaskUpdateRequest.getSession()),
                 thriftTaskUpdateRequest.getExtraCredentials(),
@@ -42,6 +45,9 @@ public class ThriftTaskUpdateRequestUtils
 
     public static ThriftTaskUpdateRequest fromTaskUpdateRequest(TaskUpdateRequest taskUpdateRequest)
     {
+        if (taskUpdateRequest == null) {
+            return null;
+        }
         ThriftTaskUpdateRequest thriftTaskUpdateRequest = new ThriftTaskUpdateRequest(
                 fromSessionRepresentation(taskUpdateRequest.getSession()),
                 taskUpdateRequest.getExtraCredentials(),

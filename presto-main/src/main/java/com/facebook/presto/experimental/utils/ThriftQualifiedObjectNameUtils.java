@@ -22,11 +22,17 @@ public class ThriftQualifiedObjectNameUtils
 
     public static QualifiedObjectName toQualifiedObjectName(ThriftQualifiedObjectName thriftObjectName)
     {
+        if (thriftObjectName == null) {
+            return null;
+        }
         return new QualifiedObjectName(thriftObjectName.getCatalogName(), thriftObjectName.getSchemaName(), thriftObjectName.getObjectName());
     }
 
     public static ThriftQualifiedObjectName fromQualifiedObjectName(QualifiedObjectName qualifiedObjectName)
     {
+        if (qualifiedObjectName == null) {
+            return null;
+        }
         return new ThriftQualifiedObjectName(qualifiedObjectName.getCatalogName(), qualifiedObjectName.getSchemaName(), qualifiedObjectName.getObjectName());
     }
 }

@@ -27,6 +27,9 @@ public class ThriftSqlFunctionIdUtils
 
     public static SqlFunctionId toSqlFunctionId(ThriftSqlFunctionId thriftSqlFunctionId)
     {
+        if (thriftSqlFunctionId == null) {
+            return null;
+        }
         return new SqlFunctionId(
                 toQualifiedObjectName(thriftSqlFunctionId.getFunctionName()),
                 thriftSqlFunctionId.getArgumentTypes().stream().map(ThriftTypeSignatureUtils::toTypeSignature).collect(Collectors.toList()));
@@ -34,6 +37,9 @@ public class ThriftSqlFunctionIdUtils
 
     public static ThriftSqlFunctionId fromSqlFunctionId(SqlFunctionId sqlFunctionId)
     {
+        if (sqlFunctionId == null) {
+            return null;
+        }
         return new ThriftSqlFunctionId(
                 fromQualifiedObjectName(sqlFunctionId.getFunctionName()),
                 sqlFunctionId.getArgumentTypes().stream().map(ThriftTypeSignatureUtils::fromTypeSignature).collect(Collectors.toList()));

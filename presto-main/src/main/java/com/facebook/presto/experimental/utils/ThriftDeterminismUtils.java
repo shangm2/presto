@@ -22,11 +22,17 @@ public class ThriftDeterminismUtils
 
     public static ThriftDeterminism fromDeterminism(RoutineCharacteristics.Determinism determinism)
     {
+        if (determinism == null) {
+            return null;
+        }
         return ThriftDeterminism.valueOf(determinism.name());
     }
 
     public static RoutineCharacteristics.Determinism toDeterminism(ThriftDeterminism thriftDeterminism)
     {
+        if (thriftDeterminism == null) {
+            return null;
+        }
         return RoutineCharacteristics.Determinism.valueOf(thriftDeterminism.name());
     }
 }

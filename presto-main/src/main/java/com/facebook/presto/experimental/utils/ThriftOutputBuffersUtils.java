@@ -28,6 +28,9 @@ public class ThriftOutputBuffersUtils
 
     public static OutputBuffers toOutputBuffers(ThriftOutputBuffers thriftOutputBuffers)
     {
+        if (thriftOutputBuffers == null) {
+            return null;
+        }
         Map<OutputBuffers.OutputBufferId, Integer> buffers = thriftOutputBuffers.getBuffers().entrySet()
                 .stream().collect(Collectors.toMap(
                         entry -> new OutputBuffers.OutputBufferId(entry.getKey()),
@@ -41,6 +44,9 @@ public class ThriftOutputBuffersUtils
 
     public static ThriftOutputBuffers fromOutputBuffers(OutputBuffers outputBuffers)
     {
+        if (outputBuffers == null) {
+            return null;
+        }
         Map<Integer, Integer> buffers = outputBuffers.getBuffers().entrySet()
                 .stream().collect(Collectors.toMap(
                         entry -> entry.getKey().getId(),

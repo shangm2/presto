@@ -16,15 +16,15 @@ package com.facebook.presto.experimental.utils;
 import com.facebook.presto.common.type.TypeSignatureBase;
 import com.facebook.presto.experimental.auto_gen.ThriftTypeSignatureBase;
 
-import static com.facebook.presto.experimental.utils.ThriftQualifiedObjectNameUtils.fromQualifiedObjectName;
-import static com.facebook.presto.experimental.utils.ThriftQualifiedObjectNameUtils.toQualifiedObjectName;
-
 public class ThriftTypeSignatureBaseUtils
 {
     private ThriftTypeSignatureBaseUtils() {}
 
     public static TypeSignatureBase toTypeSignatureBase(ThriftTypeSignatureBase thriftTypeSignatureBase)
     {
+        if (thriftTypeSignatureBase == null) {
+            return null;
+        }
         return new TypeSignatureBase(
                 thriftTypeSignatureBase.getStandardTypeBase(),
                 thriftTypeSignatureBase.getTypeName().map(ThriftQualifiedObjectNameUtils::toQualifiedObjectName));
@@ -32,6 +32,9 @@ public class ThriftTypeSignatureBaseUtils
 
     public static ThriftTypeSignatureBase fromTypeSignatureBase(TypeSignatureBase typeSignatureBase)
     {
+        if (typeSignatureBase == null) {
+            return null;
+        }
         ThriftTypeSignatureBase thriftTypeSignatureBase = new ThriftTypeSignatureBase();
         typeSignatureBase.getOptionalStandardTypeBase().ifPresent(thriftTypeSignatureBase::setStandardTypeBase);
         typeSignatureBase.getOptionalQualifiedObjectName().map(ThriftQualifiedObjectNameUtils::fromQualifiedObjectName).ifPresent(thriftTypeSignatureBase::setTypeName);

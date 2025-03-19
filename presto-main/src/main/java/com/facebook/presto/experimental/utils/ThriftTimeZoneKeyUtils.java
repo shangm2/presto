@@ -22,11 +22,17 @@ public class ThriftTimeZoneKeyUtils
 
     public static TimeZoneKey toTimeZoneKey(ThriftTimeZoneKey thriftTimeZoneKey)
     {
+        if (thriftTimeZoneKey == null) {
+            return null;
+        }
         return new TimeZoneKey(thriftTimeZoneKey.getId(), thriftTimeZoneKey.getKey());
     }
 
     public static ThriftTimeZoneKey fromTimeZoneKey(TimeZoneKey timeZoneKey)
     {
+        if (timeZoneKey == null) {
+            return null;
+        }
         return new ThriftTimeZoneKey(timeZoneKey.getId(), timeZoneKey.getKey());
     }
 }

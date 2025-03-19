@@ -26,6 +26,9 @@ public class ThriftNamedTypeSignatureUtils
 
     public static NamedTypeSignature toNamedTypeSignature(ThriftNamedTypeSignature thriftNamedTypeSignature)
     {
+        if (thriftNamedTypeSignature == null) {
+            return null;
+        }
         return new NamedTypeSignature(
                 thriftNamedTypeSignature.getRowFieldName().map(ThriftRowFieldNameUtils::toRowFieldName),
                 toTypeSignature(thriftNamedTypeSignature.getTypeSignature()));
@@ -33,6 +36,9 @@ public class ThriftNamedTypeSignatureUtils
 
     public static ThriftNamedTypeSignature fromNamedTypeSignature(NamedTypeSignature namedTypeSignature)
     {
+        if (namedTypeSignature == null) {
+            return null;
+        }
         ThriftNamedTypeSignature thriftNamedTypeSignature = new ThriftNamedTypeSignature(fromTypeSignature(namedTypeSignature.getTypeSignature()));
         namedTypeSignature.getFieldName().map(fieldName -> thriftNamedTypeSignature.setRowFieldName(fromRowFieldName(fieldName)));
 

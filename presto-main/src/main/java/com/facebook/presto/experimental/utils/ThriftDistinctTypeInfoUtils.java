@@ -30,6 +30,9 @@ public class ThriftDistinctTypeInfoUtils
 
     public static ThriftDistinctTypeInfo fromDistinctTypeInfo(DistinctTypeInfo distinctTypeInfo)
     {
+        if (distinctTypeInfo == null) {
+            return null;
+        }
         return new ThriftDistinctTypeInfo(
                 fromQualifiedObjectName(distinctTypeInfo.getName()),
                 fromTypeSignature(distinctTypeInfo.getBaseType()),
@@ -40,6 +43,9 @@ public class ThriftDistinctTypeInfoUtils
 
     public static DistinctTypeInfo toDistinctTypeInfo(ThriftDistinctTypeInfo thriftDistinctTypeInfo)
     {
+        if (thriftDistinctTypeInfo == null) {
+            return null;
+        }
         return new DistinctTypeInfo(
                 toQualifiedObjectName(thriftDistinctTypeInfo.getName()),
                 toTypeSignature(thriftDistinctTypeInfo.getBaseType()),

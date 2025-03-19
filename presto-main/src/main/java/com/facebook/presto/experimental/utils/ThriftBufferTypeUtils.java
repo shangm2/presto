@@ -22,11 +22,17 @@ public class ThriftBufferTypeUtils
 
     public static OutputBuffers.BufferType toBufferType(ThriftBufferType thriftBufferType)
     {
+        if (thriftBufferType == null) {
+            return null;
+        }
         return OutputBuffers.BufferType.valueOf(thriftBufferType.name());
     }
 
     public static ThriftBufferType fromBufferType(OutputBuffers.BufferType bufferType)
     {
+        if (bufferType == null) {
+            return null;
+        }
         return ThriftBufferType.valueOf(bufferType.name());
     }
 }

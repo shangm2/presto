@@ -22,11 +22,17 @@ public class ThriftLongVariableConstraintUtils
 
     public static LongVariableConstraint toLongVariableConstraint(ThriftLongVariableConstraint constraint)
     {
+        if (constraint == null) {
+            return null;
+        }
         return new LongVariableConstraint(constraint.getName(), constraint.getExpression());
     }
 
     public static ThriftLongVariableConstraint fromLongVariableConstraint(LongVariableConstraint constraint)
     {
+        if (constraint == null) {
+            return null;
+        }
         return new ThriftLongVariableConstraint(constraint.getName(), constraint.getExpression());
     }
 }

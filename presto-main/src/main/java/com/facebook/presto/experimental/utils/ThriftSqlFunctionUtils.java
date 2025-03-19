@@ -30,12 +30,18 @@ public class ThriftSqlFunctionUtils
 
     public ThriftSqlFunctionId fromSqlFunctionId(SqlFunctionId functionId)
     {
+        if (functionId == null) {
+            return null;
+        }
         List<ThriftTypeSignature> thriftTypeSignatures = functionId.getArgumentTypes().stream().map(ThriftTypeSignatureUtils::fromTypeSignature).collect(Collectors.toList());
         return new ThriftSqlFunctionId(fromQualifiedObjectName(functionId.getFunctionName()), thriftTypeSignatures);
     }
 
     public SqlFunctionId toSqlFunctionId(ThriftSqlFunctionId thriftSqlFunctionId)
     {
+        if (thriftSqlFunctionId == null) {
+            return null;
+        }
         List<TypeSignature> typeSignatures = thriftSqlFunctionId.getArgumentTypes().stream().map(ThriftTypeSignatureUtils::toTypeSignature).collect(Collectors.toList());
         return new SqlFunctionId(toQualifiedObjectName(thriftSqlFunctionId.getFunctionName()), typeSignatures);
     }

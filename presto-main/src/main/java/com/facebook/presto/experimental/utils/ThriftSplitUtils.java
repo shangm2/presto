@@ -23,11 +23,17 @@ public class ThriftSplitUtils
     // TODO: fix this
     public static Split toSplit(ThriftSplit thriftSplit)
     {
+        if (thriftSplit == null) {
+            return null;
+        }
         return new Split(null, null, null);
     }
 
     public static ThriftSplit fromSplit(Split split)
     {
+        if (split == null) {
+            return null;
+        }
         return new ThriftSplit();
     }
 }

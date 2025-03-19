@@ -22,11 +22,17 @@ public class ThriftFunctionKindUtils
 
     public static ThriftFunctionKind fromFunctionKind(FunctionKind functionKind)
     {
+        if (functionKind == null) {
+            return null;
+        }
         return ThriftFunctionKind.valueOf(functionKind.name());
     }
 
     public static FunctionKind toFunctionKind(ThriftFunctionKind thriftFunctionKind)
     {
+        if (thriftFunctionKind == null) {
+            return null;
+        }
         return FunctionKind.valueOf(thriftFunctionKind.name());
     }
 }

@@ -25,6 +25,9 @@ public class ThriftAggregationFunctionMetadataUtils
 
     public static AggregationFunctionMetadata toAggregationFunctionMetadata(ThriftAggregationFunctionMetadata thriftMetadata)
     {
+        if (thriftMetadata == null) {
+            return null;
+        }
         return new AggregationFunctionMetadata(
                 toTypeSignature(thriftMetadata.getIntermediateType()),
                 thriftMetadata.isOrderSensitive);
@@ -32,6 +35,9 @@ public class ThriftAggregationFunctionMetadataUtils
 
     public static ThriftAggregationFunctionMetadata fromAggregationFunctionMetadata(AggregationFunctionMetadata metadata)
     {
+        if (metadata == null) {
+            return null;
+        }
         return new ThriftAggregationFunctionMetadata(
                 fromTypeSignature(metadata.getIntermediateType()),
                 metadata.isOrderSensitive());

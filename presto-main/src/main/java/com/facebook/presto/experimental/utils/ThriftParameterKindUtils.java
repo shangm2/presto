@@ -22,11 +22,17 @@ public class ThriftParameterKindUtils
 
     public static ThriftParameterKind fromParameterKind(ParameterKind parameterKind)
     {
+        if (parameterKind == null) {
+            return null;
+        }
         return ThriftParameterKind.valueOf(parameterKind.name());
     }
 
     public static ParameterKind toParameterKind(ThriftParameterKind thriftParameterKind)
     {
+        if (thriftParameterKind == null) {
+            return null;
+        }
         return ParameterKind.valueOf(thriftParameterKind.name());
     }
 }

@@ -25,6 +25,9 @@ public class ThriftSqlFunctionHandleUtils
 
     public static SqlFunctionHandle toSqlFunctionHandle(ThriftSqlFunctionHandle thriftSqlFunctionHandle)
     {
+        if (thriftSqlFunctionHandle == null) {
+            return null;
+        }
         return new SqlFunctionHandle(
                 toSqlFunctionId(thriftSqlFunctionHandle.getFunctionId()),
                 thriftSqlFunctionHandle.getVersion());
@@ -32,6 +35,9 @@ public class ThriftSqlFunctionHandleUtils
 
     public static ThriftSqlFunctionHandle fromSqlFunctionHandle(SqlFunctionHandle sqlFunctionHandle)
     {
+        if (sqlFunctionHandle == null) {
+            return null;
+        }
         return new ThriftSqlFunctionHandle(
                 fromSqlFunctionId(sqlFunctionHandle.getFunctionId()),
                 sqlFunctionHandle.getVersion());

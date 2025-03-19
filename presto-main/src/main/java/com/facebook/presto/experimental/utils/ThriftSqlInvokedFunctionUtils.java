@@ -33,6 +33,9 @@ public class ThriftSqlInvokedFunctionUtils
     // TODO: add more constructor
     public static SqlInvokedFunction toSqlInvokedFunction(ThriftSqlInvokedFunction thriftSqlInvokedFunction)
     {
+        if (thriftSqlInvokedFunction == null) {
+            return null;
+        }
         return new SqlInvokedFunction(
                 thriftSqlInvokedFunction.getParameters().stream().map(ThriftParameterUtils::toParameter).collect(Collectors.toList()),
                 thriftSqlInvokedFunction.getDescription(),
@@ -45,6 +48,9 @@ public class ThriftSqlInvokedFunctionUtils
 
     public static ThriftSqlInvokedFunction fromSqlInvokedFunction(SqlInvokedFunction sqlInvokedFunction)
     {
+        if (sqlInvokedFunction == null) {
+            return null;
+        }
         ThriftSqlInvokedFunction thriftSqlInvokedFunction = new ThriftSqlInvokedFunction(
                 sqlInvokedFunction.getParameters().stream().map(ThriftParameterUtils::fromParameter).collect(Collectors.toList()),
                 sqlInvokedFunction.getDescription(),

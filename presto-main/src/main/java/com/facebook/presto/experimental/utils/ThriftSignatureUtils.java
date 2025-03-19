@@ -31,6 +31,9 @@ public class ThriftSignatureUtils
 
     public static Signature toSignature(ThriftSignature thriftSignature)
     {
+        if (thriftSignature == null) {
+            return null;
+        }
         return new Signature(
                 toQualifiedObjectName(thriftSignature.getName()),
                 toFunctionKind(thriftSignature.getKind()),
@@ -43,6 +46,9 @@ public class ThriftSignatureUtils
 
     public static ThriftSignature fromSignature(Signature signature)
     {
+        if (signature == null) {
+            return null;
+        }
         return new ThriftSignature(
                 fromQualifiedObjectName(signature.getName()),
                 fromFunctionKind(signature.getKind()),

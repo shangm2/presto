@@ -25,12 +25,18 @@ public class ThriftParameterUtils
 
     public static ThriftParameter fromParameter(Parameter parameter)
     {
+        if (parameter == null) {
+            return null;
+        }
         return new ThriftParameter(
                 parameter.getName(), fromTypeSignature(parameter.getType()));
     }
 
     public static Parameter toParameter(ThriftParameter thriftParameter)
     {
+        if (thriftParameter == null) {
+            return null;
+        }
         return new Parameter(thriftParameter.getName(), toTypeSignature(thriftParameter.getType()));
     }
 }

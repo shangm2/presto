@@ -25,6 +25,9 @@ public class ThriftErrorCodeUtils
 
     public static ErrorCode toErrorCode(ThriftErrorCode thriftErrorCode)
     {
+        if (thriftErrorCode == null) {
+            return null;
+        }
         return new ErrorCode(thriftErrorCode.getCode(), thriftErrorCode.getName(), toErrorType(thriftErrorCode.getType()), thriftErrorCode.isRetriable());
     }
 

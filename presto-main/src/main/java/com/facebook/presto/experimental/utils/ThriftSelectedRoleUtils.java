@@ -33,11 +33,17 @@ public class ThriftSelectedRoleUtils
 
     public static SelectedRole toSelectedRole(ThriftSelectedRole thriftSelectedRole)
     {
+        if (thriftSelectedRole == null) {
+            return null;
+        }
         return new SelectedRole(toSelectedRoleType(thriftSelectedRole.getType()), thriftSelectedRole.getRole());
     }
 
     public static ThriftSelectedRole fromSelectedRole(SelectedRole selectedRole)
     {
+        if (selectedRole == null) {
+            return null;
+        }
         ThriftSelectedRole thriftSelectedRole = new ThriftSelectedRole(fromSelectedRoleType(selectedRole.getType()));
         selectedRole.getRole().ifPresent(thriftSelectedRole::setRole);
         return thriftSelectedRole;

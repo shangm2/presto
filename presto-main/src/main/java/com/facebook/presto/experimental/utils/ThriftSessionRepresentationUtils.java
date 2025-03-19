@@ -47,6 +47,9 @@ public class ThriftSessionRepresentationUtils
 
     public static SessionRepresentation toSessionRepresentation(ThriftSessionRepresentation thriftSession)
     {
+        if (thriftSession == null) {
+            return null;
+        }
         Map<ConnectorId, Map<String, String>> catalogProperties = thriftSession.getCatalogProperties().entrySet().stream().collect(Collectors.toMap(
                 entry -> new ConnectorId(entry.getKey()),
                 Map.Entry::getValue));
@@ -85,6 +88,9 @@ public class ThriftSessionRepresentationUtils
 
     public static ThriftSessionRepresentation fromSessionRepresentation(SessionRepresentation sessionRepresentation)
     {
+        if (sessionRepresentation == null) {
+            return null;
+        }
         Map<String, Map<String, String>> catalogProperties = sessionRepresentation.getCatalogProperties().entrySet().stream().collect(Collectors.toMap(
                 Object::toString,
                 Map.Entry::getValue));

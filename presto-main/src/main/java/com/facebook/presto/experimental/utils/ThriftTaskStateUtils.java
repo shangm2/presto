@@ -44,11 +44,17 @@ public class ThriftTaskStateUtils
 
     public static TaskState toTaskState(ThriftTaskState state)
     {
+        if (state == null) {
+            return null;
+        }
         return CODE_TO_TASK_STATE.get(state.getValue());
     }
 
     public static ThriftTaskState fromTaskState(TaskState state)
     {
+        if (state == null) {
+            return null;
+        }
         return ThriftTaskState.findByValue(state.getCode());
     }
 }

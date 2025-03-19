@@ -26,6 +26,9 @@ public class ThriftScheduledSplitUtils
 
     public static ThriftScheduledSplit fromScheduledSplit(ScheduledSplit scheduledSplit)
     {
+        if (scheduledSplit == null) {
+            return null;
+        }
         return new ThriftScheduledSplit(
                 scheduledSplit.getSequenceId(),
                 scheduledSplit.getPlanNodeId().toString(),
@@ -34,6 +37,9 @@ public class ThriftScheduledSplitUtils
 
     public static ScheduledSplit toScheduledSplit(ThriftScheduledSplit thriftScheduledSplit)
     {
+        if (thriftScheduledSplit == null) {
+            return null;
+        }
         return new ScheduledSplit(
                 thriftScheduledSplit.getSequenceId(),
                 new PlanNodeId(thriftScheduledSplit.getPlanNodeId()),

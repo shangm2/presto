@@ -22,11 +22,17 @@ public class ThriftNullCallClauseUtils
 
     public static ThriftNullCallClause fromNullCallClause(RoutineCharacteristics.NullCallClause nullCallClause)
     {
+        if (nullCallClause == null) {
+            return null;
+        }
         return ThriftNullCallClause.valueOf(nullCallClause.name());
     }
 
     public static RoutineCharacteristics.NullCallClause toNullCallClause(ThriftNullCallClause thriftNullCallClause)
     {
+        if (thriftNullCallClause == null) {
+            return null;
+        }
         return RoutineCharacteristics.NullCallClause.valueOf(thriftNullCallClause.name());
     }
 }

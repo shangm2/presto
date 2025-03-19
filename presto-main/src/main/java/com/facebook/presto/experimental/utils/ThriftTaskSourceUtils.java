@@ -25,7 +25,7 @@ public class ThriftTaskSourceUtils
 
     public static TaskSource toTaskSource(ThriftTaskSource thriftTaskSource)
     {
-        if (thriftTaskSource != null) {
+        if (thriftTaskSource == null) {
             return null;
         }
         return new TaskSource(new PlanNodeId(thriftTaskSource.getPlanNodeId()),

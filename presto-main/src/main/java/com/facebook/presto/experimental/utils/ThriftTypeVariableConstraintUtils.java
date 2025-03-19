@@ -22,6 +22,9 @@ public class ThriftTypeVariableConstraintUtils
 
     public static ThriftTypeVariableConstraint fromTypeVariableConstraint(TypeVariableConstraint constraint)
     {
+        if (constraint == null) {
+            return null;
+        }
         return new ThriftTypeVariableConstraint(
                 constraint.getName(),
                 constraint.isComparableRequired(),
@@ -32,6 +35,9 @@ public class ThriftTypeVariableConstraintUtils
 
     public static TypeVariableConstraint toTypeVariableConstraint(ThriftTypeVariableConstraint constraint)
     {
+        if (constraint == null) {
+            return null;
+        }
         return new TypeVariableConstraint(
                 constraint.getName(),
                 constraint.isComparableRequired(),

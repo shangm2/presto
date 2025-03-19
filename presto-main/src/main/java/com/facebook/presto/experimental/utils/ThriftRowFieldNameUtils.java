@@ -22,11 +22,17 @@ public class ThriftRowFieldNameUtils
 
     public static RowFieldName toRowFieldName(ThriftRowFieldName thriftRowFieldName)
     {
+        if (thriftRowFieldName == null) {
+            return null;
+        }
         return new RowFieldName(thriftRowFieldName.getName(), thriftRowFieldName.isDelimited());
     }
 
     public static ThriftRowFieldName fromRowFieldName(RowFieldName rowFieldName)
     {
+        if (rowFieldName == null) {
+            return null;
+        }
         return new ThriftRowFieldName(rowFieldName.getName(), rowFieldName.isDelimited());
     }
 }

@@ -30,6 +30,9 @@ public class ThriftTypeSignatureUtils
 
     public static TypeSignature toTypeSignature(ThriftTypeSignature thriftTypeSignature)
     {
+        if (thriftTypeSignature == null) {
+            return null;
+        }
         List<TypeSignatureParameter> parameters = thriftTypeSignature.getParameters().stream()
                 .map(ThriftTypeSignatureParameterUtils::toTypeSignatureParameter).collect(Collectors.toList());
         return new TypeSignature(
@@ -39,6 +42,9 @@ public class ThriftTypeSignatureUtils
 
     public static ThriftTypeSignature fromTypeSignature(TypeSignature typeSignature)
     {
+        if (typeSignature == null) {
+            return null;
+        }
         List<ThriftTypeSignatureParameter> parameters = typeSignature.getParameters().stream()
                 .map(ThriftTypeSignatureParameterUtils::fromTypeSignatureParameter)
                 .collect(Collectors.toList());

@@ -22,11 +22,17 @@ public class ThriftVarcharEnumMapUtils
 
     public static ThriftVarcharEnumMap fromVarcharEnumMap(VarcharEnumType.VarcharEnumMap varcharEnumMap)
     {
+        if (varcharEnumMap == null) {
+            return null;
+        }
         return new ThriftVarcharEnumMap(varcharEnumMap.getTypeName(), varcharEnumMap.getEnumMap());
     }
 
     public static VarcharEnumType.VarcharEnumMap toVarcharEnumMap(ThriftVarcharEnumMap thriftVarcharEnumMap)
     {
+        if (thriftVarcharEnumMap == null) {
+            return null;
+        }
         return new VarcharEnumType.VarcharEnumMap(thriftVarcharEnumMap.getTypeName(), thriftVarcharEnumMap.getEnumMap());
     }
 }

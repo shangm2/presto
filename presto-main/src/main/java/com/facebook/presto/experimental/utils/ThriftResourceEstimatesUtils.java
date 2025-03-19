@@ -26,6 +26,9 @@ public class ThriftResourceEstimatesUtils
 
     public static ThriftResourceEstimates fromResourceEstimates(ResourceEstimates resourceEstimates)
     {
+        if (resourceEstimates == null) {
+            return null;
+        }
         ThriftResourceEstimates thriftResourceEstimates = new ThriftResourceEstimates();
         thriftResourceEstimates.setExecutionTimeInMillis(resourceEstimates.getExecutionTime().map(Duration::toMillis).orElse(0L))
                 .setCpuTimeInNanos(resourceEstimates.getCpuTime().map(d -> d.roundTo(TimeUnit.NANOSECONDS)).orElse(0L))
@@ -36,6 +39,9 @@ public class ThriftResourceEstimatesUtils
 
     public static ResourceEstimates toResourceEstimates(ThriftResourceEstimates thriftResourceEstimates)
     {
+        if (thriftResourceEstimates == null) {
+            return null;
+        }
         return new ResourceEstimates(
                 thriftResourceEstimates.getExecutionTimeInMillis().map(TimeUnit.MILLISECONDS::toNanos).map(Duration::succinctNanos),
                 thriftResourceEstimates.getCpuTimeInNanos().map(Duration::succinctNanos),

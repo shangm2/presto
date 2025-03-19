@@ -24,11 +24,17 @@ public class ThriftFunctionVersionUtils
 
     public static FunctionVersion toFunctionVersion(ThriftFunctionVersion thriftFunctionVersion)
     {
+        if (thriftFunctionVersion == null) {
+            return null;
+        }
         return Optional.ofNullable(thriftFunctionVersion.getVersion()).map(FunctionVersion::withVersion).orElse(null);
     }
 
     public static ThriftFunctionVersion fromFunctionVersion(FunctionVersion functionVersion)
     {
+        if (functionVersion == null) {
+            return null;
+        }
         return new ThriftFunctionVersion(!functionVersion.toString().isEmpty() ? functionVersion.toString() : null);
     }
 }

@@ -22,6 +22,9 @@ public class ThriftLongEnumMapUtils
 
     public static ThriftLongEnumMap fromLongEnumMap(BigintEnumType.LongEnumMap longEnumMap)
     {
+        if (longEnumMap == null) {
+            return null;
+        }
         return new ThriftLongEnumMap(
                 longEnumMap.getTypeName(),
                 longEnumMap.getEnumMap());
@@ -29,6 +32,9 @@ public class ThriftLongEnumMapUtils
 
     public static BigintEnumType.LongEnumMap toLongEnumMap(ThriftLongEnumMap thriftLongEnumMap)
     {
+        if (thriftLongEnumMap == null) {
+            return null;
+        }
         return new BigintEnumType.LongEnumMap(
                 thriftLongEnumMap.getTypeName(),
                 thriftLongEnumMap.getEnumMap());

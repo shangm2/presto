@@ -26,13 +26,17 @@ public class ThriftTaskInfoUtils
     // ToDo: fix this
     public static TaskInfo toTaskInfo(ThriftTaskInfo thriftTaskInfo)
     {
-        log.info("Convert from thrift task info to task info");
+        if (thriftTaskInfo == null) {
+            return null;
+        }
         return null;
     }
 
     public static ThriftTaskInfo fromTaskInfo(TaskInfo taskInfo)
     {
-        log.info("Convert from task info to thrift task info");
+        if (taskInfo == null) {
+            return null;
+        }
         return null;
     }
 }

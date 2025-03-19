@@ -23,11 +23,17 @@ public class ThriftTableWriteInfoUtils
     // ToDo: fix this
     public static TableWriteInfo toTableWriteInfo(ThriftTableWriteInfo thriftTableWriteInfo)
     {
+        if (thriftTableWriteInfo == null) {
+            return null;
+        }
         return new TableWriteInfo(null, null, null);
     }
 
     public static ThriftTableWriteInfo fromTableWriteInfo(TableWriteInfo tableWriteInfo)
     {
+        if (tableWriteInfo == null) {
+            return null;
+        }
         return new ThriftTableWriteInfo();
     }
 }
