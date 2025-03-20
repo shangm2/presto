@@ -15,6 +15,16 @@ package com.facebook.presto.experimental.utils;
 
 import com.facebook.presto.experimental.auto_gen.ThriftSplit;
 import com.facebook.presto.metadata.Split;
+import com.facebook.presto.spi.ConnectorId;
+
+import static com.facebook.presto.experimental.utils.ThriftConnectorSplitUtils.fromConnectorSplit;
+import static com.facebook.presto.experimental.utils.ThriftConnectorSplitUtils.toConnectorSplit;
+import static com.facebook.presto.experimental.utils.ThriftConnectorTransactionHandleUtils.fromConnectorTransactionHandle;
+import static com.facebook.presto.experimental.utils.ThriftConnectorTransactionHandleUtils.toConnectorTransactionHandle;
+import static com.facebook.presto.experimental.utils.ThriftLifespanUtils.fromLifespan;
+import static com.facebook.presto.experimental.utils.ThriftLifespanUtils.toLifespan;
+import static com.facebook.presto.experimental.utils.ThriftSplitContextUtils.fromSplitContext;
+import static com.facebook.presto.experimental.utils.ThriftSplitContextUtils.toSplitContext;
 
 public class ThriftSplitUtils
 {
@@ -26,7 +36,12 @@ public class ThriftSplitUtils
         if (thriftSplit == null) {
             return null;
         }
-        return new Split(null, null, null);
+        return new Split(
+                new ConnectorId(thriftSplit.getConnectorId()),
+                toConnectorTransactionHandle(thriftSplit.getTransactionHandle()),
+                toConnectorSplit(thriftSplit.getConnectorSplit()),
+                toLifespan(thriftSplit.getLifespan()),
+                toSplitContext(thriftSplit.getSplitContext()));
     }
 
     public static ThriftSplit fromSplit(Split split)
@@ -34,6 +49,11 @@ public class ThriftSplitUtils
         if (split == null) {
             return null;
         }
-        return new ThriftSplit();
+        return new ThriftSplit(
+                split.getConnectorId().toString(),
+                fromConnectorTransactionHandle(split.getTransactionHandle()),
+                fromConnectorSplit(split.getConnectorSplit()),
+                fromLifespan(split.getLifespan()),
+                fromSplitContext(split.getSplitContext()));
     }
 }
