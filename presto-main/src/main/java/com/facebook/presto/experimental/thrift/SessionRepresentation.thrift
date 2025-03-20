@@ -3,6 +3,7 @@ namespace cpp protocol
 
 include "Common.thrift"
 include "Sql.thrift"
+include "TypeSignature.thrift"
 
 struct ThriftSessionRepresentation {
   1: string queryId;
@@ -27,5 +28,5 @@ struct ThriftSessionRepresentation {
   20: map<string, map<string, string>> unprocessedCatalogProperties;
   21: map<string, Common.ThriftSelectedRole> roles;
   22: map<string, string> preparedStatements;
-  23: map<Sql.ThriftSqlFunctionId, Sql.ThriftSqlInvokedFunction> sessionFunctions;
+  23: map<TypeSignature.ThriftSqlFunctionId, Sql.ThriftSqlInvokedFunction> sessionFunctions;
 }

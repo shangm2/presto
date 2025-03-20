@@ -5,10 +5,6 @@ include "Common.thrift"
 include "TypeSignature.thrift"
 include "Signature.thrift"
 
-struct ThriftSqlFunctionId {
-  1: Common.ThriftQualifiedObjectName functionName;
-  2: list<TypeSignature.ThriftTypeSignature> argumentTypes;
-}
 
 struct ThriftParameter {
   1: string name;
@@ -37,11 +33,6 @@ struct ThriftFunctionVersion {
   1: string version;
 }
 
-struct ThriftSqlFunctionHandle {
-  1: ThriftSqlFunctionId functionId;
-  2: string version;
-}
-
 struct ThriftAggregationFunctionMetadata {
   1: TypeSignature.ThriftTypeSignature intermediateType;
   2: bool isOrderSensitive;
@@ -54,9 +45,9 @@ struct ThriftSqlInvokedFunction {
   4: string body;
   5: bool variableArity;
   6: Signature.ThriftSignature signature;
-  7: ThriftSqlFunctionId functionId;
+  7: TypeSignature.ThriftSqlFunctionId functionId;
   8: ThriftFunctionVersion functionVersion;
-  9: optional ThriftSqlFunctionHandle functionHandle;
+  9: optional TypeSignature.ThriftSqlFunctionHandle functionHandle;
   10: optional ThriftAggregationFunctionMetadata aggregationMetadata;
 }
 

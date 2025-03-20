@@ -1,6 +1,11 @@
 namespace java com.facebook.presto.experimental
 namespace cpp protocol
 
+struct ThriftSourceLocation {
+  1: i32 line;
+  2: i32 column;
+}
+
 enum ThriftTaskState {
     PLANNED = 0,
     RUNNING = 1,

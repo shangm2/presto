@@ -67,3 +67,13 @@ struct ThriftTypeSignature {
   2: list<ThriftTypeSignatureParameter> parameters;
   3: bool calculated;
 }
+
+struct ThriftSqlFunctionId {
+  1: Common.ThriftQualifiedObjectName functionName;
+  2: list<ThriftTypeSignature> argumentTypes;
+}
+
+struct ThriftSqlFunctionHandle {
+  1: ThriftSqlFunctionId functionId;
+  2: string version;
+}
