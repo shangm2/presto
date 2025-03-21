@@ -1,4 +1,4 @@
-namespace java com.facebook.presto.experimental
+namespace java com.facebook.presto.common.experimental
 namespace cpp protocol
 
 include "Common.thrift"
@@ -48,8 +48,13 @@ enum ThriftColumnType {
     AGGREGATED = 4,
 }
 
+enum ThriftColumnHandleType {
+    BASE_HIVE_COLUMN_HANDLE = 1,
+    HIVE_COLUMN_HANDLE = 2
+}
+
 struct ThriftColumnHandle {
-  1: ThriftColumnType type;
+  1: ThriftColumnHandleType type;
 }
 
 struct ThriftBaseHiveColumnHandle extends ThriftColumnHandle{

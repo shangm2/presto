@@ -1,4 +1,4 @@
-namespace java com.facebook.presto.experimental
+namespace java com.facebook.presto.common.experimental
 namespace cpp protocol
 
 typedef string ThriftType

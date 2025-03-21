@@ -1,4 +1,4 @@
-namespace java com.facebook.presto.experimental
+namespace java com.facebook.presto.common.experimental
 namespace cpp protocol
 
 struct ThriftSourceLocation {
@@ -18,7 +18,7 @@ enum ThriftTaskState {
 enum ThriftErrorCause {
     UNKNOWN = 0,
     LOW_PARTITION_COUNT = 1,
-    EXCEEDS_BROADCAST_MEMORY_LIMIT = 2;
+    EXCEEDS_BROADCAST_MEMORY_LIMIT = 2
 }
 
 enum ThriftErrorType {
