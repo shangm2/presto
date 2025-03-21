@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.metadata;
 
+import com.facebook.presto.common.experimental.auto_gen.ThriftSplit;
 import com.facebook.presto.execution.Lifespan;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.ConnectorSplit;
@@ -40,6 +41,25 @@ public final class Split
     private final ConnectorSplit connectorSplit;
     private final Lifespan lifespan;
     private final SplitContext splitContext;
+
+    public Split(ThriftSplit thriftSplit)
+    {
+        this(new ConnectorId(thriftSplit.getConnectorId()),
+                thriftSplit.getTransactionHandle(),
+                thriftSplit.getConnectorSplit(),
+                new Lifespan(thriftSplit.getLifespan()),
+                thriftSplit.getSplitContext());
+    }
+
+    public ThriftSplit toThrift()
+    {
+        return new ThriftSplit(
+                this.connectorId.toString(),
+                this.transactionHandle.toThrift(),
+                this.connectorSplit.toThrift(),
+                this.lifespan.toThrift(),
+                this.splitContext.toThrift());
+    }
 
     // TODO: inline
     public Split(ConnectorId connectorId, ConnectorTransactionHandle transactionHandle, ConnectorSplit connectorSplit)

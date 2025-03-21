@@ -40,12 +40,18 @@ public final class TableHandle
 
     public TableHandle(ThriftTableHandle thriftTableHandle)
     {
-
+        this(new ConnectorId(thriftTableHandle.getConnectorId()),
+                thriftTableHandle.getConnectorTableHandle(),
+                thriftTableHandle.getTransactionHandle(),
+                thriftTableHandle.getLayout());
     }
 
     public ThriftTableHandle toThrift()
     {
-        
+        ThriftTableHandle thriftTableHandle = new ThriftTableHandle(connectorId.toString(), connectorHandle.toThrift(), transaction.toThrift());
+        layout.map(ConnectorTableLayoutHandle::toThrift).ifPresent(thriftTableHandle::setLayout);
+
+        return thriftTableHandle;
     }
 
     @JsonCreator

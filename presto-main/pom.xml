@@ -524,7 +524,7 @@
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
@@ -613,10 +613,10 @@
                 <artifactId>thrift-maven-plugin</artifactId>
                 <version>0.10.0</version>
                 <configuration>
-                    <thriftSourceRoot>src/main/java/com/facebook/presto/experimental/thrift</thriftSourceRoot>
+                    <thriftSourceRoot>../presto-common/src/main/java/com/facebook/presto/common/experimental/thrift</thriftSourceRoot>
                     <thriftExecutable>/opt/homebrew/bin/thrift</thriftExecutable>
                     <generator>java</generator>
-                    <outputDirectory>src/main/java/com/facebook/presto/experimental/thrift</outputDirectory>
+                    <outputDirectory>../presto-common/src/main/java/com/facebook/presto/common/experimental/thrift</outputDirectory>
                 </configuration>
             </plugin>
         </plugins>

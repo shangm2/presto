@@ -15,6 +15,8 @@
 package com.facebook.presto.execution.scheduler;
 
 import com.facebook.presto.Session;
+import com.facebook.presto.common.experimental.auto_gen.ThriftDeleteScanInfo;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTableWriteInfo;
 import com.facebook.presto.common.predicate.TupleDomain;
 import com.facebook.presto.metadata.AnalyzeTableHandle;
 import com.facebook.presto.metadata.Metadata;
@@ -56,6 +58,13 @@ public class TableWriteInfo
     private final Optional<ExecutionWriterTarget> writerTarget;
     private final Optional<AnalyzeTableHandle> analyzeTableHandle;
     private final Optional<DeleteScanInfo> deleteScanInfo;
+
+    public TableWriteInfo(ThriftTableWriteInfo thriftTableWriteInfo)
+    {
+        this(thriftTableWriteInfo.getWriterTarget(),
+                thriftTableWriteInfo.getAnalyzeTableHandle(),
+                thriftTableWriteInfo.getDeleteScanInfo());
+    }
 
     @JsonCreator
     public TableWriteInfo(
@@ -249,6 +258,19 @@ public class TableWriteInfo
     {
         private final PlanNodeId id;
         private final TableHandle tableHandle;
+
+        public DeleteScanInfo(ThriftDeleteScanInfo thriftDeleteScanInfo)
+        {
+            this(new PlanNodeId(thriftDeleteScanInfo.getId()),
+                    new TableHandle(thriftDeleteScanInfo.getTableHandle()));
+        }
+
+        public ThriftDeleteScanInfo toThrift()
+        {
+            return new ThriftDeleteScanInfo(
+                    id.getId(),
+                    tableHandle.toThrift());
+        }
 
         @JsonCreator
         public DeleteScanInfo(@JsonProperty("id") PlanNodeId id, @JsonProperty("tableHandle") TableHandle tableHandle)
