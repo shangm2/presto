@@ -6,3 +6,4 @@ typedef string ThriftConnectorTransactionHandle
 typedef string ThriftExecutionWriterTarget
 typedef string ThriftSplitContext
 typedef string ThriftConnectorSplit
+typedef string ThriftConnectorTableLayoutHandle

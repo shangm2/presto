@@ -50,8 +50,9 @@ struct ThriftTaskSource {
 
 struct ThriftTableHandle {
   1: ThriftConnectorId connectorId;
-  2: Union.ThriftConnectorTableHandle connectorHandle;
-  3: Union.ThriftConnectorTransactionHandle transaction;
+  2: Union.ThriftConnectorTableHandle connectorTableHandle;
+  3: Union.ThriftConnectorTransactionHandle transactionHandle;
+  4: optional Union.ThriftConnectorTableLayoutHandle layout;
 }
 
 struct ThriftAnalyzeTableHandle {
