@@ -18,11 +18,14 @@ import com.facebook.drift.annotations.ThriftField;
 import com.facebook.drift.annotations.ThriftStruct;
 import com.facebook.presto.common.InvalidTypeDefinitionException;
 import com.facebook.presto.common.QualifiedObjectName;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTypeSignature;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTypeSignatureParameter;
 import com.facebook.presto.common.type.BigintEnumType.LongEnumMap;
 import com.facebook.presto.common.type.VarcharEnumType.VarcharEnumMap;
 import com.facebook.presto.common.type.encoding.Base32;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
+import com.sun.istack.internal.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +41,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.facebook.presto.common.experimental.utils.ThriftTypeSignatureBaseUtils.fromTypeSignatureBase;
+import static com.facebook.presto.common.experimental.utils.ThriftTypeSignatureBaseUtils.toTypeSignatureBase;
 import static com.facebook.presto.common.type.StandardTypes.BIGINT_ENUM;
 import static java.lang.Boolean.parseBoolean;
 import static java.lang.Character.isDigit;
@@ -99,6 +104,25 @@ public class TypeSignature
     public TypeSignature(String base, List<TypeSignatureParameter> parameters)
     {
         this(TypeSignatureBase.of(base), parameters);
+    }
+
+    public TypeSignature(@NotNull ThriftTypeSignature thriftTypeSignature)
+    {
+        List<TypeSignatureParameter> parameters = thriftTypeSignature.getParameters().stream()
+                .map(ThriftTypeSignatureParameterUtils::toTypeSignatureParameter).collect(Collectors.toList());
+        this.base = toTypeSignatureBase(thriftTypeSignature.getBase());
+        this.parameters = parameters;
+    }
+
+    public ThriftTypeSignature toThrift()
+    {
+        List<ThriftTypeSignatureParameter> parameters = this.getParameters().stream()
+                .map(ThriftTypeSignatureParameterUtils::fromTypeSignatureParameter)
+                .collect(Collectors.toList());
+        return new ThriftTypeSignature(
+                fromTypeSignatureBase(this.getTypeSignatureBase()),
+                parameters,
+                this.isCalculated());
     }
 
     @ThriftConstructor

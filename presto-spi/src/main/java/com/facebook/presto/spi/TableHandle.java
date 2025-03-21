@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.spi;
 
+import com.facebook.presto.common.experimental.auto_gen.ThriftTableHandle;
 import com.facebook.presto.common.predicate.TupleDomain;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -36,6 +37,16 @@ public final class TableHandle
 
     // This is not serializable; for local execution only
     private final Optional<Supplier<TupleDomain<ColumnHandle>>> dynamicFilter;
+
+    public TableHandle(ThriftTableHandle thriftTableHandle)
+    {
+
+    }
+
+    public ThriftTableHandle toThrift()
+    {
+        
+    }
 
     @JsonCreator
     public TableHandle(

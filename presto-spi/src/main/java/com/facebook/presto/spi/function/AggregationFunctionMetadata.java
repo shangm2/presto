@@ -13,9 +13,11 @@
  */
 package com.facebook.presto.spi.function;
 
+import com.facebook.presto.common.experimental.auto_gen.ThriftAggregationFunctionMetadata;
 import com.facebook.presto.common.type.TypeSignature;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.sun.istack.internal.NotNull;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -35,6 +37,19 @@ public class AggregationFunctionMetadata
      * Determines if the corresponding aggregation function is order-sensitive.
      */
     private final boolean isOrderSensitive;
+
+    public AggregationFunctionMetadata(@NotNull ThriftAggregationFunctionMetadata thriftMetadata)
+    {
+        this.intermediateType = new TypeSignature(thriftMetadata.getIntermediateType());
+        this.isOrderSensitive = thriftMetadata.isOrderSensitive;
+    }
+
+    public ThriftAggregationFunctionMetadata toThrift()
+    {
+        return new ThriftAggregationFunctionMetadata(
+                this.getIntermediateType().toThrift(),
+                this.isOrderSensitive());
+    }
 
     @JsonCreator
     public AggregationFunctionMetadata(
