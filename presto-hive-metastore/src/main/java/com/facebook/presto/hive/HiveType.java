@@ -13,8 +13,11 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.presto.common.experimental.ThriftSerializable;
+import com.facebook.presto.common.experimental.ThriftSerializationRegistry;
 import com.facebook.presto.common.experimental.TypeInfoAdapter;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveType;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTypeInfo;
 import com.facebook.presto.common.type.NamedTypeSignature;
 import com.facebook.presto.common.type.RowFieldName;
 import com.facebook.presto.common.type.StandardTypes;
@@ -37,6 +40,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.VarcharTypeInfo;
 import org.openjdk.jol.info.ClassLayout;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -78,6 +82,7 @@ import static org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils.getTypeInfoFr
 import static org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils.getTypeInfosFromTypeString;
 
 public final class HiveType
+        implements ThriftSerializable
 {
     private static final int INSTANCE_SIZE = ClassLayout.parseClass(HiveType.class).instanceSize();
 
@@ -140,6 +145,13 @@ public final class HiveType
     public HiveType(ThriftHiveType thriftHiveType)
     {
         this((TypeInfo) TypeInfoAdapter.fromThrift(thriftHiveType.getTypeInfo()));
+    }
+
+    @Override
+    public ThriftHiveType toThrift()
+    {
+        ThriftTypeInfo thriftTypeInfo = new ThriftTypeInfo(typeInfo.getQualifiedName(), ByteBuffer.wrap(ThriftSerializationRegistry.serialize(typeInfo)));
+        return new ThriftHiveType(thriftTypeInfo);
     }
 
     private HiveType(TypeInfo typeInfo)

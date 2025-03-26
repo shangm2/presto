@@ -48,6 +48,13 @@ public class Storage
                 thriftStorage.getParameters());
     }
 
+    public ThriftStorage toThrift()
+    {
+        ThriftStorage storage = new ThriftStorage(storageFormat.toThrift(), location, skewed, serdeParameters, parameters);
+        bucketProperty.ifPresent(hiveBucketProperty -> storage.setBucketProperty(hiveBucketProperty.toThrift()));
+        return storage;
+    }
+
     @JsonCreator
     public Storage(
             @JsonProperty("storageFormat") StorageFormat storageFormat,

@@ -66,6 +66,17 @@ public class Partition
                 Optional.ofNullable(thriftPartition.getRowIdPartitionComponent()));
     }
 
+    public ThriftPartition toThrift()
+    {
+        return new ThriftPartition(
+                databaseName,
+                tableName,
+                values,
+                storage.toThrift(),
+
+        )
+    }
+
     @JsonCreator
     public Partition(
             @JsonProperty("databaseName") String databaseName,

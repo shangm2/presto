@@ -45,6 +45,14 @@ public class Column
                 thriftColumn.getTypeMetadata());
     }
 
+    public ThriftColumn toThrift()
+    {
+        ThriftColumn thriftColumn = new ThriftColumn(name, type.toThrift());
+        comment.ifPresent(thriftColumn::setComment);
+        typeMetadata.ifPresent(thriftColumn::setTypeMetadata);
+        return thriftColumn;
+    }
+
     @JsonCreator
     public Column(
             @JsonProperty("name") String name,

@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.thrift.TBase;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
@@ -145,9 +146,9 @@ public class HiveOutputTableHandle
     }
 
     @Override
-    public ThriftHiveOutputTableHandle toThrift()
+    public TBase<?, ?> toThrift()
     {
-        return new ThriftHiveOutputTableHandle(((HiveWritableTableHandle) this).toThrift(), partitionedBy, tableOwner, additionalTableParameters);
+        return new ThriftHiveOutputTableHandle(((HiveWritableTableHandle) this).toThrift2(), partitionedBy, tableOwner, additionalTableParameters);
     }
 
     @Override

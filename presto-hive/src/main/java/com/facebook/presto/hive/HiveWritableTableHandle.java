@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.presto.common.experimental.ThriftSerializable;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveWritableTableHandle;
 import com.facebook.presto.hive.metastore.HivePageSinkMetadata;
 import com.facebook.presto.hive.metastore.SortingColumn;
@@ -21,6 +22,7 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import org.apache.thrift.TBase;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,7 @@ import static com.facebook.presto.spi.StandardErrorCode.GENERIC_USER_ERROR;
 import static java.util.Objects.requireNonNull;
 
 public class HiveWritableTableHandle
+        implements ThriftSerializable
 {
     private final String schemaName;
     private final String tableName;
@@ -62,10 +65,15 @@ public class HiveWritableTableHandle
                 thriftHandle.getEncryptionInformation().map(EncryptionInformation::new));
     }
 
-    public ThriftHiveWritableTableHandle toThrift()
+    @Override
+    public TBase toThrift()
     {
         return new ThriftHiveWritableTableHandle(
-                
+                schemaName, tableName,
+                inputColumns.stream().map(HiveColumnHandle::toThrift),
+                pageSinkMetadata.toThrift(),
+                locationHandle.
+
         );
     }
 

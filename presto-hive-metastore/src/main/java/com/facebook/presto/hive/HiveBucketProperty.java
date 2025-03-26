@@ -14,7 +14,9 @@
 package com.facebook.presto.hive;
 
 import com.facebook.presto.common.experimental.TypeAdapter;
+import com.facebook.presto.common.experimental.auto_gen.ThriftBucketFunctionType;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveBucketProperty;
+import com.facebook.presto.common.experimental.auto_gen.ThriftType;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.hive.metastore.SortingColumn;
 import com.facebook.presto.spi.PrestoException;
@@ -51,6 +53,20 @@ public class HiveBucketProperty
                 thriftProperty.getSortedBy().stream().map(SortingColumn::new).collect(toImmutableList()),
                 BucketFunctionType.valueOf(thriftProperty.getBucketFunctionType().name()),
                 thriftProperty.getTypes().map(types -> types.stream().map(type -> (Type) TypeAdapter.fromThrift(type)).collect(Collectors.toList())));
+    }
+
+    public ThriftHiveBucketProperty toThrift()
+    {
+        ThriftHiveBucketProperty property = new ThriftHiveBucketProperty(
+                bucketedBy,
+                bucketCount,
+                sortedBy.stream().map(SortingColumn::toThrift).collect(Collectors.toList()),
+                ThriftBucketFunctionType.valueOf(bucketFunctionType.name()));
+        types.ifPresent(typeList -> property.setTypes(typeList.stream().map(type -> {
+            System.out.println("=====> real type class: " + type.getClass().getName());
+            return (ThriftType) type.toThriftInterface();
+        }).collect(toImmutableList())));
+        return property;
     }
 
     @JsonCreator

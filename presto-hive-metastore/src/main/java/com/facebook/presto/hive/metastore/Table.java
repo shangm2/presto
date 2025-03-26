@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.hive.metastore;
 
+import com.facebook.presto.common.experimental.auto_gen.ThriftPrestoTableType;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTable;
 import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -62,6 +63,19 @@ public class Table
                 thriftTable.getParameters(),
                 thriftTable.getViewOriginalText(),
                 thriftTable.getViewExpandedText());
+    }
+
+    public ThriftTable toThrift()
+    {
+        ThriftTable thriftTable = new ThriftTable(databaseName, tableName, owner,
+                ThriftPrestoTableType.valueOf(tableType.name()),
+                dataColumns.stream().map(Column::toThrift).collect(Collectors.toList()),
+                partitionColumns.stream().map(Column::toThrift).collect(Collectors.toList()),
+                storage.toThrift(),
+                parameters);
+        viewOriginalText.ifPresent(thriftTable::setViewOriginalText);
+        viewExpandedText.ifPresent(thriftTable::setViewExpandedText);
+        return thriftTable;
     }
 
     @JsonCreator

@@ -16,32 +16,11 @@ package com.facebook.presto.common.experimental;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTypeInfo;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
-import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 
 public class TypeInfoAdapter
 {
     private TypeInfoAdapter() {}
-
-    public static byte[] serialize(Object obj)
-    {
-        if (obj instanceof ThriftSerializable) {
-            ThriftSerializable serializable = (ThriftSerializable) obj;
-            byte[] data = ThriftSerializationRegistry.serialize(serializable);
-
-            ThriftTypeInfo thriftTypeInfo = new ThriftTypeInfo();
-            thriftTypeInfo.setType(serializable.getImplementationType());
-            thriftTypeInfo.setSerializedTypeInfo(data);
-
-            try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftTypeInfo);
-            }
-            catch (TException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        throw new IllegalArgumentException("Unsupported type: " + obj.getClass());
-    }
 
     public static Object deserialize(byte[] data)
     {

@@ -42,6 +42,11 @@ public class StorageFormat
         this(thriftStorageFormat.getSerDe(), thriftStorageFormat.getInputFormat(), thriftStorageFormat.getOutputFormat());
     }
 
+    public ThriftStorageFormat toThrift()
+    {
+        return new ThriftStorageFormat(serDe, inputFormat, outputFormat);
+    }
+
     private StorageFormat(String serDe, String inputFormat, String outputFormat)
     {
         this.serDe = serDe;
