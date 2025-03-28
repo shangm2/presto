@@ -107,8 +107,8 @@ public class TypeSignature
 
     public TypeSignature(@NotNull ThriftTypeSignature thriftTypeSignature)
     {
-        this(new TypeSignatureBase(thriftTypeSignature.getBase()), thriftTypeSignature.getParameters().stream()
-                .map(TypeSignatureParameter::new).collect(Collectors.toList()));
+        this(new TypeSignatureBase(thriftTypeSignature.getBase()),
+                thriftTypeSignature.getParameters().stream().map(TypeSignatureParameter::new).collect(Collectors.toList()));
     }
 
     public ThriftTypeSignature toThrift()

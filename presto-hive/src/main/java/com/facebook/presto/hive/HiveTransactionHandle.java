@@ -34,8 +34,8 @@ public class HiveTransactionHandle
         implements ConnectorTransactionHandle, ThriftSerializable
 {
     static {
-        ThriftSerializationRegistry.registerSerializer(HiveTransactionHandle.class, HiveTransactionHandle::serialize);
-        ThriftSerializationRegistry.registerDeserializer("HIVE_TRANSACTION_HANDLE", HiveTransactionHandle::deserialize);
+        ThriftSerializationRegistry.registerSerializer(HiveTransactionHandle.class, HiveTransactionHandle::toThrift, null);
+        ThriftSerializationRegistry.registerDeserializer(HiveTransactionHandle.class, ThriftHiveTransactionHandle.class, null, null);
     }
 
     private final UUID uuid;
@@ -106,26 +106,6 @@ public class HiveTransactionHandle
     public ThriftHiveTransactionHandle toThrift()
     {
         return new ThriftHiveTransactionHandle(uuid.getLeastSignificantBits(), uuid.getMostSignificantBits());
-    }
-
-    @Override
-    public String getImplementationType()
-    {
-        return "HIVE_TRANSACTION_HANDLE";
-    }
-
-    @Override
-    public byte[] serialize()
-    {
-        try {
-            ThriftHiveTransactionHandle thriftHandle = new ThriftHiveTransactionHandle(uuid.getLeastSignificantBits(), uuid.getMostSignificantBits());
-
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
-            return serializer.serialize(thriftHandle);
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static HiveTransactionHandle deserialize(byte[] bytes)

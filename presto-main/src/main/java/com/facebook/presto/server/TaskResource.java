@@ -162,7 +162,6 @@ public class TaskResource
         requireNonNull(requestBody, "taskUpdateRequest is null");
 
         String contentType = httpHeaders.getHeaderString(HttpHeaders.CONTENT_TYPE);
-        log.info("Content-type: %s", contentType);
         TaskUpdateRequest taskUpdateRequest = null;
         if (isExperimental) {
             TDeserializer deserializer = null;
@@ -189,6 +188,8 @@ public class TaskResource
         else {
             throw new RuntimeException("Can not understand the content-type");
         }
+
+        log.info("taskUpdateRequest: " + taskUpdateRequest.toString());
         Session session = taskUpdateRequest.getSession().toSession(sessionPropertyManager, taskUpdateRequest.getExtraCredentials());
         TaskInfo taskInfo = taskManager.updateTask(session,
                 taskId,
@@ -200,7 +201,7 @@ public class TaskResource
         if (shouldSummarize(uriInfo)) {
             taskInfo = taskInfo.summarize();
         }
-
+        log.info("=====> taskinfo: " + taskInfo.toString());
         return Response.ok().entity(taskInfo).build();
     }
 

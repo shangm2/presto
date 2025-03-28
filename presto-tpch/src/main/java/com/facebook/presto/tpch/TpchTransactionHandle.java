@@ -28,8 +28,8 @@ public enum TpchTransactionHandle
     INSTANCE;
 
     static {
-//        ThriftSerializationRegistry.registerSerializer(TpchTransactionHandle.class, TpchTransactionHandle::serialize);
-        ThriftSerializationRegistry.registerDeserializer("TPCH_TRANSACTION_HANDLE", TpchTransactionHandle::deserialize);
+        ThriftSerializationRegistry.registerSerializer(TpchTransactionHandle.class, TpchTransactionHandle::toThriftInterface, null);
+        ThriftSerializationRegistry.registerDeserializer(TpchTransactionHandle.class, ThriftTpchTransactionHandle.class, TpchTransactionHandle::deserialize, TpchTransactionHandle::createTpchTransactionHandle);
     }
 
     public static TpchTransactionHandle createTpchTransactionHandle(ThriftTpchTransactionHandle thriftHandle)
@@ -58,16 +58,10 @@ public enum TpchTransactionHandle
             ThriftTpchTransactionHandle thriftHandle = new ThriftTpchTransactionHandle();
             TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
             deserializer.deserialize(thriftHandle, bytes);
-            return createTpchTransactionHandle(thriftHandle);
+            return TpchTransactionHandle.valueOf(thriftHandle.getValue());
         }
         catch (TException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public String getImplementationType()
-    {
-        return "TPCH_TRANSACTION_HANDLE";
     }
 }

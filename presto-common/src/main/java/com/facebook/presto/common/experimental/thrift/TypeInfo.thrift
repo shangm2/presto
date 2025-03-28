@@ -10,3 +10,11 @@ struct ThriftTypeInfo {
 struct ThriftHiveType {
   1: ThriftTypeInfo typeInfo;
 }
+
+struct ThriftPrimitiveTypeInfo {
+  1: string typeName;
+}
+
+struct ThriftVarcharTypeInfo {
+  1: i32 length;
+}

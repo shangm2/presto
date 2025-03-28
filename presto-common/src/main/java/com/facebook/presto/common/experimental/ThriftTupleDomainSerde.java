@@ -13,7 +13,7 @@
  */
 package com.facebook.presto.common.experimental;
 
-public interface ThriftSerializer<T>
+public interface ThriftTupleDomainSerde<T>
 {
     byte[] serialize(T obj);
 

@@ -14,10 +14,11 @@
 package com.facebook.presto.hive;
 
 import com.facebook.presto.common.experimental.ThriftSerializable;
-import com.facebook.presto.common.experimental.ThriftSerializationRegistry;
 import com.facebook.presto.common.experimental.TypeInfoAdapter;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveType;
+import com.facebook.presto.common.experimental.auto_gen.ThriftPrimitiveTypeInfo;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTypeInfo;
+import com.facebook.presto.common.experimental.auto_gen.ThriftVarcharTypeInfo;
 import com.facebook.presto.common.type.NamedTypeSignature;
 import com.facebook.presto.common.type.RowFieldName;
 import com.facebook.presto.common.type.StandardTypes;
@@ -38,9 +39,11 @@ import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.VarcharTypeInfo;
+import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.openjdk.jol.info.ClassLayout;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -150,7 +153,21 @@ public final class HiveType
     @Override
     public ThriftHiveType toThrift()
     {
-        ThriftTypeInfo thriftTypeInfo = new ThriftTypeInfo(typeInfo.getQualifiedName(), ByteBuffer.wrap(ThriftSerializationRegistry.serialize(typeInfo)));
+        ThriftTypeInfo thriftTypeInfo = new ThriftTypeInfo();
+        thriftTypeInfo.setType(typeInfo.getClass().getName());
+
+        try {
+            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            if (typeInfo instanceof VarcharTypeInfo) {
+                thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftVarcharTypeInfo(((VarcharTypeInfo) typeInfo).getLength())));
+            }
+            else if (typeInfo instanceof PrimitiveTypeInfo) {
+                thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftPrimitiveTypeInfo(typeInfo.getTypeName())));
+            }
+        }
+        catch (TException e) {
+            throw new RuntimeException(e);
+        }
         return new ThriftHiveType(thriftTypeInfo);
     }
 

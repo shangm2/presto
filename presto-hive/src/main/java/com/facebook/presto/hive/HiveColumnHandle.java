@@ -14,6 +14,7 @@
 package com.facebook.presto.hive;
 
 import com.facebook.presto.common.Subfield;
+import com.facebook.presto.common.experimental.auto_gen.ThriftBaseHiveColumnHandle;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveColumnHandle;
 import com.facebook.presto.common.type.TypeManager;
 import com.facebook.presto.common.type.TypeSignature;
@@ -94,6 +95,16 @@ public class HiveColumnHandle
                 thriftHandle.getBaseHandle().getComment(),
                 thriftHandle.getBaseHandle().getRequiredSubfields().stream().map(Subfield::createSubfield).collect(Collectors.toList()),
                 thriftHandle.getPartialAggregation().map(Aggregation::new));
+    }
+
+    @Override
+    public ThriftHiveColumnHandle toThrift()
+    {
+
+        ThriftBaseHiveColumnHandle thriftBaseHandle = (ThriftBaseHiveColumnHandle) super.toThrift();
+        ThriftHiveColumnHandle thriftHandle = new ThriftHiveColumnHandle(thriftBaseHandle, hiveType.toThrift(), typeName.toThrift(), hiveColumnIndex);
+        partialAggregation.ifPresent(aggregation -> thriftHandle.setPartialAggregation(aggregation.toThrift()));
+        return thriftHandle;
     }
 
     @JsonCreator

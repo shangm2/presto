@@ -15,7 +15,7 @@ package com.facebook.presto.tpch;
 
 import com.facebook.presto.common.experimental.ColumnHandleAdapter;
 import com.facebook.presto.common.experimental.ThriftSerializationRegistry;
-import com.facebook.presto.common.experimental.ThriftSerializer;
+import com.facebook.presto.common.experimental.ThriftTupleDomainSerde;
 import com.facebook.presto.common.experimental.auto_gen.ThriftConnectorSplit;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTpchSplit;
 import com.facebook.presto.common.predicate.TupleDomain;
@@ -52,8 +52,8 @@ public class TpchSplit
     private final TupleDomain<ColumnHandle> predicate;
 
     static {
-        ThriftSerializationRegistry.registerSerializer(TpchSplit.class, TpchSplit::serialize);
-        ThriftSerializationRegistry.registerDeserializer("TPCH_SPLIT", TpchSplit::deserialize);
+        ThriftSerializationRegistry.registerSerializer(TpchSplit.class, TpchSplit::toThrift, null);
+        ThriftSerializationRegistry.registerDeserializer(TpchSplit.class, ThriftTpchSplit.class, TpchSplit::deserialize, null);
     }
 
     public TpchSplit(ThriftTpchSplit thriftTpchSplit)
@@ -62,7 +62,7 @@ public class TpchSplit
                 thriftTpchSplit.getPartNumber(),
                 thriftTpchSplit.getTotalParts(),
                 thriftTpchSplit.getAddresses().stream().map(HostAddress::new).collect(Collectors.toList()),
-                TupleDomain.fromThrift(thriftTpchSplit.getPredicate(), new ThriftSerializer<ColumnHandle>()
+                TupleDomain.fromThrift(thriftTpchSplit.getPredicate(), new ThriftTupleDomainSerde<ColumnHandle>()
                 {
                     @Override
                     public byte[] serialize(ColumnHandle obj)
@@ -73,7 +73,7 @@ public class TpchSplit
                     @Override
                     public ColumnHandle deserialize(byte[] bytes)
                     {
-                        return null;
+                        return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
                     }
                 }));
     }
@@ -200,27 +200,21 @@ public class TpchSplit
                 totalParts,
                 partNumber,
                 addresses.stream().map(HostAddress::toThrift).collect(Collectors.toList()),
-                predicate.toThrift(new ThriftSerializer<ColumnHandle>()
+                predicate.toThrift(new ThriftTupleDomainSerde<ColumnHandle>()
                 {
                     @Override
                     public byte[] serialize(ColumnHandle obj)
                     {
-                        return obj.serialize();
+                        return ColumnHandleAdapter.serialize(obj);
                     }
 
                     @Override
                     public ColumnHandle deserialize(byte[] bytes)
                     {
-                        return null;
+                        return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
                     }
                 })
         );
-    }
-
-    @Override
-    public String getImplementationType()
-    {
-        return "TPCH_SPLIT";
     }
 
     public static TpchSplit deserialize(byte[] bytes)

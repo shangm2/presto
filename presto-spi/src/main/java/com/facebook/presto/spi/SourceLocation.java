@@ -29,6 +29,11 @@ public class SourceLocation
         this(thriftSourceLocation.getLine(), thriftSourceLocation.getColumn());
     }
 
+    public ThriftSourceLocation toThrift()
+    {
+        return new ThriftSourceLocation(line, column);
+    }
+
     @JsonCreator
     public SourceLocation(
             @JsonProperty("line") int line,

@@ -63,7 +63,6 @@ public class HiveBucketProperty
                 sortedBy.stream().map(SortingColumn::toThrift).collect(Collectors.toList()),
                 ThriftBucketFunctionType.valueOf(bucketFunctionType.name()));
         types.ifPresent(typeList -> property.setTypes(typeList.stream().map(type -> {
-            System.out.println("=====> real type class: " + type.getClass().getName());
             return (ThriftType) type.toThriftInterface();
         }).collect(toImmutableList())));
         return property;

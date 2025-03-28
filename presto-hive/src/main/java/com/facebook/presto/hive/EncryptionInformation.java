@@ -39,6 +39,13 @@ public class EncryptionInformation
         this(thriftInformation.getDwrfEncryptionMetadata().map(DwrfEncryptionMetadata::new));
     }
 
+    public ThriftEncryptionInformation toThrift()
+    {
+        ThriftEncryptionInformation thriftInfo = new ThriftEncryptionInformation();
+        dwrfEncryptionMetadata.ifPresent(data -> thriftInfo.setDwrfEncryptionMetadata(data.toThrift()));
+        return thriftInfo;
+    }
+
     // Only to be used by Jackson. Otherwise use {@link this#fromEncryptionMetadata}
     @JsonCreator
     public EncryptionInformation(@JsonProperty Optional<DwrfEncryptionMetadata> dwrfEncryptionMetadata)

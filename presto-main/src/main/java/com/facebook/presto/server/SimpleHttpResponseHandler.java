@@ -49,6 +49,7 @@ public class SimpleHttpResponseHandler<T>
     {
         stats.updateSuccess();
         stats.responseSize(response.getResponseSize());
+        System.out.println("=====> response byte" + response.getResponseBytes() + " size: " + response.getResponseBytes().length);
         try {
             if (response.getStatusCode() == OK.code() && response.hasValue()) {
                 callback.success(response.getValue());

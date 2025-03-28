@@ -25,7 +25,6 @@ import com.facebook.presto.spi.schedule.NodeSelectionStrategy;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
-import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -43,8 +42,8 @@ public class RemoteSplit
     private final TaskId remoteSourceTaskId;
 
     static {
-        ThriftSerializationRegistry.registerSerializer(RemoteSplit.class, RemoteSplit::serialize);
-        ThriftSerializationRegistry.registerDeserializer("REMOTE_SPLIT", RemoteSplit::deserialize);
+        ThriftSerializationRegistry.registerSerializer(RemoteSplit.class, RemoteSplit::toThriftInterface, null);
+        ThriftSerializationRegistry.registerDeserializer(RemoteSplit.class, ThriftRemoteSplit.class, null, null);
     }
 
     public RemoteSplit(ThriftRemoteSplit thriftRemoteSplit)
@@ -117,38 +116,7 @@ public class RemoteSplit
     public ThriftRemoteSplit toThrift()
     {
         return new ThriftRemoteSplit(
-                location.toString(),
+                location.getLocation(),
                 remoteSourceTaskId.toThrift());
-    }
-
-    @Override
-    public byte[] serialize()
-    {
-        try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
-            return serializer.serialize(this.toThriftInterface());
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static RemoteSplit deserialize(byte[] bytes)
-    {
-        try {
-            ThriftRemoteSplit thriftSplit = new ThriftRemoteSplit();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
-            deserializer.deserialize(thriftSplit, bytes);
-            return new RemoteSplit(thriftSplit);
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public String getImplementationType()
-    {
-        return "REMOTE_SPLIT";
     }
 }

@@ -15,6 +15,7 @@ package com.facebook.presto.spi.plan;
 
 import com.facebook.presto.common.experimental.RowExpressionAdapter;
 import com.facebook.presto.common.experimental.auto_gen.ThriftAggregation;
+import com.facebook.presto.common.experimental.auto_gen.ThriftRowExpression;
 import com.facebook.presto.spi.SourceLocation;
 import com.facebook.presto.spi.function.FunctionHandle;
 import com.facebook.presto.spi.relation.CallExpression;
@@ -450,6 +451,16 @@ public final class AggregationNode
                     thriftAggregation.getOrderingScheme().map(OrderingScheme::new),
                     thriftAggregation.isIsDistinct(),
                     thriftAggregation.getMask().map(VariableReferenceExpression::new));
+        }
+
+        public ThriftAggregation toThrift()
+        {
+            ThriftAggregation thriftAggregation = new ThriftAggregation(call.toThrift(), isDistinct);
+            filter.ifPresent(expression -> thriftAggregation.setFilter((ThriftRowExpression) expression.toThriftInterface()));
+            orderingScheme.ifPresent(scheme -> thriftAggregation.setOrderingScheme(scheme.toThrift()));
+            mask.ifPresent(expression -> thriftAggregation.setMask(expression.toThrift()));
+
+            return thriftAggregation;
         }
 
         @JsonCreator

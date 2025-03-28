@@ -61,6 +61,7 @@ public class ConnectorTransactionHandleAdapter
     public static Object fromThrift(ThriftConnectorTransactionHandle thriftHandle)
     {
         requireNonNull(thriftHandle, "thriftConnectorTransactionHandle is null");
+
         return ThriftSerializationRegistry.deserialize(
                 thriftHandle.getType(),
                 thriftHandle.getSerializedConnectorTransactionHandle());

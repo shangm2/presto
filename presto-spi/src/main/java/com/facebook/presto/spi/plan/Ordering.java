@@ -15,6 +15,7 @@ package com.facebook.presto.spi.plan;
 
 import com.facebook.presto.common.block.SortOrder;
 import com.facebook.presto.common.experimental.auto_gen.ThriftOrdering;
+import com.facebook.presto.common.experimental.auto_gen.ThriftSortOrder;
 import com.facebook.presto.spi.relation.VariableReferenceExpression;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -35,6 +36,13 @@ public class Ordering
     {
         this(new VariableReferenceExpression(thriftOrdering.getVariable()),
                 SortOrder.valueOf(thriftOrdering.getSortOrder().name()));
+    }
+
+    public ThriftOrdering toThrift()
+    {
+        return new ThriftOrdering(
+                variable.toThrift(),
+                ThriftSortOrder.valueOf(sortOrder.name()));
     }
 
     @JsonCreator

@@ -68,8 +68,11 @@ public class HivePageSinkMetadata
                 .collect(Collectors.toMap(
                         entry -> new ThriftListOfStringAsKey(entry.getKey()),
                         entry -> toThriftValue(entry.getValue())));
-        return new ThriftHivePageSinkMetadata(schemaTableName.toThrift(),
-                table.map(Table::toThrift), thriftPartitions);
+        ThriftHivePageSinkMetadata thriftMetadata = new ThriftHivePageSinkMetadata(
+                schemaTableName.toThrift(),
+                thriftPartitions);
+        table.ifPresent(t -> thriftMetadata.setTable(t.toThrift()));
+        return thriftMetadata;
     }
 
     public HivePageSinkMetadata(

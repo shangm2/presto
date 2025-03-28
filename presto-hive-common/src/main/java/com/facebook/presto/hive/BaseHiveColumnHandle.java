@@ -18,6 +18,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftBaseHiveColumnHand
 import com.facebook.presto.common.experimental.auto_gen.ThriftColumnType;
 import com.facebook.presto.spi.ColumnHandle;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.thrift.TBase;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,15 @@ public class BaseHiveColumnHandle
         this(thriftHandle.getName(), thriftHandle.getComment(),
                 ColumnType.valueOf(thriftHandle.getColumnType().name()),
                 thriftHandle.getRequiredSubfields().stream().map(Subfield::createSubfield).collect(Collectors.toList()));
+    }
+
+    @Override
+    public TBase toThrift()
+    {
+        ThriftBaseHiveColumnHandle thriftHandle = new ThriftBaseHiveColumnHandle(
+                name, ThriftColumnType.valueOf(columnType.name()), requiredSubfields.stream().map(Subfield::toThrift).collect(Collectors.toList()));
+        comment.ifPresent(thriftHandle::setComment);
+        return thriftHandle;
     }
 
     public BaseHiveColumnHandle(
@@ -82,14 +92,5 @@ public class BaseHiveColumnHandle
     public List<Subfield> getRequiredSubfields()
     {
         return requiredSubfields;
-    }
-
-    @Override
-    public ThriftBaseHiveColumnHandle toThriftInterface()
-    {
-        System.out.println("=====> real subfield" + requiredSubfields.getClass().getSimpleName());
-        return new ThriftBaseHiveColumnHandle(
-                name, ThriftColumnType.valueOf(columnType.name()),
-                requiredSubfields.stream().map(Subfield::toThrift).collect(Collectors.toList()));
     }
 }

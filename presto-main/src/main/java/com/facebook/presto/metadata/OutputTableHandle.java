@@ -44,13 +44,14 @@ public final class OutputTableHandle
 
     public ThriftOutputTableHandle toThrift()
     {
-        System.out.println("=====> class: " + transactionHandle.getClass().getName());
-        System.out.println("=====> class: " + connectorHandle.getClass().getName());
 
-        return new ThriftOutputTableHandle(
-                connectorId.toString(),
-                (ThriftConnectorTransactionHandle) transactionHandle.toThriftInterface(),
-                (ThriftConnectorOutputTableHandle) connectorHandle.toThriftInterface());
+        ThriftConnectorTransactionHandle thriftTransactionHandle = (ThriftConnectorTransactionHandle) transactionHandle.toThriftInterface();
+        ConnectorTransactionHandle convertedTransactionHandle = (ConnectorTransactionHandle) ConnectorTransactionHandleAdapter.fromThrift(thriftTransactionHandle);
+
+        ThriftConnectorOutputTableHandle thriftConnectorHandle = (ThriftConnectorOutputTableHandle) connectorHandle.toThriftInterface();
+        ConnectorOutputTableHandle convertedOutputTableHandle = (ConnectorOutputTableHandle) ConnectorOutputTableHandleAdapter.fromThrift(thriftConnectorHandle);
+
+        return new ThriftOutputTableHandle(connectorId.toString(), thriftTransactionHandle, thriftConnectorHandle);
     }
 
     @JsonCreator

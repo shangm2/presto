@@ -21,7 +21,6 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
-import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
 
 import javax.validation.constraints.NotNull;
@@ -35,8 +34,8 @@ public class BaseHiveTableHandle
     private final String tableName;
 
     static {
-        ThriftSerializationRegistry.registerSerializer(BaseHiveTableHandle.class, BaseHiveTableHandle::serialize);
-        ThriftSerializationRegistry.registerDeserializer("BASE_HIVE_HANDLE", BaseHiveTableHandle::deserialize);
+        ThriftSerializationRegistry.registerSerializer(BaseHiveTableHandle.class, BaseHiveTableHandle::toThrift, null);
+        ThriftSerializationRegistry.registerDeserializer(BaseHiveTableHandle.class, ThriftBaseHiveTableHandle.class, null, null);
     }
 
     public BaseHiveTableHandle(@NotNull ThriftBaseHiveTableHandle thriftHandle)
@@ -47,16 +46,10 @@ public class BaseHiveTableHandle
     @Override
     public ThriftConnectorTableHandle toThriftInterface()
     {
-        try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
-            ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
-            thriftHandle.setType(getImplementationType());
-            thriftHandle.setSerializedConnectorTableHandle(serializer.serialize(new ThriftBaseHiveTableHandle(schemaName, tableName)));
-            return thriftHandle;
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
+        ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
+        thriftHandle.setType(this.getClass().getName());
+        thriftHandle.setSerializedConnectorTableHandle(ThriftSerializationRegistry.serialize(this));
+        return thriftHandle;
     }
 
     public BaseHiveTableHandle(String schemaName, String tableName)
@@ -80,26 +73,6 @@ public class BaseHiveTableHandle
     public SchemaTableName getSchemaTableName()
     {
         return new SchemaTableName(schemaName, tableName);
-    }
-
-    @Override
-    public String getImplementationType()
-    {
-        return "BASE_HIVE_HANDLE";
-    }
-
-    @Override
-    public byte[] serialize()
-    {
-        try {
-            ThriftBaseHiveTableHandle thriftHandle = new ThriftBaseHiveTableHandle(schemaName, tableName);
-
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
-            return serializer.serialize(thriftHandle);
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static BaseHiveTableHandle deserialize(byte[] bytes)

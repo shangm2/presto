@@ -13,38 +13,100 @@
  */
 package com.facebook.presto.common.experimental;
 
+import com.facebook.airlift.log.Logger;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TDeserializer;
+import org.apache.thrift.TException;
+import org.apache.thrift.TSerializer;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TTransportException;
+
+import javax.annotation.Nullable;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
 public class ThriftSerializationRegistry
 {
-    private ThriftSerializationRegistry() {}
+    private static final Logger log = Logger.get(ThriftSerializationRegistry.class);
 
     private static final Map<String, Function<byte[], Object>> DESERIALIZERS = new HashMap<>();
     private static final Map<Class<?>, Function<Object, byte[]>> SERIALIZERS = new HashMap<>();
 
-    public static <T> void registerDeserializer(String type, Function<byte[], T> deserializer)
-    {
-        if (DESERIALIZERS.containsKey(type)) {
-            throw new IllegalArgumentException("Type " + type + " is already registered");
+    private static final TSerializer serializer;
+    private static final TDeserializer deserializer;
+
+    static {
+        try {
+            serializer = new TSerializer();
+            deserializer = new TDeserializer(new TBinaryProtocol.Factory());
         }
-        DESERIALIZERS.put(type, bytes -> deserializer.apply(bytes));
+        catch (TTransportException e) {
+            log.error("Can not initialize thrift serde", e);
+            throw new RuntimeException(e);
+        }
     }
 
-    public static <T> void registerSerializer(Class<T> clazz, Function<T, byte[]> serializer)
+    public static <T, R> void registerSerializer(Class<T> clazz, Function<T, R> toThrift, @Nullable Function<T, byte[]> ownSerializer)
     {
         if (SERIALIZERS.containsKey(clazz)) {
             throw new IllegalArgumentException("Type " + clazz + " is already registered");
         }
-        SERIALIZERS.put(clazz, obj -> serializer.apply((T) obj));
+        if (ownSerializer != null) {
+            SERIALIZERS.put(clazz, obj -> ownSerializer.apply((T) obj));
+            return;
+        }
+        SERIALIZERS.put(clazz, obj -> {
+            try {
+                R thriftObj = toThrift.apply((T) obj);
+                return ThriftSerializationRegistry.serializer.serialize((TBase) thriftObj);
+            }
+            catch (TException e) {
+                throw new RuntimeException("Unable to serialize for " + clazz.getSimpleName(), e);
+            }
+        });
+    }
+
+    public static <T, R extends TBase> void registerDeserializer(Class<T> clazz, Class<R> thriftClazz, @Nullable Function<byte[], Object> ownDeserializer, @Nullable Function<R, T> ownConstructor)
+    {
+        String type = clazz.getName();
+        if (DESERIALIZERS.containsKey(type)) {
+            throw new IllegalArgumentException("Type " + type + " is already registered");
+        }
+
+        if (ownDeserializer != null) {
+            DESERIALIZERS.put(type, ownDeserializer::apply);
+            return;
+        }
+
+        DESERIALIZERS.put(type, bytes -> {
+            try {
+                Constructor<R> thriftConstructor = thriftClazz.getDeclaredConstructor();
+                thriftConstructor.setAccessible(true);
+                R thriftInstance = thriftConstructor.newInstance();
+                System.out.println("=====> start to deserialize " + thriftInstance.getClass().getSimpleName());
+                deserializer.deserialize(thriftInstance, bytes);
+                System.out.println("=====> successfully deserialized " + thriftInstance.getClass().getSimpleName());
+                if (ownConstructor != null) {
+                    return ownConstructor.apply(thriftInstance);
+                }
+                Constructor<T> constructor = clazz.getConstructor(thriftClazz);
+                return constructor.newInstance(thriftInstance);
+            }
+            catch (NoSuchMethodException | TException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
+                throw new RuntimeException("Unable to deserialize for " + type, e);
+            }
+        });
     }
 
     public static byte[] serialize(Object obj)
     {
         Function<Object, byte[]> serializer = SERIALIZERS.get(obj.getClass());
         if (serializer == null) {
-            throw new IllegalArgumentException("No serializer registered for " + obj.getClass());
+            throw new IllegalArgumentException("No serializer registered for " + obj.getClass().getSimpleName());
         }
         return serializer.apply(obj);
     }

@@ -48,25 +48,25 @@ public class TypeSignatureParameterUnion
 
     public static TypeSignatureParameterUnion createTypeSignatureParameterUnion(@NotNull ThriftTypeSignatureParameterUnion thriftUnion)
     {
-        if (thriftUnion.getTypeSignature() != null) {
+        if (thriftUnion.isSetTypeSignature()) {
             return new TypeSignatureParameterUnion(new TypeSignature(thriftUnion.getTypeSignature()));
         }
         else if (thriftUnion.isSetLongLiteral()) {
             return new TypeSignatureParameterUnion(thriftUnion.getLongLiteral());
         }
-        else if (thriftUnion.getNamedTypeSignature() != null) {
+        else if (thriftUnion.isSetNamedTypeSignature()) {
             return new TypeSignatureParameterUnion(new NamedTypeSignature(thriftUnion.getNamedTypeSignature()));
         }
-        else if (thriftUnion.getVariable() != null) {
+        else if (thriftUnion.isSetVariable()) {
             return new TypeSignatureParameterUnion(thriftUnion.getVariable());
         }
-        else if (thriftUnion.getLongEnumMap() != null) {
+        else if (thriftUnion.isSetLongEnumMap()) {
             return new TypeSignatureParameterUnion(new LongEnumMap(thriftUnion.getLongEnumMap()));
         }
-        else if (thriftUnion.getVarcharEnumMap() != null) {
+        else if (thriftUnion.isSetVarcharEnumMap()) {
             return new TypeSignatureParameterUnion(new VarcharEnumMap(thriftUnion.getVarcharEnumMap()));
         }
-        else if (thriftUnion.getDistinctTypeInfo() != null) {
+        else if (thriftUnion.isSetDistinctTypeInfo()) {
             return new TypeSignatureParameterUnion(new DistinctTypeInfo(thriftUnion.getDistinctTypeInfo()));
         }
         else {

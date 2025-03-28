@@ -29,8 +29,6 @@ import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.stats.DecayCounter;
 import com.facebook.drift.transport.netty.codec.Protocol;
 import com.facebook.presto.Session;
-import com.facebook.presto.common.experimental.ExperimentalThriftResponseHandler;
-import com.facebook.presto.common.experimental.auto_gen.ThriftTaskInfo;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTaskState;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTaskUpdateRequest;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
@@ -233,7 +231,8 @@ public final class HttpRemoteTask
 
     private final boolean binaryTransportEnabled;
     private final boolean thriftTransportEnabled;
-    private final boolean experimentalThriftEnabled;
+    private final boolean experimentalThriftTaskStatusEnabled;
+    private final boolean experimentalThriftTaskUpdateEnabled;
     private final boolean taskInfoThriftTransportEnabled;
     private final Protocol thriftProtocol;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
@@ -275,7 +274,8 @@ public final class HttpRemoteTask
             RemoteTaskStats stats,
             boolean binaryTransportEnabled,
             boolean thriftTransportEnabled,
-            boolean experimentalThriftEnabled,
+            boolean experimentalThriftTaskStatusEnabled,
+            boolean experimentalThriftTaskUpdateEnabled,
             boolean taskInfoThriftTransportEnabled,
             Protocol thriftProtocol,
             TableWriteInfo tableWriteInfo,
@@ -336,7 +336,8 @@ public final class HttpRemoteTask
             this.stats = stats;
             this.binaryTransportEnabled = binaryTransportEnabled;
             this.thriftTransportEnabled = thriftTransportEnabled;
-            this.experimentalThriftEnabled = experimentalThriftEnabled;
+            this.experimentalThriftTaskStatusEnabled = experimentalThriftTaskStatusEnabled;
+            this.experimentalThriftTaskUpdateEnabled = experimentalThriftTaskUpdateEnabled;
             this.taskInfoThriftTransportEnabled = taskInfoThriftTransportEnabled;
             this.thriftProtocol = thriftProtocol;
             this.connectorTypeSerdeManager = connectorTypeSerdeManager;
@@ -377,7 +378,7 @@ public final class HttpRemoteTask
 
             TaskInfo initialTask = createInitialTask(taskId, location, bufferStates, new TaskStats(currentTimeMillis(), 0), nodeId);
 
-            if (experimentalThriftEnabled) {
+            if (experimentalThriftTaskStatusEnabled) {
                 this.thriftTaskStatusFetcher = new ContinuousThriftTaskStatusFetcher(this::failTask,
                         taskId,
                         initialTask.getTaskStatus().toThrift(),
@@ -391,7 +392,7 @@ public final class HttpRemoteTask
                         binaryTransportEnabled,
                         thriftTransportEnabled,
                         thriftProtocol,
-                        experimentalThriftEnabled);
+                        experimentalThriftTaskStatusEnabled);
 
                 this.taskStatusFetcher = null;
             }
@@ -436,7 +437,7 @@ public final class HttpRemoteTask
                     connectorTypeSerdeManager,
                     thriftProtocol);
 
-            if (experimentalThriftEnabled) {
+            if (experimentalThriftTaskStatusEnabled) {
                 thriftTaskStatusFetcher.addStateChangeListener(newStatus -> {
                     ThriftTaskState state = newStatus.getState();
                     if (TaskState.isDone(state)) {
@@ -492,7 +493,7 @@ public final class HttpRemoteTask
     @Override
     public TaskStatus getTaskStatus()
     {
-        if (experimentalThriftEnabled) {
+        if (experimentalThriftTaskStatusEnabled) {
             return createTaskStatus(thriftTaskStatusFetcher.getTaskStatus());
         }
         return taskStatusFetcher.getTaskStatus();
@@ -512,7 +513,7 @@ public final class HttpRemoteTask
             started.set(true);
             scheduleUpdate();
 
-            if (experimentalThriftEnabled) {
+            if (experimentalThriftTaskStatusEnabled) {
                 thriftTaskStatusFetcher.start();
             }
             else {
@@ -736,7 +737,7 @@ public final class HttpRemoteTask
     public void addStateChangeListener(StateChangeListener<TaskStatus> stateChangeListener)
     {
         try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
-            if (experimentalThriftEnabled) {
+            if (experimentalThriftTaskStatusEnabled) {
                 thriftTaskStatusFetcher.addStateChangeListener(thrifTaskStatus -> {
                     stateChangeListener.stateChanged(createTaskStatus(thrifTaskStatus));
                 });
@@ -845,7 +846,7 @@ public final class HttpRemoteTask
 
     private void updateTaskInfo(TaskInfo taskInfo, boolean isTaskInfoThriftTransportEnabled)
     {
-        if (experimentalThriftEnabled) {
+        if (experimentalThriftTaskStatusEnabled) {
             thriftTaskStatusFetcher.updateTaskStatus(taskInfo.getTaskStatus().toThrift());
         }
         else {
@@ -951,16 +952,9 @@ public final class HttpRemoteTask
                 outputBuffers.get(),
                 writeInfo);
 
-        if (!writeInfo.isPresent()) {
-            System.out.println("=====> original writeInfo not present");
-        }
-        else if (!writeInfo.get().getWriterTarget().isPresent()) {
-            System.out.println("=====> original writeInfo.get().getWriterTarget() not present");
-        }
-
         long serializeStartCpuTimeNanos = THREAD_MX_BEAN.getCurrentThreadCpuTime();
         byte[] taskUpdateRequestBinary;
-        if (experimentalThriftEnabled) {
+        if (experimentalThriftTaskUpdateEnabled) {
             try {
                 System.out.println("Send out thrift-based task update request");
                 TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
@@ -1000,10 +994,10 @@ public final class HttpRemoteTask
         HttpUriBuilder uriBuilder = getHttpUriBuilder(taskStatus);
         Request request;
 
-        if (experimentalThriftEnabled) {
+        if (experimentalThriftTaskUpdateEnabled) {
             request = ThriftRequestUtils.prepareThriftPost(BINARY)
                     .setUri(uriBuilder.build())
-                    .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftEnabled))
+                    .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftTaskUpdateEnabled))
                     .setBodyGenerator(createStaticBodyGenerator(taskUpdateRequestBinary))
                     .build();
         }
@@ -1015,8 +1009,9 @@ public final class HttpRemoteTask
         }
 
         ResponseHandler responseHandler;
-        if (experimentalThriftEnabled) {
-            responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskInfo.class);
+        if (experimentalThriftTaskUpdateEnabled) {
+//            responseHandler = new ExperimentalThriftResponseHandler(ThriftTaskInfo.class);
+            responseHandler = createAdaptingJsonResponseHandler((JsonCodec<TaskInfo>) taskInfoJsonCodec);
         }
         else if (binaryTransportEnabled) {
             responseHandler = createFullSmileResponseHandler((SmileCodec<TaskInfo>) taskInfoCodec);
@@ -1036,36 +1031,36 @@ public final class HttpRemoteTask
         // and does so without grabbing the instance lock.
         needsUpdate.set(false);
 
-        if (experimentalThriftEnabled) {
-            ListenableFuture<BaseResponse<ThriftTaskInfo>> future = httpClient.executeAsync(request, responseHandler);
-            currentRequest = future;
-            FutureCallback callback = new FutureCallback<ThriftTaskInfo>()
-            {
-                @Override
-                public void onSuccess(ThriftTaskInfo result)
-                {
-                    log.info("success on receiving ThriftTaskInfo");
-                }
-
-                @Override
-                public void onFailure(Throwable t)
-                {
-                    log.error("failure on receiving ThriftTaskInfo");
-                }
-            };
-            Futures.addCallback(
-                    future,
-                    callback,
-                    executor);
-        }
-        else {
-            ListenableFuture<BaseResponse<TaskInfo>> future = httpClient.executeAsync(request, responseHandler);
-            currentRequest = future;
-            Futures.addCallback(
-                    future,
-                    new SimpleHttpResponseHandler<>(new UpdateResponseHandler(sources), request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR),
-                    executor);
-        }
+//        if (experimentalThriftTaskUpdateEnabled) {
+//            ListenableFuture<BaseResponse<ThriftTaskInfo>> future = httpClient.executeAsync(request, responseHandler);
+//            currentRequest = future;
+//            FutureCallback callback = new FutureCallback<ThriftTaskInfo>()
+//            {
+//                @Override
+//                public void onSuccess(ThriftTaskInfo result)
+//                {
+//                    log.info("success on receiving ThriftTaskInfo");
+//                }
+//
+//                @Override
+//                public void onFailure(Throwable t)
+//                {
+//                    log.error("failure on receiving ThriftTaskInfo");
+//                }
+//            };
+//            Futures.addCallback(
+//                    future,
+//                    callback,
+//                    executor);
+//        }
+//        else {
+        ListenableFuture<BaseResponse<TaskInfo>> future = httpClient.executeAsync(request, responseHandler);
+        currentRequest = future;
+        Futures.addCallback(
+                future,
+                new SimpleHttpResponseHandler<>(new UpdateResponseHandler(sources), request.getUri(), stats.getHttpResponseStats(), REMOTE_TASK_ERROR),
+                executor);
+//        }
     }
 
     private String getExceededTaskUpdateSizeMessage(byte[] taskUpdateRequestJson)
@@ -1136,7 +1131,7 @@ public final class HttpRemoteTask
             currentRequestStartNanos = 0;
         }
 
-        if (experimentalThriftEnabled) {
+        if (experimentalThriftTaskStatusEnabled) {
             thriftTaskStatusFetcher.stop();
         }
         else {
@@ -1172,7 +1167,7 @@ public final class HttpRemoteTask
         checkState(status.getState().isDone(), "cannot abort task with an incomplete status");
 
         try (SetThreadName ignored = new SetThreadName("HttpRemoteTask-%s", taskId)) {
-            if (experimentalThriftEnabled) {
+            if (experimentalThriftTaskStatusEnabled) {
                 thriftTaskStatusFetcher.updateTaskStatus(status.toThrift());
             }
             else {

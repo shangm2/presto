@@ -17,6 +17,9 @@ import com.facebook.presto.common.experimental.FunctionHandleAdapter;
 import com.facebook.presto.common.experimental.RowExpressionAdapter;
 import com.facebook.presto.common.experimental.TypeAdapter;
 import com.facebook.presto.common.experimental.auto_gen.ThriftCallExpression;
+import com.facebook.presto.common.experimental.auto_gen.ThriftFunctionHandle;
+import com.facebook.presto.common.experimental.auto_gen.ThriftRowExpression;
+import com.facebook.presto.common.experimental.auto_gen.ThriftType;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.spi.SourceLocation;
 import com.facebook.presto.spi.function.FunctionHandle;
@@ -64,6 +67,16 @@ public final class CallExpression
                 (FunctionHandle) FunctionHandleAdapter.fromThrift(thriftCallExpression.getFunctionHandle()),
                 (Type) TypeAdapter.fromThrift(thriftCallExpression.getReturnType()),
                 thriftCallExpression.getArguments().stream().map(thriftExpression -> (RowExpression) RowExpressionAdapter.fromThrift(thriftExpression)).collect(Collectors.toList()));
+    }
+
+    public ThriftCallExpression toThrift()
+    {
+        ThriftCallExpression thriftCallExpression = new ThriftCallExpression(displayName,
+                (ThriftFunctionHandle) functionHandle.toThriftInterface(),
+                (ThriftType) returnType.toThriftInterface(),
+                arguments.stream().map(expression -> (ThriftRowExpression) expression.toThriftInterface()).collect(Collectors.toList()));
+        this.getSourceLocation().ifPresent(location -> thriftCallExpression.setSourceLocation(location.toThrift()));
+        return thriftCallExpression;
     }
 
     @JsonCreator

@@ -14,9 +14,12 @@
 package com.facebook.presto.hive;
 
 import com.facebook.presto.common.experimental.ThriftSerializable;
+import com.facebook.presto.common.experimental.auto_gen.ThriftHiveCompressionCodec;
+import com.facebook.presto.common.experimental.auto_gen.ThriftHiveStorageFormat;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveWritableTableHandle;
 import com.facebook.presto.hive.metastore.HivePageSinkMetadata;
 import com.facebook.presto.hive.metastore.SortingColumn;
+import com.facebook.presto.hive.util.TypeInfoRegister;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -48,6 +51,8 @@ public class HiveWritableTableHandle
     private final HiveCompressionCodec compressionCodec;
     private final Optional<EncryptionInformation> encryptionInformation;
 
+    private final TypeInfoRegister typeInfoRegister = new TypeInfoRegister();
+
     public HiveWritableTableHandle(ThriftHiveWritableTableHandle thriftHandle)
     {
         this(
@@ -68,13 +73,19 @@ public class HiveWritableTableHandle
     @Override
     public TBase toThrift()
     {
-        return new ThriftHiveWritableTableHandle(
+        ThriftHiveWritableTableHandle thriftHandle = new ThriftHiveWritableTableHandle(
                 schemaName, tableName,
-                inputColumns.stream().map(HiveColumnHandle::toThrift),
+                inputColumns.stream().map(HiveColumnHandle::toThrift).collect(Collectors.toList()),
                 pageSinkMetadata.toThrift(),
-                locationHandle.
-
-        );
+                locationHandle.toThrift(),
+                preferredOrderingColumns.stream().map(SortingColumn::toThrift).collect(Collectors.toList()),
+                ThriftHiveStorageFormat.valueOf(tableStorageFormat.name()),
+                ThriftHiveStorageFormat.valueOf(partitionStorageFormat.name()),
+                ThriftHiveStorageFormat.valueOf(actualStorageFormat.name()),
+                ThriftHiveCompressionCodec.valueOf(compressionCodec.name()));
+        bucketProperty.ifPresent(property -> thriftHandle.setBucketProperty(property.toThrift()));
+        encryptionInformation.ifPresent(info -> thriftHandle.setEncryptionInformation(info.toThrift()));
+        return thriftHandle;
     }
 
     public HiveWritableTableHandle(

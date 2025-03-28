@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.common.predicate;
 
+import com.facebook.presto.common.experimental.ThriftTupleDomainSerde;
 import com.facebook.presto.common.experimental.auto_gen.ThriftDomain;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTupleDomain;
 import com.facebook.presto.common.function.SqlFunctionProperties;
@@ -65,7 +66,7 @@ public final class TupleDomain<T>
      */
     private final Optional<Map<T, Domain>> domains;
 
-    public <S extends com.facebook.presto.common.experimental.ThriftSerializer<T>> ThriftTupleDomain toThrift(S serializer)
+    public <S extends ThriftTupleDomainSerde<T>> ThriftTupleDomain toThrift(S serializer)
     {
         if (domains.isPresent() && getKeyClass().isPresent()) {
             ThriftTupleDomain thriftTupleDomain = new ThriftTupleDomain();
@@ -81,17 +82,17 @@ public final class TupleDomain<T>
 
             return thriftTupleDomain;
         }
-        return null;
+        return new ThriftTupleDomain();
     }
 
-    public static <T, S extends com.facebook.presto.common.experimental.ThriftSerializer<T>> TupleDomain<T> fromThrift(ThriftTupleDomain thriftTupleDomain, S serializer)
+    public static <T, D extends ThriftTupleDomainSerde<T>> TupleDomain<T> fromThrift(ThriftTupleDomain thriftTupleDomain, D deserializer)
     {
         if (thriftTupleDomain == null || !thriftTupleDomain.getDomains().isPresent()) {
             return none();
         }
         Map<T, Domain> domains = new HashMap<>();
         for (Map.Entry<ByteBuffer, ThriftDomain> entry : thriftTupleDomain.getDomains().get().entrySet()) {
-            T key = serializer.deserialize(entry.getKey().array());
+            T key = deserializer.deserialize(entry.getKey().array());
             domains.put(key, new Domain(entry.getValue()));
         }
         return withColumnDomains(domains);
@@ -104,7 +105,7 @@ public final class TupleDomain<T>
             if (firstKey == null) {
                 return Optional.empty();
             }
-            return Optional.of(firstKey.getClass().getName());
+            return Optional.of(firstKey.getClass().getSimpleName());
         }
         return Optional.empty();
     }

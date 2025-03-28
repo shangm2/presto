@@ -68,13 +68,20 @@ public class Partition
 
     public ThriftPartition toThrift()
     {
-        return new ThriftPartition(
+        ThriftPartition thriftPartition = new ThriftPartition(
                 databaseName,
                 tableName,
                 values,
                 storage.toThrift(),
-
-        )
+                columns.stream().map(Column::toThrift).collect(Collectors.toList()),
+                parameters,
+                eligibleToIgnore,
+                sealedPartition,
+                createTime,
+                lastDataCommitTime);
+        partitionVersion.ifPresent(thriftPartition::setPartitionVersion);
+        rowIdPartitionComponent.ifPresent(thriftPartition::setRowIdPartitionComponent);
+        return thriftPartition;
     }
 
     @JsonCreator

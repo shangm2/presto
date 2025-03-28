@@ -55,12 +55,6 @@ public class TaskUpdateRequest
 
     public ThriftTaskUpdateRequest toThrift()
     {
-        if (!tableWriteInfo.isPresent()) {
-            System.out.println("=====> original tableWriteInfo not present");
-        }
-        else if (!tableWriteInfo.get().getWriterTarget().isPresent()) {
-            System.out.println("=====> original getWriterTarget() not present");
-        }
         ThriftTaskUpdateRequest thriftTaskUpdateRequest = new ThriftTaskUpdateRequest(
                 session.toThrift(),
                 extraCredentials,
@@ -68,13 +62,6 @@ public class TaskUpdateRequest
                 outputIds.toThrift());
         tableWriteInfo.map(TableWriteInfo::toThrift).ifPresent(thriftTaskUpdateRequest::setTableWriteInfo);
         fragment.ifPresent(thriftTaskUpdateRequest::setFragment);
-
-        if (!thriftTaskUpdateRequest.getTableWriteInfo().isPresent()) {
-            System.out.println("=====> thriftize tableWriteInfo not present");
-        }
-        else if (!thriftTaskUpdateRequest.getTableWriteInfo().get().getWriterTarget().isPresent()) {
-            System.out.println("=====> thriftize getWriterTarget() not present");
-        }
 
         return thriftTaskUpdateRequest;
     }

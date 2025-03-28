@@ -59,7 +59,7 @@ struct ThriftHostAddress {
 struct ThriftExecutionFailureInfo {
   1: string type;
   2: string message;
-  3: ThriftExecutionFailureInfo cause;
+  3: ThriftExecutionFailureInfo cause (cpp.ref_type = "shared");
   4: list<ThriftExecutionFailureInfo> suppressed;
   5: list<string> stack;
   6: ThriftErrorLocation errorLocation;

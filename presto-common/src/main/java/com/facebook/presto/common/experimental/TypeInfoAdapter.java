@@ -14,26 +14,10 @@
 package com.facebook.presto.common.experimental;
 
 import com.facebook.presto.common.experimental.auto_gen.ThriftTypeInfo;
-import org.apache.thrift.TDeserializer;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
 
 public class TypeInfoAdapter
 {
     private TypeInfoAdapter() {}
-
-    public static Object deserialize(byte[] data)
-    {
-        try {
-            ThriftTypeInfo thriftTypeInfo = new ThriftTypeInfo();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftTypeInfo, data);
-
-            return fromThrift(thriftTypeInfo);
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     public static Object fromThrift(ThriftTypeInfo thriftTypeInfo)
     {

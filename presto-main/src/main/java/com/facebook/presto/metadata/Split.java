@@ -57,9 +57,6 @@ public final class Split
 
     public ThriftSplit toThrift()
     {
-        if (this.connectorSplit.toThriftInterface() == null) {
-            System.out.println("=====> " + this.connectorSplit.getClass().getSimpleName());
-        }
         return new ThriftSplit(
                 this.connectorId.toString(),
                 (ThriftConnectorTransactionHandle) this.transactionHandle.toThriftInterface(),

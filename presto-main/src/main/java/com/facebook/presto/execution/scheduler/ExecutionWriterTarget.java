@@ -52,8 +52,8 @@ public abstract class ExecutionWriterTarget
         private final SchemaTableName schemaTableName;
 
         static {
-            ThriftSerializationRegistry.registerSerializer(CreateHandle.class, CreateHandle::serialize);
-            ThriftSerializationRegistry.registerDeserializer("CREATE_HANDLE", CreateHandle::deserialize);
+            ThriftSerializationRegistry.registerSerializer(CreateHandle.class, CreateHandle::toThrift, null);
+            ThriftSerializationRegistry.registerDeserializer(CreateHandle.class, ThriftCreateHandle.class, CreateHandle::deserialize, null);
         }
 
         public CreateHandle(ThriftCreateHandle thriftHandle)
@@ -87,12 +87,6 @@ public abstract class ExecutionWriterTarget
         public String toString()
         {
             return handle.toString();
-        }
-
-        @Override
-        public String getImplementationType()
-        {
-            return "CREATE_HANDLE";
         }
 
         @Override

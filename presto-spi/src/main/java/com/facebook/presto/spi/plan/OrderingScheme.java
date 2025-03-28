@@ -46,6 +46,11 @@ public class OrderingScheme
         this(thriftScheme.getOrderBy().stream().map(Ordering::new).collect(toList()));
     }
 
+    public ThriftOrderingScheme toThrift()
+    {
+        return new ThriftOrderingScheme(orderBy.stream().map(Ordering::toThrift).collect(toList()));
+    }
+
     @JsonCreator
     public OrderingScheme(@JsonProperty("orderBy") List<Ordering> orderBy)
     {

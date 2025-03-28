@@ -13,7 +13,7 @@ struct ThriftHiveTransactionHandle {
 }
 
 struct ThriftTpchTransactionHandle {
-  1: string value;
+  1: required string value;
 }
 
 struct ThriftRemoteTransactionHandle {

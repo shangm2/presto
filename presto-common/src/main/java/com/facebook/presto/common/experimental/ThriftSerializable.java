@@ -14,14 +14,12 @@
 package com.facebook.presto.common.experimental;
 
 import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.apache.thrift.TSerializer;
 
 public interface ThriftSerializable<T extends TBase<?, ?>>
 {
     default String getImplementationType()
     {
-        return getClass().getSimpleName();
+        return getClass().getName();
     }
 
     default T toThriftInterface()
@@ -32,16 +30,5 @@ public interface ThriftSerializable<T extends TBase<?, ?>>
     default T toThrift()
     {
         return null;
-    }
-
-    default byte[] serialize()
-    {
-        try {
-            TSerializer serializer = new TSerializer();
-            return serializer.serialize(toThriftInterface());
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

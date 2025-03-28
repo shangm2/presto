@@ -22,6 +22,7 @@ import com.google.common.collect.ImmutableMap;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -53,6 +54,17 @@ public class DwrfEncryptionMetadata
     {
         this(thriftMetadata.getFieldToKeyData().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
                 entry -> entry.getValue().array())), thriftMetadata.getExtraMetadata(), thriftMetadata.getEncryptionAlgorithm(), thriftMetadata.getEncryptionProvider());
+    }
+
+    public ThriftDwrfEncryptionMetadata toThrift()
+    {
+        return new ThriftDwrfEncryptionMetadata(
+                fieldToKeyData.entrySet().stream().collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> ByteBuffer.wrap(entry.getValue()))),
+                extraMetadata,
+                encryptionAlgorithm,
+                encryptionProvider);
     }
 
     /**

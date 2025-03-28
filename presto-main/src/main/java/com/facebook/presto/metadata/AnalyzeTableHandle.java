@@ -43,18 +43,10 @@ public class AnalyzeTableHandle
 
     public ThriftAnalyzeTableHandle toThrift()
     {
-        if (this.transactionHandle == null) {
-            System.out.println("=====> original transaction handle is null");
-        }
-        ThriftAnalyzeTableHandle result = new ThriftAnalyzeTableHandle(
+        return new ThriftAnalyzeTableHandle(
                 connectorId.toString(),
                 (ThriftConnectorTransactionHandle) transactionHandle.toThriftInterface(),
                 (ThriftConnectorTableHandle) connectorHandle.toThriftInterface());
-
-        if (result.getTransactionHandle() == null) {
-            System.out.println("=====> thriftize transaction handle is null");
-        }
-        return result;
     }
 
     @JsonCreator

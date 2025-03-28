@@ -19,7 +19,6 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftRemoteTransactionH
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -29,7 +28,7 @@ public class RemoteTransactionHandle
 {
     static {
 //        ThriftSerializationRegistry.registerSerializer(RemoteTransactionHandle.class, RemoteTransactionHandle::serialize);
-        ThriftSerializationRegistry.registerDeserializer("REMOTE_TRANSACTION_HANDLE", RemoteTransactionHandle::deserialize);
+        ThriftSerializationRegistry.registerDeserializer(RemoteTransactionHandle.class, ThriftRemoteTransactionHandle.class, null, null);
     }
 
     @JsonCreator
@@ -50,12 +49,6 @@ public class RemoteTransactionHandle
     }
 
     @Override
-    public String getImplementationType()
-    {
-        return "REMOTE_TRANSACTION_HANDLE";
-    }
-
-    @Override
     public ThriftConnectorTransactionHandle toThriftInterface()
     {
         try {
@@ -64,19 +57,6 @@ public class RemoteTransactionHandle
             thriftHandle.setType(getImplementationType());
             thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(new ThriftRemoteTransactionHandle()));
             return thriftHandle;
-        }
-        catch (TException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static RemoteTransactionHandle deserialize(byte[] bytes)
-    {
-        try {
-            ThriftRemoteTransactionHandle thriftHandle = new ThriftRemoteTransactionHandle();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
-            deserializer.deserialize(thriftHandle, bytes);
-            return new RemoteTransactionHandle(thriftHandle);
         }
         catch (TException e) {
             throw new RuntimeException(e);

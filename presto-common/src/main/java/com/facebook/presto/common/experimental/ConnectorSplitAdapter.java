@@ -58,6 +58,7 @@ public class ConnectorSplitAdapter
     public static Object fromThrift(ThriftConnectorSplit thriftSplit)
     {
         checkNotNull(thriftSplit, "ThriftConnectorSplit is null");
+
         return ThriftSerializationRegistry.deserialize(
                 thriftSplit.getType(),
                 thriftSplit.getSerializedSplit());
