@@ -1,4 +1,4 @@
-namespace java com.facebook.presto.common.experimental
+namespace java com.facebook.presto.common.experimental.auto_gen
 namespace cpp protocol
 
 include "Common.thrift"
@@ -58,6 +58,11 @@ enum ThriftColumnHandleType {
 struct ThriftColumnHandle {
   1: string type;
   2: binary serializedHandle;
+}
+
+struct ThriftTpchColumnHandle {
+  1: string columnName;
+  2: Type.ThriftType type;
 }
 
 struct ThriftBaseHiveColumnHandle {

@@ -160,6 +160,8 @@ public class TaskResource
             @Context UriInfo uriInfo)
     {
         requireNonNull(requestBody, "taskUpdateRequest is null");
+        log.info("=====> createOrUpdateTask accept: " + httpHeaders.getAcceptableMediaTypes());
+        log.info("=====> createOrUpdateTask media type: " + httpHeaders.getMediaType());
 
         String contentType = httpHeaders.getHeaderString(HttpHeaders.CONTENT_TYPE);
         TaskUpdateRequest taskUpdateRequest = null;
@@ -272,7 +274,7 @@ public class TaskResource
             @Suspended AsyncResponse asyncResponse)
     {
         requireNonNull(taskId, "taskId is null");
-
+        
         if (currentState == null || maxWait == null) {
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
             if (isExperimental) {

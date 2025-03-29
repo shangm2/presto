@@ -16,7 +16,6 @@ package com.facebook.presto.execution;
 import com.facebook.drift.annotations.ThriftConstructor;
 import com.facebook.drift.annotations.ThriftField;
 import com.facebook.drift.annotations.ThriftStruct;
-import com.facebook.presto.common.experimental.auto_gen.ThriftTaskInfo;
 import com.facebook.presto.execution.buffer.BufferInfo;
 import com.facebook.presto.execution.buffer.OutputBufferInfo;
 import com.facebook.presto.metadata.MetadataUpdates;
@@ -33,7 +32,6 @@ import java.net.URI;
 import java.util.List;
 import java.util.Set;
 
-import static com.facebook.presto.execution.TaskStatus.createTaskStatus;
 import static com.facebook.presto.execution.TaskStatus.initialTaskStatus;
 import static com.facebook.presto.execution.buffer.BufferState.OPEN;
 import static com.facebook.presto.metadata.MetadataUpdates.DEFAULT_METADATA_UPDATES;
@@ -57,15 +55,6 @@ public class TaskInfo
     private final boolean needsPlan;
     private final MetadataUpdates metadataUpdates;
     private final String nodeId;
-
-    public TaskInfo(ThriftTaskInfo thriftTaskInfo)
-    {
-        this(
-                thriftTaskInfo.getTaskId(),
-                createTaskStatus(thriftTaskInfo.getTaskStatus()),
-                thriftTaskInfo.get
-        );
-    }
 
     public TaskInfo(TaskId taskId,
             TaskStatus taskStatus,

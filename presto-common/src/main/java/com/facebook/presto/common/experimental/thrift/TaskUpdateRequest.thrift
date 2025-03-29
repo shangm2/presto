@@ -1,9 +1,10 @@
-namespace java com.facebook.presto.common.experimental
+namespace java com.facebook.presto.common.experimental.auto_gen
 namespace cpp protocol
 
 include "Common.thrift"
 include "SessionRepresentation.thrift"
 include "Connector.thrift"
+include "ExecutionWriterTarget.thrift"
 
 struct ThriftTaskUpdateRequest {
   1: SessionRepresentation.ThriftSessionRepresentation session;
@@ -11,5 +12,5 @@ struct ThriftTaskUpdateRequest {
   3: optional binary fragment;
   4: list<Connector.ThriftTaskSource> sources;
   5: Connector.ThriftOutputBuffers outputIds;
-  6: optional Connector.ThriftTableWriteInfo tableWriteInfo;
+  6: optional ExecutionWriterTarget.ThriftTableWriteInfo tableWriteInfo;
 }

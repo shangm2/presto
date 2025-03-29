@@ -13,6 +13,9 @@
  */
 package com.facebook.presto.tpch;
 
+import com.facebook.presto.common.experimental.TypeAdapter;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTpchColumnHandle;
+import com.facebook.presto.common.experimental.auto_gen.ThriftType;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.spi.ColumnHandle;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -27,6 +30,16 @@ public class TpchColumnHandle
 {
     private final String columnName;
     private final Type type;
+
+    public TpchColumnHandle(ThriftTpchColumnHandle thriftHandle)
+    {
+        this(thriftHandle.columnName, (Type) TypeAdapter.fromThrift(thriftHandle.getType()));
+    }
+
+    public ThriftTpchColumnHandle toThrift()
+    {
+        return new ThriftTpchColumnHandle(columnName, (ThriftType) type.toThriftInterface());
+    }
 
     @JsonCreator
     public TpchColumnHandle(

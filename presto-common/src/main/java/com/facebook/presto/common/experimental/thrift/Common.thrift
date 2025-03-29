@@ -1,9 +1,41 @@
-namespace java com.facebook.presto.common.experimental
+namespace java com.facebook.presto.common.experimental.auto_gen
 namespace cpp protocol
+
+
+typedef string ThriftPlanNodeId
+typedef string ThriftConnectorId
+typedef i32 ThriftOutputBufferId
+
+enum ThriftBlockedReason {
+  WAITING_FOR_MEMORY = 0,
+}
+
+struct ThriftLifespan {
+  1: bool grouped;
+  2: i32 groupId;
+}
 
 struct ThriftSourceLocation {
   1: i32 line;
   2: i32 column;
+}
+
+struct ThriftDistributionSnapshot {
+  1: double maxError;
+  2: double count;
+  3: double total;
+  4: i64 p01;
+  5: i64 p05;
+  6: i64 p10;
+  7: i64 p25;
+  8: i64 p50;
+  9: i64 p75;
+  10: i64 p90;
+  11: i64 p95;
+  12: i64 p99;
+  13: i64 min;
+  14: i64 max;
+  15: double avg;
 }
 
 enum ThriftTaskState {
@@ -59,8 +91,8 @@ struct ThriftHostAddress {
 struct ThriftExecutionFailureInfo {
   1: string type;
   2: string message;
-  3: ThriftExecutionFailureInfo cause (cpp.ref_type = "shared");
-  4: list<ThriftExecutionFailureInfo> suppressed;
+  3: optional ThriftExecutionFailureInfo cause (cpp.ref_type = "shared");
+  4: optional list<ThriftExecutionFailureInfo> suppressed;
   5: list<string> stack;
   6: ThriftErrorLocation errorLocation;
   7: ThriftErrorCode errorCode;

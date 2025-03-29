@@ -116,6 +116,7 @@ import static com.facebook.airlift.http.client.Request.Builder.prepareDelete;
 import static com.facebook.airlift.http.client.Request.Builder.preparePost;
 import static com.facebook.airlift.http.client.StaticBodyGenerator.createStaticBodyGenerator;
 import static com.facebook.airlift.http.client.StatusResponseHandler.createStatusResponseHandler;
+import static com.facebook.airlift.http.client.thrift.ThriftRequestUtils.APPLICATION_THRIFT_BINARY;
 import static com.facebook.drift.transport.netty.codec.Protocol.BINARY;
 import static com.facebook.presto.SystemSessionProperties.getMaxUnacknowledgedSplitsPerTask;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_EXPERIMENTAL;
@@ -141,6 +142,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static com.google.common.net.HttpHeaders.ACCEPT;
+import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
+import static com.google.common.net.MediaType.JSON_UTF_8;
 import static com.google.common.util.concurrent.Futures.addCallback;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
@@ -995,7 +999,9 @@ public final class HttpRemoteTask
         Request request;
 
         if (experimentalThriftTaskUpdateEnabled) {
-            request = ThriftRequestUtils.prepareThriftPost(BINARY)
+            request = Request.Builder.preparePost()
+                    .setHeader(ACCEPT, JSON_UTF_8.toString())
+                    .setHeader(CONTENT_TYPE, APPLICATION_THRIFT_BINARY)
                     .setUri(uriBuilder.build())
                     .setHeader(PRESTO_EXPERIMENTAL, String.valueOf(experimentalThriftTaskUpdateEnabled))
                     .setBodyGenerator(createStaticBodyGenerator(taskUpdateRequestBinary))
