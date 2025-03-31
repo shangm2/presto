@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftType;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class TypeAdapter
 {
@@ -34,7 +34,7 @@ public class TypeAdapter
             thriftType.setSerializedData(data);
 
             try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftType);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftType);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -47,7 +47,7 @@ public class TypeAdapter
     {
         try {
             ThriftType thriftType = new ThriftType();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftType, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftType, data);
 
             return fromThrift(thriftType);
         }

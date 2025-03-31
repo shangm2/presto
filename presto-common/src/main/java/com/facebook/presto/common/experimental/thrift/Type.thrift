@@ -12,3 +12,11 @@ struct ThriftNullableValue {
   1: ThriftType type;
   2: optional Object.ThriftObject object;
 }
+
+struct ThriftBigintType {}
+
+struct ThriftIntegerType {}
+
+struct ThriftVarcharType {
+  1: i32 length;
+}

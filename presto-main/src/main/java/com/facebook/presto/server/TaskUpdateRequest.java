@@ -50,7 +50,7 @@ public class TaskUpdateRequest
                 Optional.ofNullable(thriftRequest.getFragment()),
                 thriftRequest.getSources().stream().map(TaskSource::new).collect(Collectors.toList()),
                 new OutputBuffers(thriftRequest.getOutputIds()),
-                thriftRequest.getTableWriteInfo().map(TableWriteInfo::new));
+                thriftRequest.getTableWriteInfo().map(TableWriteInfo::newTableWriteInfo));
     }
 
     public ThriftTaskUpdateRequest toThrift()

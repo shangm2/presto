@@ -62,8 +62,8 @@ public class ExecutionFailureInfo
     {
         this(thriftInfo.getType(),
                 thriftInfo.getMessage(),
-                ofNullable(thriftInfo.getCause()).map(ExecutionFailureInfo::new).orElse(null),
-                thriftInfo.getSuppressed().stream().map(ExecutionFailureInfo::new).collect(Collectors.toList()),
+                thriftInfo.getCause().map(ExecutionFailureInfo::new).orElse(null),
+                thriftInfo.getSuppressed().map(suppressed -> suppressed.stream().map(ExecutionFailureInfo::new).collect(Collectors.toList())).orElse(null),
                 thriftInfo.getStack(),
                 ofNullable(thriftInfo.getErrorLocation()).map(ErrorLocation::new).orElse(null),
                 ofNullable(thriftInfo.getErrorCode()).map(ErrorCode::new).orElse(null),
@@ -73,18 +73,19 @@ public class ExecutionFailureInfo
 
     public ThriftExecutionFailureInfo toThrift()
     {
-        List<ThriftExecutionFailureInfo> suppressed = this.suppressed.stream().map(ExecutionFailureInfo::toThrift).collect(Collectors.toList());
-
-        return new ThriftExecutionFailureInfo(
+        ThriftExecutionFailureInfo thriftInfo = new ThriftExecutionFailureInfo(
                 type,
                 message,
-                ofNullable(cause).map(ExecutionFailureInfo::toThrift).orElse(null),
-                suppressed,
                 stack,
                 ofNullable(errorLocation).map(ErrorLocation::toThrift).orElse(null),
                 ofNullable(errorCode).map(ErrorCode::toThrift).orElse(null),
                 ofNullable(remoteHost).map(HostAddress::toThrift).orElse(null),
                 ofNullable(errorCause).map(ErrorCause::toThrift).orElse(null));
+
+        ofNullable(suppressed).map(s -> s.stream().map(ExecutionFailureInfo::toThrift).collect(Collectors.toList())).ifPresent(thriftInfo::setSuppressed);
+        ofNullable(cause).ifPresent(c -> thriftInfo.setCause(c.toThrift()));
+
+        return thriftInfo;
     }
 
     @JsonCreator

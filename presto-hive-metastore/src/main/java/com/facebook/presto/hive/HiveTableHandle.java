@@ -19,7 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,15 +39,21 @@ public class HiveTableHandle
     }
 
     @Override
+    public ThriftHiveTableHandle toThrift()
+    {
+        ThriftHiveTableHandle thriftHiveTableHandle = new ThriftHiveTableHandle(getSchemaName(), getTableName());
+        analyzePartitionValues.ifPresent(thriftHiveTableHandle::setAnalyzePartitionValues);
+        return thriftHiveTableHandle;
+    }
+
+    @Override
     public ThriftConnectorTableHandle toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
             thriftHandle.setType(getImplementationType());
-            ThriftHiveTableHandle thriftHiveTableHandle = new ThriftHiveTableHandle(getSchemaName(), getTableName());
-            analyzePartitionValues.ifPresent(thriftHiveTableHandle::setAnalyzePartitionValues);
-            thriftHandle.setSerializedConnectorTableHandle(serializer.serialize(thriftHiveTableHandle));
+            thriftHandle.setSerializedConnectorTableHandle(serializer.serialize(this.toThrift()));
             return thriftHandle;
         }
         catch (TException e) {

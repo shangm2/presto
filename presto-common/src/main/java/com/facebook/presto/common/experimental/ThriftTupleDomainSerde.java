@@ -13,9 +13,17 @@
  */
 package com.facebook.presto.common.experimental;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 public interface ThriftTupleDomainSerde<T>
 {
-    byte[] serialize(T obj);
+    default byte[] serialize(T obj)
+    {
+        throw new NotImplementedException();
+    }
 
-    T deserialize(byte[] bytes);
+    default T deserialize(byte[] bytes)
+    {
+        throw new NotImplementedException();
+    }
 }

@@ -20,7 +20,7 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public enum TpchTransactionHandle
         implements ConnectorTransactionHandle
@@ -41,10 +41,10 @@ public enum TpchTransactionHandle
     public ThriftConnectorTransactionHandle toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorTransactionHandle thriftHandle = new ThriftConnectorTransactionHandle();
             thriftHandle.setType(getImplementationType());
-            thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(new ThriftTpchTransactionHandle(this.name())));
+            thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(this.toThrift()));
             return thriftHandle;
         }
         catch (TException e) {
@@ -52,11 +52,17 @@ public enum TpchTransactionHandle
         }
     }
 
+    @Override
+    public ThriftTpchTransactionHandle toThrift()
+    {
+        return new ThriftTpchTransactionHandle(this.name());
+    }
+
     public static TpchTransactionHandle deserialize(byte[] bytes)
     {
         try {
             ThriftTpchTransactionHandle thriftHandle = new ThriftTpchTransactionHandle();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             deserializer.deserialize(thriftHandle, bytes);
             return TpchTransactionHandle.valueOf(thriftHandle.getValue());
         }

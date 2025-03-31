@@ -26,3 +26,8 @@ struct ThriftTpchTableHandle {
   1: string tableName;
   2: double scaleFactor;
 }
+
+struct ThriftTpcdsTableHandle {
+  1: string tableName;
+  2: double scaleFactor;
+}

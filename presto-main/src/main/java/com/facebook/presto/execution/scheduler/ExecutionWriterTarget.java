@@ -30,7 +30,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import static java.util.Objects.requireNonNull;
 
@@ -56,10 +56,11 @@ public abstract class ExecutionWriterTarget
             ThriftSerializationRegistry.registerDeserializer(CreateHandle.class, ThriftCreateHandle.class, CreateHandle::deserialize, null);
         }
 
-        public CreateHandle(ThriftCreateHandle thriftHandle)
+        public static CreateHandle newCreateHandle(ThriftCreateHandle thriftHandle)
         {
-            this(new OutputTableHandle(thriftHandle.getHandle()),
-                    new SchemaTableName(thriftHandle.getSchemaTableName()));
+            OutputTableHandle outputTableHandle = new OutputTableHandle(thriftHandle.getHandle());
+            SchemaTableName schemaTableName = new SchemaTableName(thriftHandle.getSchemaTableName());
+            return new CreateHandle(outputTableHandle, schemaTableName);
         }
 
         @JsonCreator
@@ -92,16 +93,17 @@ public abstract class ExecutionWriterTarget
         @Override
         public ThriftExecutionWriterTarget toThriftInterface()
         {
+            ThriftExecutionWriterTarget thriftTarget = new ThriftExecutionWriterTarget();
+
             try {
-                TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
-                ThriftExecutionWriterTarget thriftTarget = new ThriftExecutionWriterTarget();
-                thriftTarget.setType(getImplementationType());
+                thriftTarget.setType(this.getClass().getName());
+                TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
                 thriftTarget.setSerializedTarget(serializer.serialize(this.toThrift()));
-                return thriftTarget;
             }
             catch (TException e) {
                 throw new RuntimeException(e);
             }
+            return thriftTarget;
         }
 
         @Override
@@ -114,9 +116,9 @@ public abstract class ExecutionWriterTarget
         {
             try {
                 ThriftCreateHandle thriftHandle = new ThriftCreateHandle();
-                TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+                TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
                 deserializer.deserialize(thriftHandle, bytes);
-                return new CreateHandle(thriftHandle);
+                return newCreateHandle(thriftHandle);
             }
             catch (TException e) {
                 throw new RuntimeException(e);

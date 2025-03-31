@@ -1,6 +1,7 @@
 namespace java com.facebook.presto.common.experimental.auto_gen
 namespace cpp protocol
 
+include "Common.thrift"
 include "Type.thrift"
 include "Block.thrift"
 include "Marker.thrift"
@@ -43,7 +44,8 @@ struct ThriftDomain {
   2: bool nullAllowed;
 }
 
+
 struct ThriftTupleDomain {
-  1: optional map<binary, ThriftDomain> domains;
-  2: string keyClassName;
+  1: string keyClassName;
+  2: optional map<Common.BinaryWrapper, ThriftDomain> domains;
 }

@@ -61,9 +61,9 @@ public class TableWriteInfo
     private final Optional<AnalyzeTableHandle> analyzeTableHandle;
     private final Optional<DeleteScanInfo> deleteScanInfo;
 
-    public TableWriteInfo(ThriftTableWriteInfo thriftTableWriteInfo)
+    public static TableWriteInfo newTableWriteInfo(ThriftTableWriteInfo thriftTableWriteInfo)
     {
-        this(
+        return new TableWriteInfo(
                 thriftTableWriteInfo.getWriterTarget().map(target -> (ExecutionWriterTarget) ExecutionWriterTargetAdapter.fromThrift(target)),
                 thriftTableWriteInfo.getAnalyzeTableHandle().map(AnalyzeTableHandle::new),
                 thriftTableWriteInfo.getDeleteScanInfo().map(DeleteScanInfo::new));
@@ -76,9 +76,6 @@ public class TableWriteInfo
         analyzeTableHandle.map(AnalyzeTableHandle::toThrift).ifPresent(thriftTableWriteInfo::setAnalyzeTableHandle);
         deleteScanInfo.map(DeleteScanInfo::toThrift).ifPresent(thriftTableWriteInfo::setDeleteScanInfo);
 
-        if (!thriftTableWriteInfo.getWriterTarget().isPresent()) {
-            System.out.println("thriftize thriftize writer target not present, original class name: " + writerTarget.get().getClass().getName());
-        }
         return thriftTableWriteInfo;
     }
 
@@ -285,7 +282,7 @@ public class TableWriteInfo
         {
             return new ThriftDeleteScanInfo(
                     id.getId(),
-                    tableHandle.toThriftInterface());
+                    tableHandle.toThrift());
         }
 
         @JsonCreator

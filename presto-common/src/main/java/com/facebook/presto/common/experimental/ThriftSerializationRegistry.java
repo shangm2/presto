@@ -18,7 +18,7 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 import org.apache.thrift.transport.TTransportException;
 
 import javax.annotation.Nullable;
@@ -34,15 +34,15 @@ public class ThriftSerializationRegistry
     private static final Logger log = Logger.get(ThriftSerializationRegistry.class);
 
     private static final Map<String, Function<byte[], Object>> DESERIALIZERS = new HashMap<>();
-    private static final Map<Class<?>, Function<Object, byte[]>> SERIALIZERS = new HashMap<>();
+    private static final Map<String, Function<Object, byte[]>> SERIALIZERS = new HashMap<>();
 
     private static final TSerializer serializer;
     private static final TDeserializer deserializer;
 
     static {
         try {
-            serializer = new TSerializer();
-            deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            serializer = new TSerializer(new TJSONProtocol.Factory());
+            deserializer = new TDeserializer(new TJSONProtocol.Factory());
         }
         catch (TTransportException e) {
             log.error("Can not initialize thrift serde", e);
@@ -50,19 +50,20 @@ public class ThriftSerializationRegistry
         }
     }
 
-    public static <T, R> void registerSerializer(Class<T> clazz, Function<T, R> toThrift, @Nullable Function<T, byte[]> ownSerializer)
+    public static <T, R> void registerSerializer(Class<T> clazz, @Nullable Function<T, R> toThrift, @Nullable Function<T, byte[]> ownSerializer)
     {
         if (SERIALIZERS.containsKey(clazz)) {
             throw new IllegalArgumentException("Type " + clazz + " is already registered");
         }
         if (ownSerializer != null) {
-            SERIALIZERS.put(clazz, obj -> ownSerializer.apply((T) obj));
+            SERIALIZERS.put(clazz.getName(), obj -> ownSerializer.apply((T) obj));
             return;
         }
-        SERIALIZERS.put(clazz, obj -> {
+        SERIALIZERS.put(clazz.getName(), obj -> {
             try {
                 R thriftObj = toThrift.apply((T) obj);
-                return ThriftSerializationRegistry.serializer.serialize((TBase) thriftObj);
+                byte[] bytes = ThriftSerializationRegistry.serializer.serialize((TBase) thriftObj);
+                return bytes;
             }
             catch (TException e) {
                 throw new RuntimeException("Unable to serialize for " + clazz.getSimpleName(), e);
@@ -87,9 +88,7 @@ public class ThriftSerializationRegistry
                 Constructor<R> thriftConstructor = thriftClazz.getDeclaredConstructor();
                 thriftConstructor.setAccessible(true);
                 R thriftInstance = thriftConstructor.newInstance();
-                System.out.println("=====> start to deserialize " + thriftInstance.getClass().getSimpleName());
                 deserializer.deserialize(thriftInstance, bytes);
-                System.out.println("=====> successfully deserialized " + thriftInstance.getClass().getSimpleName());
                 if (ownConstructor != null) {
                     return ownConstructor.apply(thriftInstance);
                 }
@@ -104,7 +103,7 @@ public class ThriftSerializationRegistry
 
     public static byte[] serialize(Object obj)
     {
-        Function<Object, byte[]> serializer = SERIALIZERS.get(obj.getClass());
+        Function<Object, byte[]> serializer = SERIALIZERS.get(obj.getClass().getName());
         if (serializer == null) {
             throw new IllegalArgumentException("No serializer registered for " + obj.getClass().getSimpleName());
         }

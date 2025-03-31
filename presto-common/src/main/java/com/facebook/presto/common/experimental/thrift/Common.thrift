@@ -6,6 +6,10 @@ typedef string ThriftPlanNodeId
 typedef string ThriftConnectorId
 typedef i32 ThriftOutputBufferId
 
+struct BinaryWrapper {
+  1: binary data;
+}
+
 enum ThriftBlockedReason {
   WAITING_FOR_MEMORY = 0,
 }
@@ -126,4 +130,8 @@ struct ThriftQualifiedObjectName {
 struct ThriftSchemaTableName {
   1: string schemaName;
   2: string tableName;
+}
+
+struct ThriftSlice {
+  1: binary data;
 }

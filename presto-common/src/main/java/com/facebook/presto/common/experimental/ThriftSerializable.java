@@ -14,6 +14,7 @@
 package com.facebook.presto.common.experimental;
 
 import org.apache.thrift.TBase;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public interface ThriftSerializable<T extends TBase<?, ?>>
 {
@@ -24,11 +25,11 @@ public interface ThriftSerializable<T extends TBase<?, ?>>
 
     default T toThriftInterface()
     {
-        return toThrift();
+        throw new NotImplementedException();
     }
 
     default T toThrift()
     {
-        return null;
+        throw new NotImplementedException();
     }
 }

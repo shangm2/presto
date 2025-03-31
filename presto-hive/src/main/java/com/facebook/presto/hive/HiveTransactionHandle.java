@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -35,14 +35,14 @@ public class HiveTransactionHandle
 {
     static {
         ThriftSerializationRegistry.registerSerializer(HiveTransactionHandle.class, HiveTransactionHandle::toThrift, null);
-        ThriftSerializationRegistry.registerDeserializer(HiveTransactionHandle.class, ThriftHiveTransactionHandle.class, null, null);
+        ThriftSerializationRegistry.registerDeserializer(HiveTransactionHandle.class, ThriftHiveTransactionHandle.class, HiveTransactionHandle::deserialize, null);
     }
 
     private final UUID uuid;
 
     public HiveTransactionHandle(ThriftHiveTransactionHandle thriftHandle)
     {
-        this(new UUID(thriftHandle.getTaskInstanceIdLeastSignificantBits(), thriftHandle.getTaskInstanceIdMostSignificantBits()));
+        this(new UUID(thriftHandle.getTaskInstanceIdMostSignificantBits(), thriftHandle.getTaskInstanceIdLeastSignificantBits()));
     }
 
     public HiveTransactionHandle()
@@ -91,7 +91,7 @@ public class HiveTransactionHandle
     public ThriftConnectorTransactionHandle toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorTransactionHandle thriftHandle = new ThriftConnectorTransactionHandle();
             thriftHandle.setType(getImplementationType());
             thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(toThrift()));
@@ -111,8 +111,8 @@ public class HiveTransactionHandle
     public static HiveTransactionHandle deserialize(byte[] bytes)
     {
         try {
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             ThriftHiveTransactionHandle thriftHandle = new ThriftHiveTransactionHandle();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
             deserializer.deserialize(thriftHandle, bytes);
             return new HiveTransactionHandle(thriftHandle);
         }

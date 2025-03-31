@@ -15,6 +15,8 @@ package com.facebook.presto.hive;
 
 import com.facebook.presto.common.experimental.ThriftSerializable;
 import com.facebook.presto.common.experimental.TypeInfoAdapter;
+import com.facebook.presto.common.experimental.auto_gen.ThriftCharTypeInfo;
+import com.facebook.presto.common.experimental.auto_gen.ThriftDecimalTypeInfo;
 import com.facebook.presto.common.experimental.auto_gen.ThriftHiveType;
 import com.facebook.presto.common.experimental.auto_gen.ThriftPrimitiveTypeInfo;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTypeInfo;
@@ -41,7 +43,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.VarcharTypeInfo;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.util.List;
@@ -157,9 +159,16 @@ public final class HiveType
         thriftTypeInfo.setType(typeInfo.getClass().getName());
 
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             if (typeInfo instanceof VarcharTypeInfo) {
                 thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftVarcharTypeInfo(((VarcharTypeInfo) typeInfo).getLength())));
+            }
+            else if (typeInfo instanceof DecimalTypeInfo) {
+                DecimalTypeInfo decimalTypeInfo = (DecimalTypeInfo) typeInfo;
+                thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftDecimalTypeInfo(decimalTypeInfo.getPrecision(), decimalTypeInfo.getScale())));
+            }
+            else if (typeInfo instanceof CharTypeInfo) {
+                thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftCharTypeInfo(((CharTypeInfo) typeInfo).getLength())));
             }
             else if (typeInfo instanceof PrimitiveTypeInfo) {
                 thriftTypeInfo.setSerializedTypeInfo(serializer.serialize(new ThriftPrimitiveTypeInfo(typeInfo.getTypeName())));

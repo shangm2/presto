@@ -100,7 +100,6 @@ public class HiveColumnHandle
     @Override
     public ThriftHiveColumnHandle toThrift()
     {
-
         ThriftBaseHiveColumnHandle thriftBaseHandle = (ThriftBaseHiveColumnHandle) super.toThrift();
         ThriftHiveColumnHandle thriftHandle = new ThriftHiveColumnHandle(thriftBaseHandle, hiveType.toThrift(), typeName.toThrift(), hiveColumnIndex);
         partialAggregation.ifPresent(aggregation -> thriftHandle.setPartialAggregation(aggregation.toThrift()));

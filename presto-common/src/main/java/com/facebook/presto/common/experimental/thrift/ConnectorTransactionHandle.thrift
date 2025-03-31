@@ -16,6 +16,10 @@ struct ThriftTpchTransactionHandle {
   1: required string value;
 }
 
+struct ThriftTpcdsTransactionHandle {
+  1: required string value;
+}
+
 struct ThriftRemoteTransactionHandle {
   1: i32 dummy;
 }

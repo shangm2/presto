@@ -25,9 +25,10 @@ import com.facebook.presto.spi.schedule.NodeSelectionStrategy;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.util.List;
 
@@ -43,7 +44,7 @@ public class RemoteSplit
 
     static {
         ThriftSerializationRegistry.registerSerializer(RemoteSplit.class, RemoteSplit::toThriftInterface, null);
-        ThriftSerializationRegistry.registerDeserializer(RemoteSplit.class, ThriftRemoteSplit.class, null, null);
+        ThriftSerializationRegistry.registerDeserializer(RemoteSplit.class, ThriftRemoteSplit.class, RemoteSplit::deserialize, null);
     }
 
     public RemoteSplit(ThriftRemoteSplit thriftRemoteSplit)
@@ -101,7 +102,7 @@ public class RemoteSplit
     public ThriftConnectorSplit toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorSplit thriftSplit = new ThriftConnectorSplit();
             thriftSplit.setType(getImplementationType());
             thriftSplit.setSerializedSplit(serializer.serialize(this.toThrift()));
@@ -118,5 +119,18 @@ public class RemoteSplit
         return new ThriftRemoteSplit(
                 location.getLocation(),
                 remoteSourceTaskId.toThrift());
+    }
+
+    public static RemoteSplit deserialize(byte[] bytes)
+    {
+        try {
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
+            ThriftRemoteSplit thriftRemoteSplit = new ThriftRemoteSplit();
+            deserializer.deserialize(thriftRemoteSplit, bytes);
+            return new RemoteSplit(thriftRemoteSplit);
+        }
+        catch (TException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

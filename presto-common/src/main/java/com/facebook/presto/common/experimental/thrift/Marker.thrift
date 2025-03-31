@@ -4,7 +4,7 @@ namespace cpp protocol
 include "Type.thrift"
 include "Block.thrift"
 
-enum Bound
+enum ThriftBound
 {
   BELOW = 1,
   EXACTLY = 2,
@@ -14,7 +14,7 @@ enum Bound
 struct ThriftMarker {
   1: Type.ThriftType type;
   2: optional Block.ThriftBlock valueBlock;
-  3: Bound bound;
+  3: ThriftBound bound;
 }
 
 struct ThriftRange {

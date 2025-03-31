@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftExecutionWriterTar
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class ExecutionWriterTargetAdapter
 {
@@ -27,14 +27,10 @@ public class ExecutionWriterTargetAdapter
     {
         if (obj instanceof ThriftSerializable) {
             ThriftSerializable serializable = (ThriftSerializable) obj;
-            byte[] data = ThriftSerializationRegistry.serialize(serializable);
-
-            ThriftExecutionWriterTarget thriftTarget = new ThriftExecutionWriterTarget();
-            thriftTarget.setType(serializable.getImplementationType());
-            thriftTarget.setSerializedTarget(data);
+            ThriftExecutionWriterTarget thriftTarget = (ThriftExecutionWriterTarget) serializable.toThriftInterface();
 
             try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftTarget);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftTarget);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -43,11 +39,11 @@ public class ExecutionWriterTargetAdapter
         throw new IllegalArgumentException("Unsupported type: " + obj.getClass());
     }
 
-    public static Object deserialize(byte[] data)
+    public static Object deserialize(byte[] bytes)
     {
         try {
             ThriftExecutionWriterTarget thriftTarget = new ThriftExecutionWriterTarget();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftTarget, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftTarget, bytes);
 
             return fromThrift(thriftTarget);
         }

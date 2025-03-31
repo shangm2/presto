@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftRowExpression;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class RowExpressionAdapter
 {
@@ -34,7 +34,7 @@ public class RowExpressionAdapter
             thriftExpression.setSerializedExpression(data);
 
             try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftExpression);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftExpression);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -47,7 +47,7 @@ public class RowExpressionAdapter
     {
         try {
             ThriftRowExpression thriftExpression = new ThriftRowExpression();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftExpression, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftExpression, data);
 
             return fromThrift(thriftExpression);
         }

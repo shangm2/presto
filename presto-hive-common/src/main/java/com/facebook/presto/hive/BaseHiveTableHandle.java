@@ -21,7 +21,8 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.TSerializer;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import javax.validation.constraints.NotNull;
 
@@ -35,7 +36,7 @@ public class BaseHiveTableHandle
 
     static {
         ThriftSerializationRegistry.registerSerializer(BaseHiveTableHandle.class, BaseHiveTableHandle::toThrift, null);
-        ThriftSerializationRegistry.registerDeserializer(BaseHiveTableHandle.class, ThriftBaseHiveTableHandle.class, null, null);
+        ThriftSerializationRegistry.registerDeserializer(BaseHiveTableHandle.class, ThriftBaseHiveTableHandle.class, BaseHiveTableHandle::deserialize, null);
     }
 
     public BaseHiveTableHandle(@NotNull ThriftBaseHiveTableHandle thriftHandle)
@@ -48,7 +49,13 @@ public class BaseHiveTableHandle
     {
         ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
         thriftHandle.setType(this.getClass().getName());
-        thriftHandle.setSerializedConnectorTableHandle(ThriftSerializationRegistry.serialize(this));
+        try {
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
+            thriftHandle.setSerializedConnectorTableHandle(serializer.serialize(this.toThrift()));
+        }
+        catch (TException e) {
+            throw new RuntimeException(e);
+        }
         return thriftHandle;
     }
 
@@ -79,7 +86,7 @@ public class BaseHiveTableHandle
     {
         try {
             ThriftBaseHiveTableHandle thriftHandle = new ThriftBaseHiveTableHandle();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             deserializer.deserialize(thriftHandle, bytes);
             return new BaseHiveTableHandle(thriftHandle);
         }

@@ -6,8 +6,8 @@ include "OutputTableHandle.thrift"
 include "Connector.thrift"
 
 struct ThriftExecutionWriterTarget {
-  1: string type
-  2: binary serializedTarget
+  1: string type;
+  2: binary serializedTarget (java.type="byte[]");
 }
 
 struct ThriftCreateHandle {

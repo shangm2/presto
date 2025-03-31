@@ -30,9 +30,10 @@ import com.facebook.presto.spi.relation.RowExpression;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +55,7 @@ public class BaseHiveTableLayoutHandle
 
     static {
         ThriftSerializationRegistry.registerSerializer(BaseHiveTableLayoutHandle.class, BaseHiveTableLayoutHandle::toThrift, null);
-        ThriftSerializationRegistry.registerDeserializer(BaseHiveTableLayoutHandle.class, ThriftBaseHiveTableLayoutHandle.class, null, null);
+        ThriftSerializationRegistry.registerDeserializer(BaseHiveTableLayoutHandle.class, ThriftBaseHiveTableLayoutHandle.class, BaseHiveTableLayoutHandle::deserialize, null);
     }
 
     public BaseHiveTableLayoutHandle(ThriftBaseHiveTableLayoutHandle thriftHandle)
@@ -62,12 +63,6 @@ public class BaseHiveTableLayoutHandle
         this(thriftHandle.partitionColumns.stream().map(BaseHiveColumnHandle::new).collect(Collectors.toList()),
                 TupleDomain.fromThrift(thriftHandle.getDomainPredicate(), new ThriftTupleDomainSerde<Subfield>()
                 {
-                    @Override
-                    public byte[] serialize(Subfield obj)
-                    {
-                        return ThriftSerializationRegistry.serialize(obj);
-                    }
-
                     @Override
                     public Subfield deserialize(byte[] bytes)
                     {
@@ -78,12 +73,6 @@ public class BaseHiveTableLayoutHandle
                 thriftHandle.isPushdownFilterEnabled(),
                 TupleDomain.fromThrift(thriftHandle.getPartitionColumnPredicate(), new ThriftTupleDomainSerde<ColumnHandle>()
                 {
-                    @Override
-                    public byte[] serialize(ColumnHandle obj)
-                    {
-                        return ColumnHandleAdapter.serialize(obj);
-                    }
-
                     @Override
                     public ColumnHandle deserialize(byte[] bytes)
                     {
@@ -105,12 +94,6 @@ public class BaseHiveTableLayoutHandle
                     {
                         return ThriftSerializationRegistry.serialize(obj);
                     }
-
-                    @Override
-                    public Subfield deserialize(byte[] bytes)
-                    {
-                        return (Subfield) ThriftSerializationRegistry.deserialize(Subfield.class.getSimpleName(), bytes);
-                    }
                 }),
                 (ThriftRowExpression) this.remainingPredicate.toThriftInterface(),
                 this.pushdownFilterEnabled,
@@ -121,12 +104,6 @@ public class BaseHiveTableLayoutHandle
                     {
                         return ColumnHandleAdapter.serialize(obj);
                     }
-
-                    @Override
-                    public ColumnHandle deserialize(byte[] bytes)
-                    {
-                        return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
-                    }
                 }));
     }
 
@@ -134,41 +111,10 @@ public class BaseHiveTableLayoutHandle
     public ThriftConnectorTableLayoutHandle toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorTableLayoutHandle thriftHandle = new ThriftConnectorTableLayoutHandle();
             thriftHandle.setType(getImplementationType());
-            thriftHandle.setSerializedConnectorTableLayoutHandle(serializer.serialize(new ThriftBaseHiveTableLayoutHandle(
-                    partitionColumns.stream().map(column -> (ThriftBaseHiveColumnHandle) column.toThrift()).collect(Collectors.toList()),
-                    domainPredicate.toThrift(new ThriftTupleDomainSerde<Subfield>()
-                    {
-                        @Override
-                        public byte[] serialize(Subfield obj)
-                        {
-                            return ThriftSerializationRegistry.serialize(obj);
-                        }
-
-                        @Override
-                        public Subfield deserialize(byte[] bytes)
-                        {
-                            return (Subfield) ThriftSerializationRegistry.deserialize(Subfield.class.getSimpleName(), bytes);
-                        }
-                    }),
-                    (ThriftRowExpression) remainingPredicate.toThriftInterface(),
-                    pushdownFilterEnabled,
-                    partitionColumnPredicate.toThrift(new ThriftTupleDomainSerde<ColumnHandle>()
-                    {
-                        @Override
-                        public byte[] serialize(ColumnHandle obj)
-                        {
-                            return ColumnHandleAdapter.serialize(obj);
-                        }
-
-                        @Override
-                        public ColumnHandle deserialize(byte[] bytes)
-                        {
-                            return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
-                        }
-                    }))));
+            thriftHandle.setSerializedConnectorTableLayoutHandle(serializer.serialize(this.toThrift()));
             return thriftHandle;
         }
         catch (TException e) {
@@ -231,5 +177,18 @@ public class BaseHiveTableLayoutHandle
     public Optional<List<HivePartition>> getPartitions()
     {
         return partitions;
+    }
+
+    public static BaseHiveTableLayoutHandle deserialize(byte[] bytes)
+    {
+        try {
+            ThriftBaseHiveTableLayoutHandle thriftHandle = new ThriftBaseHiveTableLayoutHandle();
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
+            deserializer.deserialize(thriftHandle, bytes);
+            return new BaseHiveTableLayoutHandle(thriftHandle);
+        }
+        catch (TException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

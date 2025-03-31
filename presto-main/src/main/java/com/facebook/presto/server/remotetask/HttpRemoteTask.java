@@ -960,7 +960,6 @@ public final class HttpRemoteTask
         byte[] taskUpdateRequestBinary;
         if (experimentalThriftTaskUpdateEnabled) {
             try {
-                System.out.println("Send out thrift-based task update request");
                 TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
                 ThriftTaskUpdateRequest thriftTaskUpdateRequest = updateRequest.toThrift();
                 taskUpdateRequestBinary = serializer.serialize(thriftTaskUpdateRequest);

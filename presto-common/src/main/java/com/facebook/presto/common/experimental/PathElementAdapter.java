@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftPathElement;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class PathElementAdapter
 {
@@ -34,7 +34,7 @@ public class PathElementAdapter
             thriftElement.setSerializedElement(data);
 
             try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftElement);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftElement);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -47,7 +47,7 @@ public class PathElementAdapter
     {
         try {
             ThriftPathElement thriftElement = new ThriftPathElement();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftElement, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftElement, data);
 
             return fromThrift(thriftElement);
         }

@@ -13,15 +13,15 @@
  */
 package com.facebook.presto.common.experimental;
 
-import com.facebook.presto.common.experimental.auto_gen.ThriftConnectorTableHandle;
+import com.facebook.presto.common.experimental.auto_gen.ThriftBlock;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TJSONProtocol;
 
-public class ConnectorTableHandleAdapter
+public class BlockAdapter
 {
-    private ConnectorTableHandleAdapter() {}
+    private BlockAdapter() {}
 
     public static byte[] serialize(Object obj)
     {
@@ -29,12 +29,12 @@ public class ConnectorTableHandleAdapter
             ThriftSerializable serializable = (ThriftSerializable) obj;
             byte[] data = ThriftSerializationRegistry.serialize(serializable);
 
-            ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
-            thriftHandle.setType(serializable.getImplementationType());
-            thriftHandle.setSerializedConnectorTableHandle(data);
+            ThriftBlock thriftBlock = new ThriftBlock();
+            thriftBlock.setType(serializable.getImplementationType());
+            thriftBlock.setSerializedBlock(data);
 
             try {
-                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftHandle);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftBlock);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -46,20 +46,20 @@ public class ConnectorTableHandleAdapter
     public static Object deserialize(byte[] data)
     {
         try {
-            ThriftConnectorTableHandle thriftHandle = new ThriftConnectorTableHandle();
-            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftHandle, data);
+            ThriftBlock thriftBlock = new ThriftBlock();
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftBlock, data);
 
-            return fromThrift(thriftHandle);
+            return fromThrift(thriftBlock);
         }
         catch (TException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static Object fromThrift(ThriftConnectorTableHandle thriftHandle)
+    public static Object fromThrift(ThriftBlock thriftBlock)
     {
         return ThriftSerializationRegistry.deserialize(
-                thriftHandle.getType(),
-                thriftHandle.getSerializedConnectorTableHandle());
+                thriftBlock.getType(),
+                thriftBlock.getSerializedBlock());
     }
 }

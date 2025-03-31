@@ -14,6 +14,7 @@
 package com.facebook.presto.common.predicate;
 
 import com.facebook.presto.common.experimental.ThriftTupleDomainSerde;
+import com.facebook.presto.common.experimental.auto_gen.BinaryWrapper;
 import com.facebook.presto.common.experimental.auto_gen.ThriftDomain;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTupleDomain;
 import com.facebook.presto.common.function.SqlFunctionProperties;
@@ -22,7 +23,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,11 +71,14 @@ public final class TupleDomain<T>
         if (domains.isPresent() && getKeyClass().isPresent()) {
             ThriftTupleDomain thriftTupleDomain = new ThriftTupleDomain();
 
-            Map<ByteBuffer, ThriftDomain> thriftDomains = new HashMap<>();
+            Map<BinaryWrapper, ThriftDomain> thriftDomains = new HashMap<>();
             for (Entry<T, Domain> entry : domains.get().entrySet()) {
                 T key = entry.getKey();
                 Domain domain = entry.getValue();
-                thriftDomains.put(ByteBuffer.wrap(serializer.serialize(key)), domain.toThrift());
+                byte[] bytes = serializer.serialize(key);
+                BinaryWrapper wrapper = new BinaryWrapper();
+                wrapper.setData(bytes);
+                thriftDomains.put(wrapper, domain.toThrift());
             }
             thriftTupleDomain.setKeyClassName(getKeyClass().get());
             thriftTupleDomain.setDomains(thriftDomains);
@@ -87,25 +90,26 @@ public final class TupleDomain<T>
 
     public static <T, D extends ThriftTupleDomainSerde<T>> TupleDomain<T> fromThrift(ThriftTupleDomain thriftTupleDomain, D deserializer)
     {
-        if (thriftTupleDomain == null || !thriftTupleDomain.getDomains().isPresent()) {
+        if (thriftTupleDomain == null || !thriftTupleDomain.getDomains().isPresent() || thriftTupleDomain.getDomains().get().isEmpty()) {
             return none();
         }
         Map<T, Domain> domains = new HashMap<>();
-        for (Map.Entry<ByteBuffer, ThriftDomain> entry : thriftTupleDomain.getDomains().get().entrySet()) {
-            T key = deserializer.deserialize(entry.getKey().array());
+        for (Map.Entry<BinaryWrapper, ThriftDomain> entry : thriftTupleDomain.getDomains().get().entrySet()) {
+            byte[] bytes = entry.getKey().getData();
+            T key = deserializer.deserialize(bytes);
             domains.put(key, new Domain(entry.getValue()));
         }
         return withColumnDomains(domains);
     }
 
-    private Optional<String> getKeyClass()
+    public Optional<String> getKeyClass()
     {
         if (domains != null && domains.isPresent() && !domains.get().isEmpty()) {
             T firstKey = domains.get().keySet().iterator().next();
             if (firstKey == null) {
                 return Optional.empty();
             }
-            return Optional.of(firstKey.getClass().getSimpleName());
+            return Optional.of(firstKey.getClass().getName());
         }
         return Optional.empty();
     }

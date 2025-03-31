@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftConnectorTableLayo
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class ConnectorTableLayoutHandleAdapter
 {
@@ -34,7 +34,7 @@ public class ConnectorTableLayoutHandleAdapter
             thriftHandle.setSerializedConnectorTableLayoutHandle(data);
 
             try {
-                return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftHandle);
+                return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftHandle);
             }
             catch (TException e) {
                 throw new RuntimeException(e);
@@ -47,7 +47,7 @@ public class ConnectorTableLayoutHandleAdapter
     {
         try {
             ThriftConnectorTableLayoutHandle thriftHandle = new ThriftConnectorTableLayoutHandle();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftHandle, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftHandle, data);
 
             return fromThrift(thriftHandle);
         }

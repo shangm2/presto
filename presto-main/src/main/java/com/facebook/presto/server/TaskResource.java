@@ -42,6 +42,7 @@ import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 import org.apache.thrift.transport.TTransportException;
 
 import javax.annotation.security.RolesAllowed;
@@ -160,8 +161,6 @@ public class TaskResource
             @Context UriInfo uriInfo)
     {
         requireNonNull(requestBody, "taskUpdateRequest is null");
-        log.info("=====> createOrUpdateTask accept: " + httpHeaders.getAcceptableMediaTypes());
-        log.info("=====> createOrUpdateTask media type: " + httpHeaders.getMediaType());
 
         String contentType = httpHeaders.getHeaderString(HttpHeaders.CONTENT_TYPE);
         TaskUpdateRequest taskUpdateRequest = null;
@@ -172,10 +171,6 @@ public class TaskResource
                 ThriftTaskUpdateRequest thriftTaskUpdateRequest = new ThriftTaskUpdateRequest();
                 deserializer.deserialize(thriftTaskUpdateRequest, requestBody);
                 taskUpdateRequest = new TaskUpdateRequest(thriftTaskUpdateRequest);
-                log.info("deserialize taskUpdateRequest in thrift");
-            }
-            catch (TTransportException e) {
-                throw new RuntimeException("Can not create deserializer for taskUpdate" + e);
             }
             catch (TException e) {
                 throw new RuntimeException("Can not deserialize taskUpdate" + e);
@@ -191,7 +186,6 @@ public class TaskResource
             throw new RuntimeException("Can not understand the content-type");
         }
 
-        log.info("taskUpdateRequest: " + taskUpdateRequest.toString());
         Session session = taskUpdateRequest.getSession().toSession(sessionPropertyManager, taskUpdateRequest.getExtraCredentials());
         TaskInfo taskInfo = taskManager.updateTask(session,
                 taskId,
@@ -203,7 +197,6 @@ public class TaskResource
         if (shouldSummarize(uriInfo)) {
             taskInfo = taskInfo.summarize();
         }
-        log.info("=====> taskinfo: " + taskInfo.toString());
         return Response.ok().entity(taskInfo).build();
     }
 
@@ -274,13 +267,13 @@ public class TaskResource
             @Suspended AsyncResponse asyncResponse)
     {
         requireNonNull(taskId, "taskId is null");
-        
+
         if (currentState == null || maxWait == null) {
             TaskStatus taskStatus = taskManager.getTaskStatus(taskId);
             if (isExperimental) {
                 ThriftTaskStatus thriftTaskStatus = taskStatus.toThrift();
                 try {
-                    TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+                    TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
                     byte[] responseBody = serializer.serialize(thriftTaskStatus);
                     Response.ResponseBuilder responseBuilder = Response.ok(responseBody)
                             .header(CONTENT_TYPE, APPLICATION_THRIFT_BINARY)

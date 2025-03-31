@@ -17,7 +17,7 @@ import com.facebook.presto.common.experimental.auto_gen.ThriftConnectorSplit;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -35,7 +35,7 @@ public class ConnectorSplitAdapter
         thriftSplit.setSerializedSplit(data);
 
         try {
-            return new TSerializer(new TBinaryProtocol.Factory()).serialize(thriftSplit);
+            return new TSerializer(new TJSONProtocol.Factory()).serialize(thriftSplit);
         }
         catch (TException e) {
             throw new RuntimeException(e);
@@ -46,7 +46,7 @@ public class ConnectorSplitAdapter
     {
         try {
             ThriftConnectorSplit thriftSplit = new ThriftConnectorSplit();
-            new TDeserializer(new TBinaryProtocol.Factory()).deserialize(thriftSplit, data);
+            new TDeserializer(new TJSONProtocol.Factory()).deserialize(thriftSplit, data);
 
             return fromThrift(thriftSplit);
         }

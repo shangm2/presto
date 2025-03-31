@@ -23,3 +23,11 @@ struct ThriftRemoteSplit {
   1: string location;
   2: Task.ThriftTaskId remoteSourceTaskId;
 }
+
+struct ThriftTpcdsSplit {
+  1: ConnectorTableHandle.ThriftTpcdsTableHandle tableHandle;
+  2: i32 totalParts;
+  3: i32 partNumber;
+  4: list<Common.ThriftHostAddress> addresses;
+  5: bool noSexism;
+}

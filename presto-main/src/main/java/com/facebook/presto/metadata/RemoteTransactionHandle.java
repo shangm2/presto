@@ -21,14 +21,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 public class RemoteTransactionHandle
         implements ConnectorTransactionHandle
 {
     static {
 //        ThriftSerializationRegistry.registerSerializer(RemoteTransactionHandle.class, RemoteTransactionHandle::serialize);
-        ThriftSerializationRegistry.registerDeserializer(RemoteTransactionHandle.class, ThriftRemoteTransactionHandle.class, null, null);
+        ThriftSerializationRegistry.registerDeserializer(RemoteTransactionHandle.class, ThriftRemoteTransactionHandle.class, RemoteTransactionHandle::deserialize, null);
     }
 
     @JsonCreator
@@ -52,14 +52,25 @@ public class RemoteTransactionHandle
     public ThriftConnectorTransactionHandle toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorTransactionHandle thriftHandle = new ThriftConnectorTransactionHandle();
             thriftHandle.setType(getImplementationType());
-            thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(new ThriftRemoteTransactionHandle()));
+            thriftHandle.setSerializedConnectorTransactionHandle(serializer.serialize(this.toThrift()));
             return thriftHandle;
         }
         catch (TException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public ThriftRemoteTransactionHandle toThrift()
+    {
+        return new ThriftRemoteTransactionHandle();
+    }
+
+    public static RemoteTransactionHandle deserialize(byte[] bytes)
+    {
+        return new RemoteTransactionHandle();
     }
 }

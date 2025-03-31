@@ -18,3 +18,12 @@ struct ThriftPrimitiveTypeInfo {
 struct ThriftVarcharTypeInfo {
   1: i32 length;
 }
+
+struct ThriftCharTypeInfo {
+  1: i32 length;
+}
+
+struct ThriftDecimalTypeInfo {
+  1: i32 precision;
+  2: i32 scale;
+}

@@ -183,8 +183,8 @@ struct ThriftHiveWritableTableHandle {
 }
 
 struct ThriftHiveOutputTableHandle {
-  1: ThriftHiveWritableTableHandle hiveWritableTableHandle
-  2: list<string> partitionedBy;
-  3: string tableOwner;
-  4: map<string, string> additionalTableParameters;
+  1: list<string> partitionedBy;
+  2: string tableOwner;
+  3: map<string, string> additionalTableParameters;
+  4: ThriftHiveWritableTableHandle hiveWritableTableHandle;
 }

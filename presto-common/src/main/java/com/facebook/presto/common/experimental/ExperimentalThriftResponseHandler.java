@@ -19,7 +19,7 @@ import com.facebook.airlift.http.client.ResponseHandler;
 import com.facebook.airlift.log.Logger;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TDeserializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -44,7 +44,7 @@ public class ExperimentalThriftResponseHandler<T extends TBase<?, ?>>
     public T handleException(Request request, Exception exception)
             throws RuntimeException
     {
-        throw new RuntimeException("Thrift request failed" + request.getUri(), exception);
+        throw new RuntimeException("Thrift request failed " + request.getUri(), exception);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class ExperimentalThriftResponseHandler<T extends TBase<?, ?>>
             constructor.setAccessible(true);
             T instance = constructor.newInstance();
 
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             deserializer.deserialize(instance, responseBody);
 
             return instance;

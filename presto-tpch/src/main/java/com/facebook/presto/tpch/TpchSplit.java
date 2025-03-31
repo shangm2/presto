@@ -16,8 +16,10 @@ package com.facebook.presto.tpch;
 import com.facebook.presto.common.experimental.ColumnHandleAdapter;
 import com.facebook.presto.common.experimental.ThriftSerializationRegistry;
 import com.facebook.presto.common.experimental.ThriftTupleDomainSerde;
+import com.facebook.presto.common.experimental.auto_gen.ThriftColumnHandle;
 import com.facebook.presto.common.experimental.auto_gen.ThriftConnectorSplit;
 import com.facebook.presto.common.experimental.auto_gen.ThriftTpchSplit;
+import com.facebook.presto.common.experimental.auto_gen.ThriftTupleDomain;
 import com.facebook.presto.common.predicate.TupleDomain;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorSplit;
@@ -30,7 +32,8 @@ import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
+import org.apache.thrift.transport.TTransportException;
 
 import java.util.List;
 import java.util.Objects;
@@ -65,15 +68,20 @@ public class TpchSplit
                 TupleDomain.fromThrift(thriftTpchSplit.getPredicate(), new ThriftTupleDomainSerde<ColumnHandle>()
                 {
                     @Override
-                    public byte[] serialize(ColumnHandle obj)
-                    {
-                        return ColumnHandleAdapter.serialize(obj);
-                    }
-
-                    @Override
                     public ColumnHandle deserialize(byte[] bytes)
                     {
-                        return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
+                        try {
+                            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
+                            ThriftColumnHandle thriftColumnHandle = new ThriftColumnHandle();
+                            deserializer.deserialize(thriftColumnHandle, bytes);
+                            return (ColumnHandle) ColumnHandleAdapter.fromThrift(thriftColumnHandle);
+                        }
+                        catch (TTransportException e) {
+                            throw new RuntimeException(e);
+                        }
+                        catch (TException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }));
     }
@@ -181,7 +189,7 @@ public class TpchSplit
     public ThriftConnectorSplit toThriftInterface()
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             ThriftConnectorSplit thriftSplit = new ThriftConnectorSplit();
             thriftSplit.setType(getImplementationType());
             thriftSplit.setSerializedSplit(serializer.serialize(this.toThrift()));
@@ -195,33 +203,44 @@ public class TpchSplit
     @Override
     public ThriftTpchSplit toThrift()
     {
-        return new ThriftTpchSplit(
+        ThriftTupleDomain thriftTupleDomain = null;
+        if (predicate.isAll()) {
+            thriftTupleDomain = new ThriftTupleDomain("DummyKeyClassName");
+        }
+        else {
+            thriftTupleDomain = predicate.toThrift(new ThriftTupleDomainSerde<ColumnHandle>()
+            {
+                @Override
+                public byte[] serialize(ColumnHandle obj)
+                {
+                    try {
+                        TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
+                        ThriftColumnHandle thriftColumnHandle = new ThriftColumnHandle();
+                        thriftColumnHandle.setType(obj.getImplementationType());
+                        thriftColumnHandle.setSerializedHandle(serializer.serialize(obj.toThrift()));
+                        return serializer.serialize(thriftColumnHandle);
+                    }
+                    catch (TException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+        }
+
+        ThriftTpchSplit thriftSplit = new ThriftTpchSplit(
                 tableHandle.toThrift(),
                 totalParts,
                 partNumber,
                 addresses.stream().map(HostAddress::toThrift).collect(Collectors.toList()),
-                predicate.toThrift(new ThriftTupleDomainSerde<ColumnHandle>()
-                {
-                    @Override
-                    public byte[] serialize(ColumnHandle obj)
-                    {
-                        return ColumnHandleAdapter.serialize(obj);
-                    }
-
-                    @Override
-                    public ColumnHandle deserialize(byte[] bytes)
-                    {
-                        return (ColumnHandle) ColumnHandleAdapter.deserialize(bytes);
-                    }
-                })
-        );
+                thriftTupleDomain);
+        return thriftSplit;
     }
 
     public static TpchSplit deserialize(byte[] bytes)
     {
         try {
             ThriftTpchSplit thriftSplit = new ThriftTpchSplit();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             deserializer.deserialize(thriftSplit, bytes);
             return new TpchSplit(thriftSplit);
         }

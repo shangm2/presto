@@ -46,10 +46,7 @@ public final class OutputTableHandle
     {
 
         ThriftConnectorTransactionHandle thriftTransactionHandle = (ThriftConnectorTransactionHandle) transactionHandle.toThriftInterface();
-        ConnectorTransactionHandle convertedTransactionHandle = (ConnectorTransactionHandle) ConnectorTransactionHandleAdapter.fromThrift(thriftTransactionHandle);
-
         ThriftConnectorOutputTableHandle thriftConnectorHandle = (ThriftConnectorOutputTableHandle) connectorHandle.toThriftInterface();
-        ConnectorOutputTableHandle convertedOutputTableHandle = (ConnectorOutputTableHandle) ConnectorOutputTableHandleAdapter.fromThrift(thriftConnectorHandle);
 
         return new ThriftOutputTableHandle(connectorId.toString(), thriftTransactionHandle, thriftConnectorHandle);
     }

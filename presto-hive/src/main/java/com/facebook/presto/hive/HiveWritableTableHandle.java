@@ -115,6 +115,19 @@ public class HiveWritableTableHandle
         this.compressionCodec = requireNonNull(compressionCodec, "compressionCodec is null");
         this.encryptionInformation = requireNonNull(encryptionInformation, "encryptionInformation is null");
 
+//        this.schemaName = schemaName;
+//        this.tableName = tableName;
+//        this.inputColumns = ImmutableList.copyOf(inputColumns);
+//        this.pageSinkMetadata = pageSinkMetadata;
+//        this.locationHandle = locationHandle;
+//        this.bucketProperty = bucketProperty;
+//        this.preferredOrderingColumns = preferredOrderingColumns;
+//        this.tableStorageFormat = tableStorageFormat;
+//        this.partitionStorageFormat = partitionStorageFormat;
+//        this.encryptionInformation = encryptionInformation;
+//        this.actualStorageFormat = actualStorageFormat;
+//        this.compressionCodec = compressionCodec;
+
         if (!compressionCodec.isSupportedStorageFormat(actualStorageFormat)) {
             throw new PrestoException(GENERIC_USER_ERROR, String.format("%s compression is not supported with %s", compressionCodec.name(), actualStorageFormat.name()));
         }

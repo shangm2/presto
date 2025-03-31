@@ -28,7 +28,7 @@ import org.apache.thrift.TBase;
 import org.apache.thrift.TDeserializer;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TJSONProtocol;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,7 @@ public class HiveOutputTableHandle
     private final Map<String, String> additionalTableParameters;
 
     static {
-        ThriftSerializationRegistry.registerSerializer(HiveOutputTableHandle.class, HiveOutputTableHandle::toThrift, HiveOutputTableHandle::serialize);
+        ThriftSerializationRegistry.registerSerializer(HiveOutputTableHandle.class, HiveOutputTableHandle::toThrift, null);
         ThriftSerializationRegistry.registerDeserializer(HiveOutputTableHandle.class, ThriftHiveOutputTableHandle.class, HiveOutputTableHandle::deserialize, null);
     }
 
@@ -130,7 +130,7 @@ public class HiveOutputTableHandle
     {
         TBase base = super.toThrift();
         ThriftHiveWritableTableHandle thriftBase = (ThriftHiveWritableTableHandle) base;
-        return new ThriftHiveOutputTableHandle(thriftBase, partitionedBy, tableOwner, additionalTableParameters);
+        return new ThriftHiveOutputTableHandle(partitionedBy, tableOwner, additionalTableParameters, thriftBase);
     }
 
     @Override
@@ -138,14 +138,20 @@ public class HiveOutputTableHandle
     {
         ThriftConnectorOutputTableHandle thriftHandle = new ThriftConnectorOutputTableHandle();
         thriftHandle.setType(this.getClass().getName());
-        thriftHandle.setSerializedOutputTableHandle(ThriftSerializationRegistry.serialize(this));
+        try {
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
+            thriftHandle.setSerializedOutputTableHandle(serializer.serialize(this.toThrift()));
+        }
+        catch (TException e) {
+            throw new RuntimeException(e);
+        }
         return thriftHandle;
     }
 
     public static byte[] serialize(HiveOutputTableHandle obj)
     {
         try {
-            TSerializer serializer = new TSerializer(new TBinaryProtocol.Factory());
+            TSerializer serializer = new TSerializer(new TJSONProtocol.Factory());
             return serializer.serialize(obj.toThrift());
         }
         catch (TException e) {
@@ -157,7 +163,7 @@ public class HiveOutputTableHandle
     {
         try {
             ThriftHiveOutputTableHandle thriftHandle = new ThriftHiveOutputTableHandle();
-            TDeserializer deserializer = new TDeserializer(new TBinaryProtocol.Factory());
+            TDeserializer deserializer = new TDeserializer(new TJSONProtocol.Factory());
             deserializer.deserialize(thriftHandle, bytes);
             return new HiveOutputTableHandle(thriftHandle);
         }

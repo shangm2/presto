@@ -55,7 +55,7 @@ public final class TableHandle
     }
 
     @Override
-    public ThriftTableHandle toThriftInterface()
+    public ThriftTableHandle toThrift()
     {
         ThriftTableHandle thriftTableHandle = new ThriftTableHandle(
                 connectorId.toString(),
