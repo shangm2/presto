@@ -10,6 +10,10 @@ Presto’s execution model breaks queries into stages, further divided into task
 
 The shift to an event loop model represents a fundamental change in how Presto handles task-level concurrency. It’s part of a broader initiative to modernize and streamline Presto’s concurrency architecture, with future improvements planned for stage and query-level components.
 
+Motivation
+
+The initial drive for this migration came from a critical production issue where queries from Tableau severely impacted coordinator performance. The task scheduler would become a bottleneck, leading to degraded query responsiveness and system instability. As a stopgap, we had to deploy a multi-coordinator setup in certain regions to handle the load. While this alleviated the immediate pressure, it introduced higher resource costs and fragmented cache usage. The event loop migration fundamentally addressed the root cause of the contention, enabling us to confidently return to a single-coordinator architecture—restoring efficiency, reducing operational complexity, and improving cache locality and performance.
+
 Improvements
 
 	•	CPU Efficiency: 90% reduction in CPU usage on the Presto task scheduler
