@@ -50,8 +50,13 @@
                         <configuration>
                             <classes>
                                 <class>com.facebook.presto.execution.TaskStatus</class>
+                                <class>com.facebook.presto.execution.TaskInfo</class>
+                                <class>com.facebook.presto.server.TaskUpdateRequest</class>
                             </classes>
                             <recursive>true</recursive>
+                            <namespaces>
+                                <cpp>facebook.presto.protocol</cpp>
+                            </namespaces>
                             <outputFile>target/thrift/presto-internal-${project.version}.thrift</outputFile>
                         </configuration>
                     </execution>
