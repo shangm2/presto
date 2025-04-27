@@ -40,6 +40,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.facebook.drift.annotations.ThriftField.Requiredness.OPTIONAL;
 import static java.util.Collections.emptyMap;
 import static java.util.Objects.requireNonNull;
 
@@ -71,6 +72,36 @@ public final class SessionRepresentation
     private final Map<SqlFunctionId, SqlInvokedFunction> sessionFunctions;
 
     @ThriftConstructor
+    public SessionRepresentation(
+            String queryId,
+            TransactionId transactionId,
+            boolean clientTransactionSupport,
+            String user,
+            String principal,
+            String source,
+            String catalog,
+            String schema,
+            String traceToken,
+            TimeZoneKey timeZoneKey,
+            Locale locale,
+            String remoteUserAddress,
+            String userAgent,
+            String clientInfo,
+            Set<String> clientTags,
+            ResourceEstimates resourceEstimates,
+            long startTime,
+            Map<String, String> systemProperties,
+            Map<ConnectorId, Map<String, String>> catalogProperties,
+            Map<String, Map<String, String>> unprocessedCatalogProperties,
+            Map<String, SelectedRole> roles,
+            Map<String, String> preparedStatements,
+            Map<SqlFunctionId, SqlInvokedFunction> sessionFunctions)
+    {
+        this(queryId, Optional.of(transactionId), clientTransactionSupport, user, Optional.ofNullable(principal), Optional.ofNullable(source), Optional.ofNullable(catalog),
+                Optional.ofNullable(schema), Optional.ofNullable(traceToken), timeZoneKey, locale, Optional.ofNullable(remoteUserAddress), Optional.ofNullable(userAgent), Optional.ofNullable(clientInfo),
+                clientTags, resourceEstimates, startTime, systemProperties, catalogProperties, unprocessedCatalogProperties, roles, preparedStatements, sessionFunctions);
+    }
+
     @JsonCreator
     public SessionRepresentation(
             @JsonProperty("queryId") String queryId,
@@ -139,11 +170,16 @@ public final class SessionRepresentation
         return queryId;
     }
 
-    @ThriftField(2)
     @JsonProperty
     public Optional<TransactionId> getTransactionId()
     {
         return transactionId;
+    }
+
+    @ThriftField(value = 2, name = "transactionId", requiredness = OPTIONAL)
+    public TransactionId getNullableTransactionId()
+    {
+        return transactionId.orElse(null);
     }
 
     @ThriftField(3)
@@ -160,39 +196,64 @@ public final class SessionRepresentation
         return user;
     }
 
-    @ThriftField(5)
     @JsonProperty
     public Optional<String> getPrincipal()
     {
         return principal;
     }
 
-    @ThriftField(6)
+    @ThriftField(value = 5, name = "principal", requiredness = OPTIONAL)
+    public String getNullablePrincipal()
+    {
+        return principal.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getSource()
     {
         return source;
     }
 
-    @ThriftField(7)
+    @ThriftField(value = 6, name = "source", requiredness = OPTIONAL)
+    public String getNullableSource()
+    {
+        return source.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getCatalog()
     {
         return catalog;
     }
 
-    @ThriftField(8)
+    @ThriftField(value = 7, name = "catalog", requiredness = OPTIONAL)
+    public String getNullableCatalog()
+    {
+        return catalog.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getSchema()
     {
         return schema;
     }
 
-    @ThriftField(9)
+    @ThriftField(value = 8, name = "schema", requiredness = OPTIONAL)
+    public String getNullableSchema()
+    {
+        return schema.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getTraceToken()
     {
         return traceToken;
+    }
+
+    @ThriftField(value = 9, name = "traceToken", requiredness = OPTIONAL)
+    public String getNullableTraceToken()
+    {
+        return traceToken.orElse(null);
     }
 
     @ThriftField(10)
@@ -209,25 +270,40 @@ public final class SessionRepresentation
         return locale;
     }
 
-    @ThriftField(12)
     @JsonProperty
     public Optional<String> getRemoteUserAddress()
     {
         return remoteUserAddress;
     }
 
-    @ThriftField(13)
+    @ThriftField(value = 12, name = "remoteUserAddress", requiredness = OPTIONAL)
+    public String getNullableRemoteUserAddress()
+    {
+        return remoteUserAddress.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getUserAgent()
     {
         return userAgent;
     }
 
-    @ThriftField(14)
+    @ThriftField(value = 13, name = "userAgent", requiredness = OPTIONAL)
+    public String getNullableUserAgent()
+    {
+        return userAgent.orElse(null);
+    }
+
     @JsonProperty
     public Optional<String> getClientInfo()
     {
         return clientInfo;
+    }
+
+    @ThriftField(value = 14, name = "clientInfo", requiredness = OPTIONAL)
+    public String getNullableClientInfo()
+    {
+        return clientInfo.orElse(null);
     }
 
     @ThriftField(15)

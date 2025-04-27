@@ -156,8 +156,8 @@ public class HttpRemoteTaskFactory
         binaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
         thriftTransportEnabled = communicationConfig.isThriftTransportEnabled();
         taskInfoThriftTransportEnabled = communicationConfig.isTaskInfoThriftTransportEnabled();
-        taskUpdateRequestThriftTransportEnabled = communicationConfig.isTaskUpdateRequestThriftTransportEnabled();
-        taskInfoResponseThriftTransportEnabled = communicationConfig.isTaskInfoResponseThriftTransportEnabled();
+        taskUpdateRequestThriftTransportEnabled = true; //communicationConfig.isTaskUpdateRequestThriftTransportEnabled();
+        taskInfoResponseThriftTransportEnabled = true; // communicationConfig.isTaskInfoResponseThriftTransportEnabled();
 
         thriftProtocol = communicationConfig.getThriftProtocol();
         this.maxTaskUpdateSizeInBytes = toIntExact(requireNonNull(communicationConfig, "communicationConfig is null").getMaxTaskUpdateSize().toBytes());

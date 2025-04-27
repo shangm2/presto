@@ -22,17 +22,22 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Objects;
 import java.util.UUID;
 
-import static java.util.Objects.requireNonNull;
-
 @ThriftStruct
 public final class TransactionId
 {
-    private final UUID uuid;
+    private final long mostSignificantBits;
+    private final long leastSignificantBits;
 
     @ThriftConstructor
+    public TransactionId(long mostSignificantBits, long leastSignificantBits)
+    {
+        this.mostSignificantBits = mostSignificantBits;
+        this.leastSignificantBits = leastSignificantBits;
+    }
+
     public TransactionId(UUID uuid)
     {
-        this.uuid = requireNonNull(uuid, "uuid is null");
+        this(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
     }
 
     public static TransactionId create()
@@ -49,7 +54,7 @@ public final class TransactionId
     @Override
     public int hashCode()
     {
-        return Objects.hash(uuid);
+        return Objects.hash(getUuid());
     }
 
     @Override
@@ -62,19 +67,30 @@ public final class TransactionId
             return false;
         }
         final TransactionId other = (TransactionId) obj;
-        return Objects.equals(this.uuid, other.uuid);
+        return Objects.equals(this.mostSignificantBits, other.mostSignificantBits) && Objects.equals(this.leastSignificantBits, other.leastSignificantBits);
     }
 
     @Override
     @JsonValue
     public String toString()
     {
-        return uuid.toString();
+        return getUuid().toString();
     }
 
-    @ThriftField(value = 1, name = "uuid")
     public UUID getUuid()
     {
-        return uuid;
+        return new UUID(mostSignificantBits, leastSignificantBits);
+    }
+
+    @ThriftField(1)
+    public long getMostSignificantBits()
+    {
+        return mostSignificantBits;
+    }
+
+    @ThriftField(2)
+    public long getLeastSignificantBits()
+    {
+        return leastSignificantBits;
     }
 }

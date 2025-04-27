@@ -23,6 +23,17 @@
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-main-base</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.facebook.drift</groupId>
+            <artifactId>drift-idl-generator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -50,8 +61,6 @@
                         <configuration>
                             <classes>
                                 <class>com.facebook.presto.execution.TaskStatus</class>
-                                <class>com.facebook.presto.execution.TaskInfo</class>
-                                <class>com.facebook.presto.server.TaskUpdateRequest</class>
                             </classes>
                             <recursive>true</recursive>
                             <namespaces>
