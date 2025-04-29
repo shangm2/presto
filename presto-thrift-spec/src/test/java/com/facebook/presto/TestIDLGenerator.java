@@ -15,6 +15,8 @@ package com.facebook.presto;
 
 import com.facebook.drift.idl.generator.ThriftIdlGenerator;
 import com.facebook.drift.idl.generator.ThriftIdlGeneratorConfig;
+import com.facebook.presto.execution.TaskInfo;
+import com.facebook.presto.execution.TaskStatus;
 import com.facebook.presto.server.TaskUpdateRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -32,7 +34,7 @@ public class TestIDLGenerator
     @Test
     public void TestGenerator()
     {
-        assertGenerated(ImmutableList.of(TaskUpdateRequest.class), true);
+        assertGenerated(ImmutableList.of(TaskStatus.class, TaskInfo.class, TaskUpdateRequest.class), true);
     }
 
     private static void assertGenerated(List<Class> clazzes, boolean logging)
