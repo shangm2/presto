@@ -13,8 +13,12 @@
  */
 package com.facebook.presto.execution;
 
+import com.facebook.drift.annotations.ThriftConstructor;
+import com.facebook.drift.annotations.ThriftField;
+import com.facebook.drift.annotations.ThriftStruct;
 import com.facebook.presto.metadata.Split;
 import com.facebook.presto.spi.plan.PlanNodeId;
+import com.facebook.presto.util.PrestoJsonObjectMapperUtil;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.primitives.Longs;
@@ -22,6 +26,7 @@ import com.google.common.primitives.Longs;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
+@ThriftStruct
 public class ScheduledSplit
 {
     private final long sequenceId;
@@ -39,13 +44,26 @@ public class ScheduledSplit
         this.split = requireNonNull(split, "split is null");
     }
 
+    @ThriftConstructor
+    public ScheduledSplit(
+            long sequenceId,
+            PlanNodeId planNodeId,
+            byte[] split)
+    {
+        this.sequenceId = sequenceId;
+        this.planNodeId = requireNonNull(planNodeId, "planNodeId is null");
+        this.split = (Split) PrestoJsonObjectMapperUtil.deserialize(requireNonNull(split, "split is null"), Split.class);
+    }
+
     @JsonProperty
+    @ThriftField(1)
     public long getSequenceId()
     {
         return sequenceId;
     }
 
     @JsonProperty
+    @ThriftField(2)
     public PlanNodeId getPlanNodeId()
     {
         return planNodeId;
@@ -55,6 +73,12 @@ public class ScheduledSplit
     public Split getSplit()
     {
         return split;
+    }
+
+    @ThriftField(value = 3, name = "split")
+    public byte[] getJsonSplit()
+    {
+        return PrestoJsonObjectMapperUtil.serialize(split);
     }
 
     @Override

@@ -15,6 +15,7 @@ package com.facebook.presto.execution.buffer;
 
 import com.facebook.drift.annotations.ThriftConstructor;
 import com.facebook.drift.annotations.ThriftEnum;
+import com.facebook.drift.annotations.ThriftEnumValue;
 import com.facebook.drift.annotations.ThriftField;
 import com.facebook.drift.annotations.ThriftStruct;
 import com.facebook.presto.spi.plan.PartitioningHandle;
@@ -81,11 +82,24 @@ public final class OutputBuffers
     @ThriftEnum
     public enum BufferType
     {
-        PARTITIONED,
-        BROADCAST,
-        ARBITRARY,
-        DISCARDING,
-        SPOOLING,
+        PARTITIONED(1),
+        BROADCAST(2),
+        ARBITRARY(3),
+        DISCARDING(4),
+        SPOOLING(5);
+
+        private final int value;
+
+        BufferType(int value)
+        {
+            this.value = value;
+        }
+
+        @ThriftEnumValue
+        public int getValue()
+        {
+            return value;
+        }
     }
 
     private final BufferType type;

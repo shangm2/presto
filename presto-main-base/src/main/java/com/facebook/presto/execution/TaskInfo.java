@@ -21,6 +21,7 @@ import com.facebook.presto.execution.buffer.OutputBufferInfo;
 import com.facebook.presto.metadata.MetadataUpdates;
 import com.facebook.presto.operator.TaskStats;
 import com.facebook.presto.spi.plan.PlanNodeId;
+import com.facebook.presto.util.PrestoJsonObjectMapperUtil;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableSet;
@@ -56,7 +57,6 @@ public class TaskInfo
     private final String nodeId;
 
     @JsonCreator
-    @ThriftConstructor
     public TaskInfo(
             @JsonProperty("taskId") TaskId taskId,
             @JsonProperty("taskStatus") TaskStatus taskStatus,
@@ -78,6 +78,31 @@ public class TaskInfo
 
         this.needsPlan = needsPlan;
         this.metadataUpdates = metadataUpdates;
+        this.nodeId = requireNonNull(nodeId, "nodeId is null");
+    }
+
+    @ThriftConstructor
+    public TaskInfo(
+            TaskId taskId,
+            TaskStatus taskStatus,
+            long lastHeartbeatInMillis,
+            OutputBufferInfo outputBuffers,
+            Set<PlanNodeId> noMoreSplits,
+            TaskStats stats,
+            boolean needsPlan,
+            byte[] metadataUpdates,
+            String nodeId)
+    {
+        this.taskId = requireNonNull(taskId, "taskId is null");
+        this.taskStatus = requireNonNull(taskStatus, "taskStatus is null");
+        checkArgument(lastHeartbeatInMillis >= 0, "lastHeartbeat is negative");
+        this.lastHeartbeatInMillis = lastHeartbeatInMillis;
+        this.outputBuffers = requireNonNull(outputBuffers, "outputBuffers is null");
+        this.noMoreSplits = requireNonNull(noMoreSplits, "noMoreSplits is null");
+        this.stats = requireNonNull(stats, "stats is null");
+
+        this.needsPlan = needsPlan;
+        this.metadataUpdates = (MetadataUpdates) PrestoJsonObjectMapperUtil.deserialize(requireNonNull(metadataUpdates, "metadataUpdates is null"), MetadataUpdates.class);
         this.nodeId = requireNonNull(nodeId, "nodeId is null");
     }
 
@@ -136,10 +161,15 @@ public class TaskInfo
     }
 
     @JsonProperty
-    @ThriftField(8)
     public MetadataUpdates getMetadataUpdates()
     {
         return metadataUpdates;
+    }
+
+    @ThriftField(value = 8, name = "metadataUpdates")
+    public byte[] getJsonMetadataUpdates()
+    {
+        return PrestoJsonObjectMapperUtil.serialize(metadataUpdates);
     }
 
     @JsonProperty

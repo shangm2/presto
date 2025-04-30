@@ -30,6 +30,8 @@ import javax.ws.rs.core.HttpHeaders;
 
 import java.util.List;
 
+import static com.facebook.presto.PrestoMediaTypes.APPLICATION_JACKSON_SMILE;
+import static com.facebook.presto.PrestoMediaTypes.APPLICATION_THRIFT_BINARY;
 import static com.facebook.presto.operator.OperatorInfoUnion.convertToOperatorInfo;
 import static com.facebook.presto.operator.OperatorInfoUnion.convertToOperatorInfoUnion;
 import static java.util.stream.Collectors.toList;
@@ -40,7 +42,17 @@ public class TaskResourceUtils
     {
     }
 
-    public static boolean isThriftRequest(HttpHeaders httpHeaders)
+    public static boolean isThriftMediaType(HttpHeaders httpHeaders)
+    {
+        return httpHeaders.getMediaType().toString().equals(APPLICATION_THRIFT_BINARY);
+    }
+
+    public static boolean isSmileMediaType(HttpHeaders httpHeaders)
+    {
+        return httpHeaders.getMediaType().toString().equals(APPLICATION_JACKSON_SMILE);
+    }
+
+    public static boolean isThriftAcceptable(HttpHeaders httpHeaders)
     {
         return httpHeaders.getAcceptableMediaTypes().stream()
                 .anyMatch(mediaType -> mediaType.toString().contains("application/x-thrift"));

@@ -228,6 +228,7 @@ import com.facebook.presto.transaction.TransactionManagerConfig;
 import com.facebook.presto.type.TypeDeserializer;
 import com.facebook.presto.util.FinalizerService;
 import com.facebook.presto.util.GcStatusMonitor;
+import com.facebook.presto.util.PrestoJsonObjectMapperUtil;
 import com.facebook.presto.version.EmbedVersion;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
@@ -704,10 +705,13 @@ public class ServerMainModule
         jsonBinder(binder).addSerializerBinding(Expression.class).to(ExpressionSerializer.class);
         jsonBinder(binder).addDeserializerBinding(Expression.class).to(ExpressionDeserializer.class);
         jsonBinder(binder).addDeserializerBinding(FunctionCall.class).to(FunctionCallDeserializer.class);
+        thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
 
         // metadata updates
         jsonCodecBinder(binder).bindJsonCodec(MetadataUpdates.class);
         smileCodecBinder(binder).bindSmileCodec(MetadataUpdates.class);
+
+        binder.bind(PrestoJsonObjectMapperUtil.class).in(Scopes.SINGLETON);
 
         // split monitor
         binder.bind(SplitMonitor.class).in(Scopes.SINGLETON);

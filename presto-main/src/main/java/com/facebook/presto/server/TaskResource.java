@@ -16,6 +16,8 @@ package com.facebook.presto.server;
 import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.json.smile.SmileCodec;
+import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.presto.Session;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
 import com.facebook.presto.execution.TaskId;
@@ -69,8 +71,11 @@ import static com.facebook.presto.client.PrestoHeaders.PRESTO_BUFFER_REMAINING_B
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_CURRENT_STATE;
 import static com.facebook.presto.client.PrestoHeaders.PRESTO_MAX_WAIT;
 import static com.facebook.presto.server.TaskResourceUtils.convertToThriftTaskInfo;
-import static com.facebook.presto.server.TaskResourceUtils.isThriftRequest;
+import static com.facebook.presto.server.TaskResourceUtils.isSmileMediaType;
+import static com.facebook.presto.server.TaskResourceUtils.isThriftAcceptable;
+import static com.facebook.presto.server.TaskResourceUtils.isThriftMediaType;
 import static com.facebook.presto.server.security.RoleType.INTERNAL;
+import static com.facebook.presto.server.thrift.ThriftCodecWrapper.wrapThriftCodec;
 import static com.facebook.presto.util.TaskUtils.randomizeWaitTime;
 import static com.google.common.collect.Iterables.transform;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
@@ -96,6 +101,11 @@ public class TaskResource
     private final HandleResolver handleResolver;
     private final ConnectorTypeSerdeManager connectorTypeSerdeManager;
 
+    private final JsonCodec<TaskUpdateRequest> taskUpdateRequestJsonCodec;
+    private final SmileCodec<TaskUpdateRequest> taskUpdateRequestSmileCodec;
+    private final ThriftCodec<TaskUpdateRequest> taskUpdateRequestThriftCodec;
+    private final ThriftCodec<TaskInfo> taskInfoThriftCodec;
+
     @Inject
     public TaskResource(
             TaskManager taskManager,
@@ -104,7 +114,11 @@ public class TaskResource
             @ForAsyncRpc ScheduledExecutorService timeoutExecutor,
             JsonCodec<PlanFragment> planFragmentJsonCodec,
             HandleResolver handleResolver,
-            ConnectorTypeSerdeManager connectorTypeSerdeManager)
+            ConnectorTypeSerdeManager connectorTypeSerdeManager,
+            JsonCodec<TaskUpdateRequest> taskUpdateRequestJsonCodec,
+            SmileCodec<TaskUpdateRequest> taskUpdateRequestSmileCodec,
+            ThriftCodec<TaskUpdateRequest> taskUpdateRequestThriftCodec,
+            ThriftCodec<TaskInfo> taskInfoThriftCodec)
     {
         this.taskManager = requireNonNull(taskManager, "taskManager is null");
         this.sessionPropertyManager = requireNonNull(sessionPropertyManager, "sessionPropertyManager is null");
@@ -113,6 +127,10 @@ public class TaskResource
         this.planFragmentCodec = planFragmentJsonCodec;
         this.handleResolver = requireNonNull(handleResolver, "handleResolver is null");
         this.connectorTypeSerdeManager = requireNonNull(connectorTypeSerdeManager, "connectorTypeSerdeManager is null");
+        this.taskUpdateRequestJsonCodec = requireNonNull(taskUpdateRequestJsonCodec, "taskUpdateRequestJsonCodec is null");
+        this.taskUpdateRequestSmileCodec = requireNonNull(taskUpdateRequestSmileCodec, "taskUpdateRequestSmileCodec is null");
+        this.taskUpdateRequestThriftCodec = requireNonNull(taskUpdateRequestThriftCodec, "taskUpdateRequestCodec is null");
+        this.taskInfoThriftCodec = requireNonNull(taskInfoThriftCodec, "taskInfoThriftCodec is null");
     }
 
     @GET
@@ -129,11 +147,25 @@ public class TaskResource
 
     @POST
     @Path("{taskId}")
-    @Consumes({APPLICATION_JSON, APPLICATION_JACKSON_SMILE})
-    @Produces({APPLICATION_JSON, APPLICATION_JACKSON_SMILE})
-    public Response createOrUpdateTask(@PathParam("taskId") TaskId taskId, TaskUpdateRequest taskUpdateRequest, @Context UriInfo uriInfo)
+    @Consumes({APPLICATION_JSON, APPLICATION_JACKSON_SMILE, APPLICATION_THRIFT_BINARY})
+    @Produces({APPLICATION_JSON, APPLICATION_JACKSON_SMILE, APPLICATION_THRIFT_BINARY})
+    public Response createOrUpdateTask(@PathParam("taskId") TaskId taskId,
+            @Context HttpHeaders httpHeaders,
+            byte[] requestBody,
+            @Context UriInfo uriInfo)
     {
-        requireNonNull(taskUpdateRequest, "taskUpdateRequest is null");
+        requireNonNull(requestBody, "requestBody is null");
+
+        TaskUpdateRequest taskUpdateRequest;
+        if (isThriftMediaType(httpHeaders)) {
+            taskUpdateRequest = wrapThriftCodec(taskUpdateRequestThriftCodec).fromBytes(requestBody);
+        }
+        else if (isSmileMediaType(httpHeaders)) {
+            taskUpdateRequest = taskUpdateRequestSmileCodec.fromBytes(requestBody);
+        }
+        else {
+            taskUpdateRequest = taskUpdateRequestJsonCodec.fromBytes(requestBody);
+        }
 
         Session session = taskUpdateRequest.getSession().toSession(sessionPropertyManager, taskUpdateRequest.getExtraCredentials());
         TaskInfo taskInfo = taskManager.updateTask(session,
@@ -146,7 +178,9 @@ public class TaskResource
         if (shouldSummarize(uriInfo)) {
             taskInfo = taskInfo.summarize();
         }
-
+        if (isThriftAcceptable(httpHeaders)) {
+            return Response.ok().entity(wrapThriftCodec(taskInfoThriftCodec).toBytes(taskInfo)).build();
+        }
         return Response.ok().entity(taskInfo).build();
     }
 
@@ -164,7 +198,7 @@ public class TaskResource
     {
         requireNonNull(taskId, "taskId is null");
 
-        boolean isThriftRequest = isThriftRequest(httpHeaders);
+        boolean isThriftRequest = isThriftAcceptable(httpHeaders);
 
         if (currentState == null || maxWait == null) {
             TaskInfo taskInfo = taskManager.getTaskInfo(taskId);
@@ -272,7 +306,7 @@ public class TaskResource
             taskInfo = taskInfo.summarize();
         }
 
-        if (isThriftRequest(httpHeaders)) {
+        if (isThriftAcceptable(httpHeaders)) {
             taskInfo = convertToThriftTaskInfo(taskInfo, connectorTypeSerdeManager, handleResolver);
         }
 

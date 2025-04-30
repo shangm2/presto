@@ -101,7 +101,6 @@ public class TypeSignature
         this(TypeSignatureBase.of(base), parameters);
     }
 
-    @ThriftConstructor
     public TypeSignature(TypeSignatureBase typeSignatureBase, List<TypeSignatureParameter> parameters)
     {
         this.base = typeSignatureBase;
@@ -111,12 +110,17 @@ public class TypeSignature
         this.calculated = parameters.stream().anyMatch(TypeSignatureParameter::isCalculated);
     }
 
+    @ThriftConstructor
+    public TypeSignature(String signature)
+    {
+        this(parseTypeSignature(signature).getTypeSignatureBase(), parseTypeSignature(signature).getParameters());
+    }
+
     public TypeSignature getStandardTypeSignature()
     {
         return new TypeSignature(base.getStandardTypeBase(), parameters);
     }
 
-    @ThriftField(1)
     public TypeSignatureBase getTypeSignatureBase()
     {
         return base;
@@ -127,7 +131,6 @@ public class TypeSignature
         return base.toString();
     }
 
-    @ThriftField(2)
     public List<TypeSignatureParameter> getParameters()
     {
         return parameters;
@@ -700,6 +703,7 @@ public class TypeSignature
 
     @Override
     @JsonValue
+    @ThriftField(value = 1, name = "signature")
     public String toString()
     {
         String baseString = base.toString();
