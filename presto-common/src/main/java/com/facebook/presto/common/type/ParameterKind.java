@@ -55,13 +55,13 @@ import java.util.Optional;
 @ThriftEnum
 public enum ParameterKind
 {
-    TYPE(Optional.of("TYPE_SIGNATURE"), 1),
-    NAMED_TYPE(Optional.of("NAMED_TYPE_SIGNATURE"), 2),
-    LONG(Optional.of("LONG_LITERAL"), 3),
-    VARIABLE(Optional.empty(), 4),
-    LONG_ENUM(Optional.of("LONG_ENUM"), 5),
-    VARCHAR_ENUM(Optional.of("VARCHAR_ENUM"), 6),
-    DISTINCT_TYPE(Optional.of("DISTINCT_TYPE"), 7);
+    TYPE(Optional.of("TYPE_SIGNATURE"), 0),
+    NAMED_TYPE(Optional.of("NAMED_TYPE_SIGNATURE"), 1),
+    LONG(Optional.of("LONG_LITERAL"), 2),
+    VARIABLE(Optional.empty(), 3),
+    LONG_ENUM(Optional.of("LONG_ENUM"), 4),
+    VARCHAR_ENUM(Optional.of("VARCHAR_ENUM"), 5),
+    DISTINCT_TYPE(Optional.of("DISTINCT_TYPE"), 6);
 
     // TODO: drop special serialization code as soon as all clients
     //       migrate to version which can deserialize new format.

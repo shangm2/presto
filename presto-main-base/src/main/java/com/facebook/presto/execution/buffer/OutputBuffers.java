@@ -82,11 +82,11 @@ public final class OutputBuffers
     @ThriftEnum
     public enum BufferType
     {
-        PARTITIONED(1),
-        BROADCAST(2),
-        ARBITRARY(3),
-        DISCARDING(4),
-        SPOOLING(5);
+        PARTITIONED(0),
+        BROADCAST(1),
+        ARBITRARY(2),
+        DISCARDING(3),
+        SPOOLING(4);
 
         private final int value;
 

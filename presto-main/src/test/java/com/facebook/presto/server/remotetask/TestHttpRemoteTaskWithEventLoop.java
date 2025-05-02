@@ -28,7 +28,6 @@ import com.facebook.drift.codec.utils.DataSizeToBytesThriftCodec;
 import com.facebook.drift.codec.utils.DurationToMillisThriftCodec;
 import com.facebook.drift.codec.utils.JodaDateTimeToEpochMillisThriftCodec;
 import com.facebook.drift.codec.utils.LocaleToLanguageTagCodec;
-import com.facebook.drift.codec.utils.UuidToLeachSalzBinaryEncodingThriftCodec;
 import com.facebook.presto.client.NodeVersion;
 import com.facebook.presto.common.ErrorCode;
 import com.facebook.presto.common.type.Type;
@@ -387,7 +386,6 @@ public class TestHttpRemoteTaskWithEventLoop
                         thriftCodecBinder(binder).bindThriftCodec(TaskInfo.class);
                         thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(LocaleToLanguageTagCodec.class);
-                        thriftCodecBinder(binder).bindCustomThriftCodec(UuidToLeachSalzBinaryEncodingThriftCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(JodaDateTimeToEpochMillisThriftCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(DurationToMillisThriftCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(DataSizeToBytesThriftCodec.class);

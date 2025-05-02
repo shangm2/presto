@@ -28,6 +28,7 @@ import java.io.OutputStream;
 
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
 import static com.google.common.base.Verify.verify;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 public class ThriftCodecWrapper<T>
@@ -60,7 +61,7 @@ public class ThriftCodecWrapper<T>
             return sliceOutput.slice().getBytes();
         }
         catch (ThriftProtocolException e) {
-            throw new PrestoException(NOT_SUPPORTED, "Can not serialize instance to bytes", e);
+            throw new PrestoException(NOT_SUPPORTED, format("Can not serialize instance to bytes for %s", instance.getClass().getName()), e);
         }
     }
 
@@ -71,7 +72,7 @@ public class ThriftCodecWrapper<T>
             return ThriftProtocolUtils.read(thriftCodec, Protocol.BINARY, Slices.wrappedBuffer(bytes).getInput());
         }
         catch (ThriftProtocolException e) {
-            throw new PrestoException(NOT_SUPPORTED, "Can not deserialize instance from bytes", e);
+            throw new PrestoException(NOT_SUPPORTED, format("Can not deserialize %s instance from bytes", thriftCodec.getType().getJavaType().getTypeName()), e);
         }
     }
 
