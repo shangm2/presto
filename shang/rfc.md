@@ -1,204 +1,230 @@
-I'll help you write an RFC for the Thrift serialization design. Let me first look at the existing RFC format.
-
-Read file: /Users/ms/prestodb_rfcs/RFC-0000-template.md
-Let me also look at a recent RFC to understand the style and depth of content.
-
-Read file: /Users/ms/prestodb_rfcs/RFC-0003-native-spi.md
-Based on the template and example, I'll draft an RFC for the Thrift serialization design. Here's the proposed RFC:
+I'll update the RFC to reflect our refined understanding, focusing on the extensibility benefits rather than the incorrect lock-in concerns. Let me draft a new version.
 
 ```markdown
-# **RFC-XXXX for Presto - Thrift Serialization for Polymorphic Types**
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on creating your RFC and the process surrounding it.
-
-## Thrift Serialization Design for Polymorphic Types
-
-Proposers
-* [Your Name]
-
-## Related Issues
-* Current JSON serialization design in presto-spi binds polymorphic types to JSON format
-* Need for Thrift serialization support without tight coupling
+# RFC-XXXX: Extensible Split Serialization Framework
 
 ## Summary
-This RFC proposes a new design for serialization of polymorphic types in Presto that provides true serialization format independence. While maintaining backward compatibility with the current JSON serialization, it introduces a new architecture that allows adding Thrift serialization and future formats without modifying the SPI interfaces.
+Introduce a new serialization framework for Split objects that provides a clean, extensible way to support multiple serialization formats (starting with Thrift) through a format-agnostic interface.
 
-## Background
-Currently, Presto uses Jackson annotations directly in SPI interfaces for polymorphic type serialization. While this works, it creates a tight coupling between the SPI and JSON serialization. As we add support for Thrift serialization and potentially other formats in the future, we need a more flexible design that maintains clean separation between core interfaces and serialization concerns.
+## Background and Motivation
+Currently, Split serialization in Presto is implemented using Jackson annotations directly in the implementation classes. While this approach works, adding support for new serialization formats requires adding new annotations or creating parallel implementations. We need a more flexible approach that allows easy addition of new serialization formats without modifying existing code.
 
-### Goals
-* Enable Thrift serialization support for polymorphic types
-* Provide a clean separation between SPI interfaces and serialization concerns
-* Allow multiple serialization formats to coexist
-* Support future serialization formats without SPI changes
-* Maintain backward compatibility with existing JSON serialization
-* Allow gradual migration from current design to new design
+## Goals
+- Introduce Thrift serialization support for Split objects
+- Create a clean abstraction for serialization that makes it easy to add new formats
+- Maintain backward compatibility with existing JSON serialization
+- Provide a configuration-based mechanism to choose serialization formats
+- Set up a pattern that could be applied to other serializable types in the future
 
-### Non-goals
-* Rewriting existing JSON serialization immediately
-* Supporting every possible serialization format
-* Changing existing polymorphic type interfaces
+## Non-Goals
+- Changing the existing Split class hierarchy or behavior
+- Modifying the plugin architecture or class loading mechanism
+- Replacing the existing JSON serialization immediately
 
-## Proposed Implementation
-
-### Current Design Analysis
+## Design
+### Current Architecture
 ```java
-// Current design in SPI
-public interface ConnectorSplit {
+// Current implementation with direct annotations
+@JsonTypeInfo(...)
+public class Split {
     @JsonProperty
-    Object getInfo();
-    
-    @ThriftField(1)  // Adding this would bind SPI to Thrift
-    NodeSelectionStrategy getNodeSelectionStrategy();
+    private final ConnectorSplit connectorSplit;
+    // ... other fields and methods
 }
 ```
 
-Issues with current approach:
-1. SPI interfaces are tightly coupled to serialization formats
-2. Adding new formats requires SPI changes
-3. All implementations must support all formats
-4. Difficult to evolve serialization independently
-
-### New Design
+### Proposed Architecture
 ```java
-// In presto-spi (clean interface)
-public interface ConnectorSplit {
-    Object getInfo();
-    NodeSelectionStrategy getNodeSelectionStrategy();
-    List<HostAddress> getPreferredNodes(NodeProvider nodeProvider);
+// Clean Split class without serialization concerns
+public class Split {
+    private final ConnectorSplit connectorSplit;
+    // ... other fields and methods
 }
 
-// In presto-spi (serialization bridge)
-public interface SplitSerializer<T extends ConnectorSplit> {
-    String getType();
+// Generic serialization interface
+public interface SplitSerializer<T extends Split> {
+    String getType();  // e.g., "json", "thrift"
     byte[] serialize(T split);
     T deserialize(byte[] data);
 }
 
-// Implementation example for Hive
-public class HiveSplitJsonSerializer implements SplitSerializer<HiveSplit> {
+// JSON implementation
+public class JsonSplitSerializer implements SplitSerializer<Split> {
     @Override
-    public String getType() { return "hive"; }
-    
-    @Override
-    public byte[] serialize(HiveSplit split) {
-        // Use Jackson
+    public String getType() {
+        return "json";
     }
-    
-    @Override
-    public HiveSplit deserialize(byte[] data) {
-        // Use Jackson
-    }
+    // ... implementation
 }
 
-public class HiveSplitThriftSerializer implements SplitSerializer<HiveSplit> {
+// Thrift implementation
+public class ThriftSplitSerializer implements SplitSerializer<Split> {
     @Override
-    public String getType() { return "hive"; }
-    
-    @Override
-    public byte[] serialize(HiveSplit split) {
-        // Use Thrift
+    public String getType() {
+        return "thrift";
     }
-    
-    @Override
-    public HiveSplit deserialize(byte[] data) {
-        // Use Thrift
-    }
+    // ... implementation
 }
 ```
 
-### Configuration Toggle
+### Configuration
 ```properties
-connector.${name}.serialization-format=thrift
+split.serialization.type=json|thrift
 ```
 
-The new design will be controlled by configuration, allowing:
-* Gradual adoption of new serialization design
-* A/B testing between formats
-* Fallback to existing JSON serialization
-* Per-connector serialization format selection
+## Benefits
+1. **Clean Separation of Concerns**
+   - Split classes focus on business logic
+   - Serialization logic is isolated in dedicated classes
+   - Each format has its own implementation without affecting others
 
-## Metrics
-* Serialization/deserialization performance
-* Memory usage for different formats
-* Error rates in serialization
-* Usage metrics for different formats
+2. **Easy Extension**
+   - New formats can be added by implementing SplitSerializer
+   - No modification needed to existing Split classes
+   - No recompilation of core classes required
 
-## Other Approaches Considered
+3. **Runtime Flexibility**
+   - Formats can be switched via configuration
+   - Multiple formats can coexist
+   - Easy A/B testing of different formats
 
-### 1. Annotation-based Approach
+4. **Better Testing**
+   - Serialization logic can be tested independently
+   - Format-specific tests don't pollute Split class tests
+   - Easy to test new formats without modifying existing tests
+
+## Detailed Design
+
+### Implementation Phases
+1. **Phase 1: Framework Setup**
+   - Introduce SplitSerializer interface
+   - Create JsonSplitSerializer implementation
+   - Add configuration support
+   - Maintain backward compatibility
+
+2. **Phase 2: Thrift Implementation**
+   - Implement ThriftSplitSerializer
+   - Add Thrift-specific configuration options
+   - Add migration utilities if needed
+
+3. **Phase 3: Migration Support**
+   - Add tools to help users migrate between formats
+   - Provide documentation and examples
+   - Add monitoring and metrics
+
+### Backward Compatibility
+- Default to JSON serialization if no configuration is provided
+- Support reading both formats during migration
+- Provide utilities to convert between formats
+
+### Performance Considerations
+- Lazy loading of serializers
+- Caching of frequently used instances
+- Monitoring of serialization performance
+
+### Security Considerations
+- Validation of serialized data
+- Safe handling of malformed input
+- Proper error handling and logging
+
+## Alternatives Considered
+
+### 1. Multiple Annotation Sets
+Could add Thrift annotations alongside JSON annotations. Rejected because:
+- Clutters domain classes
+- Makes adding new formats increasingly complex
+- Harder to maintain and test
+
+### 2. Format-Specific Classes
+Could create separate classes for each format. Rejected because:
+- Duplicates business logic
+- Increases maintenance burden
+- Complicates plugin architecture
+
+### 3. Custom Binary Format
+Could create a custom binary format. Rejected because:
+- Requires maintaining custom serialization code
+- Lacks ecosystem support and tools
+- Increases learning curve for contributors
+
+## Implementation Plan
+
+### Phase 1 (Week 1-2)
+- [ ] Create SplitSerializer interface
+- [ ] Implement JsonSplitSerializer
+- [ ] Add configuration framework
+- [ ] Write tests for basic functionality
+
+### Phase 2 (Week 3-4)
+- [ ] Implement ThriftSplitSerializer
+- [ ] Add Thrift configuration options
+- [ ] Write Thrift-specific tests
+- [ ] Add performance benchmarks
+
+### Phase 3 (Week 5-6)
+- [ ] Create migration utilities
+- [ ] Write documentation
+- [ ] Add monitoring and metrics
+- [ ] Create example implementations
+
+## Future Work
+1. Apply similar pattern to other serializable types
+2. Add support for Protocol Buffers
+3. Create performance optimization tools
+4. Add automatic format negotiation
+
+## Questions and Discussion Topics
+1. Should we support multiple active formats simultaneously?
+2. How should we handle version migrations?
+3. What metrics should we collect?
+4. Should we provide a plugin system for custom formats?
+
+## References
+- Existing Split implementation
+- Thrift documentation
+- Similar patterns in other systems
+- Performance benchmarks
+
+## Appendix
+
+### Example Configuration
+```properties
+# Basic configuration
+split.serialization.type=thrift
+
+# Advanced options
+split.serialization.thrift.compression=true
+split.serialization.thrift.protocol=binary
+```
+
+### Migration Guide
 ```java
-public interface ConnectorSplit {
-    @SerializeWith(format = "json")
-    @SerializeWith(format = "thrift")
-    Object getInfo();
+// Example migration utility
+public class SplitMigrationUtil {
+    public static byte[] convertFormat(
+        byte[] data,
+        SplitSerializer<?> sourceFormat,
+        SplitSerializer<?> targetFormat
+    ) {
+        Split split = sourceFormat.deserialize(data);
+        return targetFormat.serialize(split);
+    }
 }
 ```
-Rejected because:
-* Still couples SPI to serialization concerns
-* Requires SPI changes for new formats
-* Complicates annotation processing
 
-### 2. Service Provider Interface
-```java
-public interface SerializationProvider {
-    byte[] serialize(Object obj);
-    Object deserialize(byte[] data, Class<?> type);
-}
-```
-Rejected because:
-* Too generic
-* Type safety issues
-* Performance concerns with reflection
-
-## Adoption Plan
-
-### Phase 1: Infrastructure
-* Implement `SplitSerializer` interface
-* Add configuration support
-* Create Thrift serialization implementations
-* Add metrics collection
-
-### Phase 2: Migration Support
-* Create migration tools
-* Add documentation
-* Provide examples
-* Release beta version
-
-### Phase 3: JSON Migration
-* Create JSON implementation using new design
-* Gradually migrate existing JSON serialization
-* Maintain backward compatibility
-
-### Documentation
-* New design documentation
-* Migration guides
-* Configuration reference
-* Best practices guide
-
-## Test Plan
-
-### Unit Tests
-* Serializer implementation tests
-* Configuration parsing tests
-* Format conversion tests
-* Error handling tests
-
-### Integration Tests
-* Cross-format compatibility tests
-* Performance benchmarks
-* Memory usage tests
-* Error recovery tests
-
-### Migration Tests
-* Backward compatibility tests
-* Configuration toggle tests
-* Format conversion tests
-
-### Product Tests
-* End-to-end connector tests
-* Performance impact tests
-* Memory impact tests
+### Monitoring Metrics
+- Serialization time per format
+- Deserialization time per format
+- Data size per format
+- Error rates per format
+- Format usage statistics
 ```
 
-This RFC follows the format of existing RFCs while providing comprehensive coverage of the serialization design changes. Would you like me to expand on any particular section?
+This updated RFC:
+1. Focuses on the extensibility benefits rather than lock-in concerns
+2. Provides more detailed implementation examples
+3. Includes concrete migration strategies
+4. Adds monitoring considerations
+5. Provides a clear path for future formats
+
+Would you like me to expand on any particular section or add more details to specific aspects?
