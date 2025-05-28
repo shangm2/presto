@@ -42,6 +42,7 @@ import com.facebook.presto.common.block.BlockEncodingSerde;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.common.type.TypeManager;
 import com.facebook.presto.connector.ConnectorManager;
+import com.facebook.presto.connector.ConnectorSpecificCodecManager;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
 import com.facebook.presto.connector.system.SystemConnectorModule;
 import com.facebook.presto.cost.FilterStatsCalculator;
@@ -142,7 +143,7 @@ import com.facebook.presto.resourcemanager.ResourceManagerResourceGroupService;
 import com.facebook.presto.server.remotetask.HttpLocationFactory;
 import com.facebook.presto.server.thrift.FixedAddressSelector;
 import com.facebook.presto.server.thrift.MetadataUpdatesCodec;
-import com.facebook.presto.server.thrift.SplitCodec;
+import com.facebook.presto.server.thrift.SplitThriftCodec;
 import com.facebook.presto.server.thrift.TableWriteInfoCodec;
 import com.facebook.presto.server.thrift.ThriftServerInfoClient;
 import com.facebook.presto.server.thrift.ThriftServerInfoService;
@@ -433,7 +434,7 @@ public class ServerMainModule
         thriftCodecBinder(binder).bindCustomThriftCodec(SqlInvokedFunctionCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(SqlFunctionIdCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(MetadataUpdatesCodec.class);
-        thriftCodecBinder(binder).bindCustomThriftCodec(SplitCodec.class);
+        thriftCodecBinder(binder).bindCustomThriftCodec(SplitThriftCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(TableWriteInfoCodec.class);
 
         jsonCodecBinder(binder).bindListJsonCodec(TaskMemoryReservationSummary.class);
@@ -628,6 +629,7 @@ public class ServerMainModule
 
         // connector metadata update handle serde manager
         binder.bind(ConnectorTypeSerdeManager.class).in(Scopes.SINGLETON);
+        binder.bind(ConnectorSpecificCodecManager.class).in(Scopes.SINGLETON);
 
         // connector metadata update handle json serde
         binder.bind(new TypeLiteral<ConnectorTypeSerde<ConnectorMetadataUpdateHandle>>() {})
