@@ -15,19 +15,19 @@ package com.facebook.presto.thrift;
 
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
-import com.facebook.presto.spi.ConnectorTableHandle;
+import com.facebook.presto.spi.ConnectorIndexHandle;
 
 import javax.inject.Inject;
 
-public class TableHandleThriftModule
-        extends AbstractTypedThriftModule<ConnectorTableHandle>
+public class IndexHandleThriftModule
+        extends AbstractTypedThriftModule<ConnectorIndexHandle>
 {
     @Inject
-    public TableHandleThriftModule(HandleResolver handleResolver, ThriftCodecManager thriftCodecManager)
+    public IndexHandleThriftModule(HandleResolver handleResolver, ThriftCodecManager thriftCodecManager)
     {
-        super(ConnectorTableHandle.class,
+        super(ConnectorIndexHandle.class,
                 handleResolver::getId,
-                handleResolver::getTableHandleClass,
+                handleResolver::getIndexHandleClass,
                 thriftCodecManager);
     }
 }

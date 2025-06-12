@@ -13,8 +13,6 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.TException;
-import com.facebook.drift.annotations.ThriftField;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.drift.protocol.TField;
@@ -22,18 +20,18 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
-import com.facebook.presto.spi.PrestoException;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.inject.Binder;
+import com.google.inject.Module;
 
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractTypedThriftModule<T>
+        implements Module
 {
     private static final String TYPE_PROPERTY = "type";
 
@@ -42,17 +40,21 @@ public abstract class AbstractTypedThriftModule<T>
     private final Function<String, Class<? extends T>> classResolver;
     private final ThriftCodecManager thriftCodecManager;
 
+    @Override
+    public void configure(Binder binder)
+    {
+        binder.bind(ThriftSerializer.class).toInstance(new InternalThriftSerializer(baseClass, nameResolver, thriftCodecManager));
+        binder.bind(ThriftDeserializer.class).toInstance(new InternalThriftDeserializer(baseClass, classResolver, thriftCodecManager));
+    }
+
     protected AbstractTypedThriftModule(Class<T> baseClass, Function<T, String> nameResolver, Function<String, Class<? extends T>> classResolver, ThriftCodecManager thriftCodecManager)
     {
         this.baseClass = requireNonNull(baseClass, "baseClass is null");
         this.nameResolver = requireNonNull(nameResolver, "nameResolver is null");
         this.classResolver = requireNonNull(classResolver, "classResolver is null");
         this.thriftCodecManager = requireNonNull(thriftCodecManager, "thriftCodecManager is null");
-    }
 
-    public ThriftSerializer<T> getSerializer()
-    {
-        return new
+        System.out.println("============> " + baseClass.getName());
     }
 
     public interface ThriftSerializer<T>
@@ -97,7 +99,7 @@ public abstract class AbstractTypedThriftModule<T>
 
                 writer.writeFieldBegin(new TField("value", TType.STRUCT, (short) 2));
                 Class<?> type = value.getClass();
-                ThriftCodec<?> codec = codecCache.get(type, () ->  thriftCodecManager.getCodec(type));
+                ThriftCodec<?> codec = codecCache.get(type, () -> thriftCodecManager.getCodec(type));
                 @SuppressWarnings("unchecked")
                 ThriftCodec<T> typedCodec = (ThriftCodec<T>) codec;
                 typedCodec.write(value, writer);
@@ -136,13 +138,11 @@ public abstract class AbstractTypedThriftModule<T>
                 reader.readStructBegin();
                 while (true) {
                     TField field = reader.readFieldBegin();
-                    if (field.getType() == TType.STOP)
-                    {
+                    if (field.getType() == TType.STOP) {
                         break;
                     }
 
-                    switch (field.getId())
-                    {
+                    switch (field.getId()) {
                         case 1:
                             typeId = reader.readString();
                             break;
@@ -157,12 +157,12 @@ public abstract class AbstractTypedThriftModule<T>
                             ThriftCodec<T> typedCodec = (ThriftCodec<T>) codec;
                             value = typedCodec.read(reader);
                             break;
+                        default:
+                            throw new IllegalArgumentException(format("Unexpected field id found: %s", field.getId()));
                     }
-
                     reader.readFieldEnd();
                 }
                 reader.readStructEnd();
-
                 return value;
             }
             catch (Exception e) {

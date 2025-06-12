@@ -232,6 +232,7 @@ import com.facebook.presto.sql.relational.RowExpressionDomainTranslator;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.statusservice.NodeStatusService;
+import com.facebook.presto.thrift.HandleThriftModule;
 import com.facebook.presto.tracing.TracerProviderManager;
 import com.facebook.presto.tracing.TracingConfig;
 import com.facebook.presto.transaction.TransactionManagerConfig;
@@ -705,6 +706,9 @@ public class ServerMainModule
         binder.install(new HandleJsonModule());
         binder.bind(ObjectMapper.class).toProvider(JsonObjectMapperProvider.class);
 
+        // handle resolve for thrift
+        binder.install(new HandleThriftModule());
+        
         // connector
         binder.bind(ScalarStatsCalculator.class).in(Scopes.SINGLETON);
         binder.bind(StatsNormalizer.class).in(Scopes.SINGLETON);
