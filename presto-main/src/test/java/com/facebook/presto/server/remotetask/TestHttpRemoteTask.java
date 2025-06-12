@@ -60,7 +60,6 @@ import com.facebook.presto.server.ConnectorMetadataUpdateHandleJsonSerde;
 import com.facebook.presto.server.InternalCommunicationConfig;
 import com.facebook.presto.server.TaskUpdateRequest;
 import com.facebook.presto.server.thrift.MetadataUpdatesCodec;
-import com.facebook.presto.server.thrift.SplitCodec;
 import com.facebook.presto.server.thrift.TableWriteInfoCodec;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.plan.PlanNodeId;
@@ -383,7 +382,6 @@ public class TestHttpRemoteTask
                         thriftCodecBinder(binder).bindThriftCodec(TaskInfo.class);
                         thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(MetadataUpdatesCodec.class);
-                        thriftCodecBinder(binder).bindCustomThriftCodec(SplitCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(TableWriteInfoCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(LocaleToLanguageTagCodec.class);
                         thriftCodecBinder(binder).bindCustomThriftCodec(JodaDateTimeToEpochMillisThriftCodec.class);

@@ -145,7 +145,6 @@ import com.facebook.presto.resourcemanager.ResourceManagerResourceGroupService;
 import com.facebook.presto.server.remotetask.HttpLocationFactory;
 import com.facebook.presto.server.thrift.FixedAddressSelector;
 import com.facebook.presto.server.thrift.MetadataUpdatesCodec;
-import com.facebook.presto.server.thrift.SplitCodec;
 import com.facebook.presto.server.thrift.TableWriteInfoCodec;
 import com.facebook.presto.server.thrift.ThriftServerInfoClient;
 import com.facebook.presto.server.thrift.ThriftServerInfoService;
@@ -230,6 +229,7 @@ import com.facebook.presto.sql.relational.RowExpressionDomainTranslator;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.statusservice.NodeStatusService;
+import com.facebook.presto.thrift.HandleThriftModule;
 import com.facebook.presto.tracing.TracerProviderManager;
 import com.facebook.presto.tracing.TracingConfig;
 import com.facebook.presto.transaction.TransactionManagerConfig;
@@ -436,7 +436,6 @@ public class ServerMainModule
         thriftCodecBinder(binder).bindCustomThriftCodec(SqlInvokedFunctionCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(SqlFunctionIdCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(MetadataUpdatesCodec.class);
-        thriftCodecBinder(binder).bindCustomThriftCodec(SplitCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(TableWriteInfoCodec.class);
 
         jsonCodecBinder(binder).bindListJsonCodec(TaskMemoryReservationSummary.class);
@@ -700,6 +699,9 @@ public class ServerMainModule
         binder.install(new HandleJsonModule());
         binder.bind(ObjectMapper.class).toProvider(JsonObjectMapperProvider.class);
 
+        // handle resolve for thrift
+        binder.install(new HandleThriftModule());
+
         // connector
         binder.bind(ScalarStatsCalculator.class).in(Scopes.SINGLETON);
         binder.bind(StatsNormalizer.class).in(Scopes.SINGLETON);
@@ -722,6 +724,7 @@ public class ServerMainModule
         jsonBinder(binder).addDeserializerBinding(Expression.class).to(ExpressionDeserializer.class);
         jsonBinder(binder).addDeserializerBinding(FunctionCall.class).to(FunctionCallDeserializer.class);
         thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
+        thriftCodecBinder(binder).bindThriftCodec(Split.class);
 
         // metadata updates
         jsonCodecBinder(binder).bindJsonCodec(MetadataUpdates.class);

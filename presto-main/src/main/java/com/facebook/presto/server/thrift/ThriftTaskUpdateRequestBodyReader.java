@@ -13,7 +13,6 @@
  */
 package com.facebook.presto.server.thrift;
 
-import com.facebook.airlift.json.Codec;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.presto.server.TaskUpdateRequest;
 import com.google.common.io.ByteStreams;
@@ -40,12 +39,12 @@ import static java.util.Objects.requireNonNull;
 public class ThriftTaskUpdateRequestBodyReader
         implements MessageBodyReader<TaskUpdateRequest>
 {
-    private final Codec<TaskUpdateRequest> codec;
+    private final javax.inject.Provider<ThriftCodec<TaskUpdateRequest>> thriftCodecProvider;
 
     @Inject
-    public ThriftTaskUpdateRequestBodyReader(ThriftCodec<TaskUpdateRequest> thriftCodec)
+    public ThriftTaskUpdateRequestBodyReader(javax.inject.Provider<ThriftCodec<TaskUpdateRequest>> thriftCodecProvider)
     {
-        this.codec = wrapThriftCodec(requireNonNull(thriftCodec, "thriftCodec is null"));
+        this.thriftCodecProvider = requireNonNull(thriftCodecProvider, "thriftCodecProvider is null");
     }
 
     @Override
@@ -58,6 +57,6 @@ public class ThriftTaskUpdateRequestBodyReader
     public TaskUpdateRequest readFrom(Class<TaskUpdateRequest> aClass, Type type, Annotation[] annotations, MediaType mediaType, MultivaluedMap<String, String> multivaluedMap, InputStream inputStream)
             throws IOException, WebApplicationException
     {
-        return codec.fromBytes(ByteStreams.toByteArray(inputStream));
+        return wrapThriftCodec(thriftCodecProvider.get()).fromBytes(ByteStreams.toByteArray(inputStream));
     }
 }

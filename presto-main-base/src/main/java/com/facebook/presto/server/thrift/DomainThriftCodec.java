@@ -20,7 +20,7 @@ import com.facebook.drift.codec.metadata.ThriftCatalog;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
-import com.facebook.presto.metadata.Split;
+import com.facebook.presto.common.predicate.Domain;
 
 import javax.inject.Inject;
 
@@ -29,18 +29,18 @@ import static com.facebook.presto.server.thrift.CustomCodecUtils.readSingleJsonF
 import static com.facebook.presto.server.thrift.CustomCodecUtils.writeSingleJsonField;
 import static java.util.Objects.requireNonNull;
 
-public class SplitCodec
-        implements ThriftCodec<Split>
+public class DomainThriftCodec
+        implements ThriftCodec<Domain>
 {
-    private static final short SPLIT_DATA_FIELD_ID = 1;
-    private static final String SPLIT_DATA_FIELD_NAME = "split";
-    private static final String SPLIT_DATA_STRUCT_NAME = "Split";
-    private static final ThriftType SYNTHETIC_STRUCT_TYPE = ThriftType.struct(createSyntheticMetadata(SPLIT_DATA_FIELD_ID, SPLIT_DATA_FIELD_NAME, Split.class, String.class, ThriftType.STRING));
+    private static final short DOMAIN_DATA_FIELD_ID = 1;
+    private static final String DOMAIN_DATA_FIELD_NAME = "domain";
+    private static final String DOMAIN_STRUCT_NAME = "Domain";
+    private static final ThriftType SYNTHETIC_STRUCT_TYPE = ThriftType.struct(createSyntheticMetadata(DOMAIN_DATA_FIELD_ID, DOMAIN_DATA_FIELD_NAME, Domain.class, String.class, ThriftType.STRING));
 
-    private final JsonCodec<Split> jsonCodec;
+    private final JsonCodec<Domain> jsonCodec;
 
     @Inject
-    public SplitCodec(JsonCodec<Split> jsonCodec, ThriftCatalog thriftCatalog)
+    public DomainThriftCodec(JsonCodec<Domain> jsonCodec, ThriftCatalog thriftCatalog)
     {
         this.jsonCodec = requireNonNull(jsonCodec, "jsonCodec is null");
         thriftCatalog.addThriftType(SYNTHETIC_STRUCT_TYPE);
@@ -59,16 +59,16 @@ public class SplitCodec
     }
 
     @Override
-    public Split read(TProtocolReader protocol)
+    public Domain read(TProtocolReader protocol)
             throws Exception
     {
-        return readSingleJsonField(protocol, jsonCodec, SPLIT_DATA_FIELD_ID, SPLIT_DATA_FIELD_NAME);
+        return readSingleJsonField(protocol, jsonCodec, DOMAIN_DATA_FIELD_ID, DOMAIN_DATA_FIELD_NAME);
     }
 
     @Override
-    public void write(Split value, TProtocolWriter protocol)
+    public void write(Domain value, TProtocolWriter protocol)
             throws Exception
     {
-        writeSingleJsonField(value, protocol, jsonCodec, SPLIT_DATA_FIELD_ID, SPLIT_DATA_FIELD_NAME, SPLIT_DATA_STRUCT_NAME);
+        writeSingleJsonField(value, protocol, jsonCodec, DOMAIN_DATA_FIELD_ID, DOMAIN_DATA_FIELD_NAME, DOMAIN_STRUCT_NAME);
     }
 }
