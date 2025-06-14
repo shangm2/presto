@@ -713,7 +713,6 @@ public class ServerMainModule
 
         // splits
         jsonCodecBinder(binder).bindJsonCodec(TaskUpdateRequest.class);
-        jsonCodecBinder(binder).bindJsonCodec(ConnectorSplit.class);
         jsonCodecBinder(binder).bindJsonCodec(PlanFragment.class);
         smileCodecBinder(binder).bindSmileCodec(TaskUpdateRequest.class);
         smileCodecBinder(binder).bindSmileCodec(ConnectorSplit.class);

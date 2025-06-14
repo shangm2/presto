@@ -14,7 +14,10 @@
 package com.facebook.presto.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.codec.metadata.ThriftCatalog;
+import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
@@ -24,13 +27,28 @@ import javax.inject.Provider;
 public class TransactionHandleThriftCodec
         extends AbstractTypedThriftCodec<ConnectorTransactionHandle>
 {
+    private static final ThriftType thriftType = createThriftType(ConnectorTransactionHandle.class);
+
     @Inject
-    public TransactionHandleThriftCodec(HandleResolver handleResolver, Provider<ThriftCodecManager> thriftCodecManagerProvider, JsonCodec<ConnectorTransactionHandle> jsonCodec)
+    public TransactionHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, Provider<ThriftCodecManager> thriftCodecManagerProvider, JsonCodec<ConnectorTransactionHandle> jsonCodec)
     {
         super(ConnectorTransactionHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getTransactionHandleClass,
                 thriftCodecManagerProvider);
+        thriftCatalog.addThriftType(thriftType);
+    }
+
+    @CodecThriftType
+    public static ThriftType getThriftType()
+    {
+        return thriftType;
+    }
+
+    @Override
+    public ThriftType getType()
+    {
+        return thriftType;
     }
 }

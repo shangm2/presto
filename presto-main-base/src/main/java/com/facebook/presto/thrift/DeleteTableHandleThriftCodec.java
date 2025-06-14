@@ -14,7 +14,10 @@
 package com.facebook.presto.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.codec.metadata.ThriftCatalog;
+import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.ConnectorDeleteTableHandle;
 
@@ -24,13 +27,28 @@ import javax.inject.Provider;
 public class DeleteTableHandleThriftCodec
         extends AbstractTypedThriftCodec<ConnectorDeleteTableHandle>
 {
+    private static final ThriftType thriftType = createThriftType(ConnectorDeleteTableHandle.class);
+
     @Inject
-    public DeleteTableHandleThriftCodec(HandleResolver handleResolver, Provider<ThriftCodecManager> thriftCodecManagerProvider, JsonCodec<ConnectorDeleteTableHandle> jsonCodec)
+    public DeleteTableHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, Provider<ThriftCodecManager> thriftCodecManagerProvider, JsonCodec<ConnectorDeleteTableHandle> jsonCodec)
     {
         super(ConnectorDeleteTableHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getDeleteTableHandleClass,
                 thriftCodecManagerProvider);
+        thriftCatalog.addThriftType(thriftType);
+    }
+
+    @CodecThriftType
+    public static ThriftType getThriftType()
+    {
+        return thriftType;
+    }
+
+    @Override
+    public ThriftType getType()
+    {
+        return thriftType;
     }
 }

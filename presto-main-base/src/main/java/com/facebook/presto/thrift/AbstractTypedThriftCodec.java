@@ -62,8 +62,6 @@ public abstract class AbstractTypedThriftCodec<T>
     private final Function<String, Class<? extends T>> classResolver;
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
 
-    private final ThriftType thriftType;
-
     protected AbstractTypedThriftCodec(Class<T> baseClass,
             JsonCodec<T> jsonCodec,
             Function<T, String> nameResolver,
@@ -75,7 +73,13 @@ public abstract class AbstractTypedThriftCodec<T>
         this.nameResolver = requireNonNull(nameResolver, "nameResolver is null");
         this.classResolver = requireNonNull(classResolver, "classResolver is null");
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManager is null");
+    }
 
+    @Override
+    public abstract ThriftType getType();
+
+    protected static ThriftType createThriftType(Class<?> baseClass)
+    {
         List<ThriftFieldMetadata> fields = new ArrayList<>();
         try {
             fields.add(new ThriftFieldMetadata(
@@ -93,7 +97,7 @@ public abstract class AbstractTypedThriftCodec<T>
                     THRIFT_FIELD_ID,
                     false, false, Requiredness.NONE, ImmutableMap.of(),
                     new DefaultThriftTypeReference(ThriftType.struct(new ThriftStructMetadata(
-                            "DummyStruct",
+                            baseClass.getSimpleName() + "Wrapper",
                             ImmutableMap.of(), Object.class, null, ThriftStructMetadata.MetadataType.STRUCT,
                             Optional.empty(), ImmutableList.of(), ImmutableList.of(), Optional.empty(), ImmutableList.of()))),
                     THRIFT_VALUE_PROPERTY,
@@ -120,16 +124,10 @@ public abstract class AbstractTypedThriftCodec<T>
             throw new IllegalArgumentException("Failed to create ThriftFieldMetadata", e);
         }
 
-        this.thriftType = ThriftType.struct(new ThriftStructMetadata(
+        return ThriftType.struct(new ThriftStructMetadata(
                 baseClass.getSimpleName(),
                 ImmutableMap.of(), baseClass, null, ThriftStructMetadata.MetadataType.STRUCT,
                 Optional.empty(), ImmutableList.of(), fields, Optional.empty(), ImmutableList.of()));
-    }
-
-    @Override
-    public ThriftType getType()
-    {
-        return thriftType;
     }
 
     @Override
