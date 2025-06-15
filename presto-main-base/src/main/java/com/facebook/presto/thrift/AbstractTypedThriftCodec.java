@@ -68,14 +68,14 @@ public abstract class AbstractTypedThriftCodec<T>
             JsonCodec<T> jsonCodec,
             Function<T, String> nameResolver,
             Function<String, Class<? extends T>> classResolver,
-            GlobalThriftCodecManager globalThriftCodecManagerProvider)
+            GlobalThriftCodecManager globalThriftCodecManager)
     {
         this.baseClass = requireNonNull(baseClass, "baseClass is null");
         this.jsonCodec = requireNonNull(jsonCodec, "jsonCodec is null");
         this.nameResolver = requireNonNull(nameResolver, "nameResolver is null");
         this.classResolver = requireNonNull(classResolver, "classResolver is null");
-        requireNonNull(globalThriftCodecManagerProvider, "globalThriftCodecManagerProvider is null");
-        this.thriftCodecManagerProvider = globalThriftCodecManagerProvider::getThriftCodecManager;
+
+        this.thriftCodecManagerProvider = requireNonNull(globalThriftCodecManager, "globalThriftCodecManager is null").getThriftCodecManagerProvider();
     }
 
     @Override

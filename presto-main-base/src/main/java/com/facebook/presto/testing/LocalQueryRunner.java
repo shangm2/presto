@@ -562,7 +562,7 @@ public class LocalQueryRunner
                 new ClientRequestFilterManager(),
                 planCheckerProviderManager,
                 expressionOptimizerManager,
-                new GlobalThriftCodecManager(thriftCodecManager));
+                new GlobalThriftCodecManager(() -> thriftCodecManager));
 
         connectorManager.addConnectorFactory(globalSystemConnectorFactory);
         connectorManager.createConnection(GlobalSystemConnector.NAME, GlobalSystemConnector.NAME, ImmutableMap.of());

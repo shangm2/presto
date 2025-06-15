@@ -18,6 +18,7 @@ import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
 import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
 import java.lang.reflect.InvocationTargetException;
@@ -29,13 +30,13 @@ import static java.util.Objects.requireNonNull;
 @Singleton
 public class GlobalThriftCodecManager
 {
-    private final ThriftCodecManager thriftCodecManager;
+    private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
     private final Set<Class<?>> registeredCodecs = ConcurrentHashMap.newKeySet();
 
     @Inject
-    public GlobalThriftCodecManager(ThriftCodecManager thriftCodecManager)
+    public GlobalThriftCodecManager(Provider<ThriftCodecManager> thriftCodecManagerProvider)
     {
-        this.thriftCodecManager = requireNonNull(thriftCodecManager, "thriftCodecManager is null");
+        this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManager is null");
     }
 
     public void registerCodecsFromProvider(ThriftCodecProvider provider, ClassLoader pluginClassLoader)
@@ -47,7 +48,7 @@ public class GlobalThriftCodecManager
             Class<?> codecClass = thriftCodecClass.getClass();
             if (registeredCodecs.add(codecClass)) {
                 try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(pluginClassLoader)) {
-                    thriftCodecManager.addCodec(thriftCodecClass);
+                    thriftCodecManagerProvider.get().addCodec(thriftCodecClass);
                 }
             }
         }
@@ -66,8 +67,8 @@ public class GlobalThriftCodecManager
         }
     }
 
-    public ThriftCodecManager getThriftCodecManager()
+    public Provider<ThriftCodecManager> getThriftCodecManagerProvider()
     {
-        return thriftCodecManager;
+        return thriftCodecManagerProvider;
     }
 }

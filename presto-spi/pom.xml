@@ -30,10 +30,23 @@
         <dependency>
             <groupId>com.facebook.drift</groupId>
             <artifactId>drift-codec</artifactId>
+            <optional>true</optional>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.facebook.drift</groupId>
+                    <artifactId>drift-protocol</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.airlift</groupId>
+                    <artifactId>parameternames</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.facebook.airlift</groupId>
+                    <artifactId>bytecode</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
