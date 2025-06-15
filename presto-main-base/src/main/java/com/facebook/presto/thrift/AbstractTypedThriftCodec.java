@@ -19,6 +19,7 @@ import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.drift.codec.metadata.DefaultThriftTypeReference;
 import com.facebook.drift.codec.metadata.FieldKind;
+import com.facebook.drift.codec.metadata.ThriftCatalog;
 import com.facebook.drift.codec.metadata.ThriftFieldMetadata;
 import com.facebook.drift.codec.metadata.ThriftMethodInjection;
 import com.facebook.drift.codec.metadata.ThriftStructMetadata;
@@ -28,6 +29,7 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -95,9 +97,9 @@ public abstract class AbstractTypedThriftCodec<T>
                     Optional.empty()));
             fields.add(new ThriftFieldMetadata(
                     THRIFT_FIELD_ID,
-                    false, false, Requiredness.NONE, ImmutableMap.of(),
+                    false, false, Requiredness.OPTIONAL, ImmutableMap.of(),
                     new DefaultThriftTypeReference(ThriftType.struct(new ThriftStructMetadata(
-                            baseClass.getSimpleName() + "Wrapper",
+                            baseClass.getSimpleName(),
                             ImmutableMap.of(), Object.class, null, ThriftStructMetadata.MetadataType.STRUCT,
                             Optional.empty(), ImmutableList.of(), ImmutableList.of(), Optional.empty(), ImmutableList.of()))),
                     THRIFT_VALUE_PROPERTY,
@@ -110,7 +112,7 @@ public abstract class AbstractTypedThriftCodec<T>
 
             fields.add(new ThriftFieldMetadata(
                     JSON_FIELD_ID,
-                    false, false, Requiredness.NONE, ImmutableMap.of(),
+                    false, false, Requiredness.OPTIONAL, ImmutableMap.of(),
                     new DefaultThriftTypeReference(ThriftType.STRING),
                     JSON_VALUE_PROPERTY,
                     FieldKind.THRIFT_FIELD,
@@ -125,7 +127,7 @@ public abstract class AbstractTypedThriftCodec<T>
         }
 
         return ThriftType.struct(new ThriftStructMetadata(
-                baseClass.getSimpleName(),
+                baseClass.getSimpleName() + "Wrapper",
                 ImmutableMap.of(), baseClass, null, ThriftStructMetadata.MetadataType.STRUCT,
                 Optional.empty(), ImmutableList.of(), fields, Optional.empty(), ImmutableList.of()));
     }
@@ -196,6 +198,11 @@ public abstract class AbstractTypedThriftCodec<T>
         if (isThriftEnabled(typeId, baseClass)) {
             writer.writeFieldBegin(new TField(THRIFT_VALUE_PROPERTY, TType.STRUCT, THRIFT_FIELD_ID));
             Class<?> concreteType = value.getClass();
+            ThriftCatalog thriftCatalog = thriftCodecManagerProvider.get().getCatalog();
+            System.out.println("==========> AbstractTypedThriftCodec thriftcatalog  " + System.identityHashCode(thriftCatalog));
+            if (concreteType.getSimpleName().equals("HiveSplit")) {
+                System.out.println("==========>" + Joiner.on(", ").withKeyValueSeparator("=").join(thriftCatalog.getManualTypes()));
+            }
             ThriftCodec concreteCodec = thriftCodecManagerProvider.get().getCodec(concreteType);
             concreteCodec.write(value, writer);
             writer.writeFieldEnd();

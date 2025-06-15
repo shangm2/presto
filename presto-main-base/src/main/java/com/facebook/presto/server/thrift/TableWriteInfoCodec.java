@@ -43,6 +43,7 @@ public class TableWriteInfoCodec
     public TableWriteInfoCodec(JsonCodec<TableWriteInfo> jsonCodec, ThriftCatalog thriftCatalog)
     {
         this.jsonCodec = requireNonNull(jsonCodec, "jsonCodec is null");
+        System.out.println("==========> TableWriteInfoCodec thriftcatalog  " + System.identityHashCode(thriftCatalog));
         thriftCatalog.addThriftType(SYNTHETIC_STRUCT_TYPE);
     }
 

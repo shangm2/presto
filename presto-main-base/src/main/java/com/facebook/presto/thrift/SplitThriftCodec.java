@@ -37,6 +37,7 @@ public class SplitThriftCodec
                 handleResolver::getId,
                 handleResolver::getSplitClass,
                 thriftCodecManagerProvider);
+        System.out.println("==========> SplitThriftCodec thriftcatalog  " + System.identityHashCode(thriftCatalog));
         thriftCatalog.addThriftType(thriftType);
     }
 

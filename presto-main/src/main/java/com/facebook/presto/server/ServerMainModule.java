@@ -722,8 +722,8 @@ public class ServerMainModule
         jsonBinder(binder).addSerializerBinding(Expression.class).to(ExpressionSerializer.class);
         jsonBinder(binder).addDeserializerBinding(Expression.class).to(ExpressionDeserializer.class);
         jsonBinder(binder).addDeserializerBinding(FunctionCall.class).to(FunctionCallDeserializer.class);
-        thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
         thriftCodecBinder(binder).bindThriftCodec(Split.class);
+        thriftCodecBinder(binder).bindThriftCodec(TaskUpdateRequest.class);
 
         // metadata updates
         jsonCodecBinder(binder).bindJsonCodec(MetadataUpdates.class);
