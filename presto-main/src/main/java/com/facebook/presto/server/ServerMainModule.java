@@ -229,6 +229,7 @@ import com.facebook.presto.sql.relational.RowExpressionDomainTranslator;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.FunctionCall;
 import com.facebook.presto.statusservice.NodeStatusService;
+import com.facebook.presto.thrift.GlobalThriftCodecManager;
 import com.facebook.presto.thrift.HandleThriftModule;
 import com.facebook.presto.tracing.TracerProviderManager;
 import com.facebook.presto.tracing.TracingConfig;
@@ -437,6 +438,8 @@ public class ServerMainModule
         thriftCodecBinder(binder).bindCustomThriftCodec(SqlFunctionIdCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(MetadataUpdatesCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(TableWriteInfoCodec.class);
+
+        binder.bind(GlobalThriftCodecManager.class).in(Scopes.SINGLETON);
 
         jsonCodecBinder(binder).bindListJsonCodec(TaskMemoryReservationSummary.class);
         binder.bind(SqlTaskManager.class).in(Scopes.SINGLETON);

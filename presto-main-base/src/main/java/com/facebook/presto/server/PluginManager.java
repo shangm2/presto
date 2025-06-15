@@ -49,6 +49,7 @@ import com.facebook.presto.spi.session.WorkerSessionPropertyProviderFactory;
 import com.facebook.presto.spi.sql.planner.ExpressionOptimizerFactory;
 import com.facebook.presto.spi.statistics.HistoryBasedPlanStatisticsProvider;
 import com.facebook.presto.spi.storage.TempStorageFactory;
+import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.facebook.presto.spi.tracing.TracerProvider;
 import com.facebook.presto.spi.ttl.ClusterTtlProviderFactory;
 import com.facebook.presto.spi.ttl.NodeTtlFetcherFactory;
@@ -58,6 +59,7 @@ import com.facebook.presto.sql.analyzer.QueryPreparerProviderManager;
 import com.facebook.presto.sql.expressions.ExpressionOptimizerManager;
 import com.facebook.presto.sql.planner.sanity.PlanCheckerProviderManager;
 import com.facebook.presto.storage.TempStorageManager;
+import com.facebook.presto.thrift.GlobalThriftCodecManager;
 import com.facebook.presto.tracing.TracerProviderManager;
 import com.facebook.presto.ttl.clusterttlprovidermanagers.ClusterTtlProviderManager;
 import com.facebook.presto.ttl.nodettlfetchermanagers.NodeTtlFetcherManager;
@@ -111,6 +113,7 @@ public class PluginManager
     private final PlanCheckerProviderManager planCheckerProviderManager;
     private final ExpressionOptimizerManager expressionOptimizerManager;
     private final PluginInstaller pluginInstaller;
+    private final GlobalThriftCodecManager globalThriftCodecManager;
 
     @Inject
     public PluginManager(
@@ -136,7 +139,8 @@ public class PluginManager
             NodeStatusNotificationManager nodeStatusNotificationManager,
             ClientRequestFilterManager clientRequestFilterManager,
             PlanCheckerProviderManager planCheckerProviderManager,
-            ExpressionOptimizerManager expressionOptimizerManager)
+            ExpressionOptimizerManager expressionOptimizerManager,
+            GlobalThriftCodecManager globalThriftCodecManager)
     {
         requireNonNull(nodeInfo, "nodeInfo is null");
         requireNonNull(config, "config is null");
@@ -173,6 +177,7 @@ public class PluginManager
         this.planCheckerProviderManager = requireNonNull(planCheckerProviderManager, "planCheckerProviderManager is null");
         this.expressionOptimizerManager = requireNonNull(expressionOptimizerManager, "expressionManager is null");
         this.pluginInstaller = new MainPluginInstaller(this);
+        this.globalThriftCodecManager = requireNonNull(globalThriftCodecManager, "globalThriftCodecManager is null");
     }
 
     public void loadPlugins()
@@ -357,6 +362,14 @@ public class PluginManager
         public void installCoordinatorPlugin(CoordinatorPlugin plugin)
         {
             pluginManager.installCoordinatorPlugin(plugin);
+        }
+
+        @Override
+        public void installThriftCodec(Plugin plugin, ClassLoader pluginClassLoader)
+        {
+            for (ThriftCodecProvider thriftCodecProvider : plugin.getThriftCodecProviders()) {
+                globalThriftCodecManager.registerCodecsFromProvider(thriftCodecProvider, pluginClassLoader);
+            }
         }
     }
 }

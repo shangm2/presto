@@ -66,6 +66,7 @@ public class PluginManagerUtil
             .add("com.facebook.drift.annotations.")
             .add("com.facebook.drift.TException")
             .add("com.facebook.drift.TApplicationException")
+            .add("com.facebook.presto.spi.thrift")
             .build();
 
     private PluginManagerUtil()
@@ -162,7 +163,9 @@ public class PluginManagerUtil
         for (Object plugin : plugins) {
             log.info("Installing %s", plugin.getClass().getName());
             if (plugin instanceof Plugin) {
-                pluginInstaller.installPlugin((Plugin) plugin);
+                Plugin p = (Plugin) plugin;
+                pluginInstaller.installPlugin(p);
+                pluginInstaller.installThriftCodec(p, pluginClassLoader);
             }
             else if (plugin instanceof CoordinatorPlugin) {
                 pluginInstaller.installCoordinatorPlugin((CoordinatorPlugin) plugin);

@@ -15,14 +15,12 @@ package com.facebook.presto.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.codec.CodecThriftType;
-import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.drift.codec.metadata.ThriftCatalog;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.connector.ConnectorPartitioningHandle;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 
 public class PartitioningHandleThriftCodec
         extends AbstractTypedThriftCodec<ConnectorPartitioningHandle>
@@ -30,13 +28,13 @@ public class PartitioningHandleThriftCodec
     private static final ThriftType thriftType = createThriftType(ConnectorPartitioningHandle.class);
 
     @Inject
-    public PartitioningHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, Provider<ThriftCodecManager> thriftCodecManagerProvider, JsonCodec<ConnectorPartitioningHandle> jsonCodec)
+    public PartitioningHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<ConnectorPartitioningHandle> jsonCodec)
     {
         super(ConnectorPartitioningHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getPartitioningHandleClass,
-                thriftCodecManagerProvider);
+                globalThriftCodecManagerProvider);
         thriftCatalog.addThriftType(thriftType);
     }
 

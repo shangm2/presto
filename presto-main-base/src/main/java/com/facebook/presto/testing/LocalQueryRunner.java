@@ -14,6 +14,8 @@
 package com.facebook.presto.testing;
 
 import com.facebook.airlift.node.NodeInfo;
+import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.codec.metadata.ThriftCatalog;
 import com.facebook.presto.ClientRequestFilterManager;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
 import com.facebook.presto.PagesIndexPageSorter;
@@ -227,6 +229,7 @@ import com.facebook.presto.sql.tree.StartTransaction;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.sql.tree.TruncateTable;
 import com.facebook.presto.testing.PageConsumerOperator.PageConsumerOutputFactory;
+import com.facebook.presto.thrift.GlobalThriftCodecManager;
 import com.facebook.presto.tracing.TracerProviderManager;
 import com.facebook.presto.tracing.TracingConfig;
 import com.facebook.presto.transaction.InMemoryTransactionManager;
@@ -532,6 +535,9 @@ public class LocalQueryRunner
         BuiltInQueryPreparer queryPreparer = new BuiltInQueryPreparer(sqlParser);
         BuiltInQueryPreparerProvider queryPreparerProvider = new BuiltInQueryPreparerProvider(queryPreparer);
 
+        ThriftCatalog thriftCatalog = new ThriftCatalog();
+        ThriftCodecManager thriftCodecManager = new ThriftCodecManager(thriftCatalog);
+
         this.pluginManager = new PluginManager(
                 nodeInfo,
                 new PluginManagerConfig(),
@@ -555,7 +561,8 @@ public class LocalQueryRunner
                 new NodeStatusNotificationManager(),
                 new ClientRequestFilterManager(),
                 planCheckerProviderManager,
-                expressionOptimizerManager);
+                expressionOptimizerManager,
+                new GlobalThriftCodecManager(thriftCodecManager));
 
         connectorManager.addConnectorFactory(globalSystemConnectorFactory);
         connectorManager.createConnection(GlobalSystemConnector.NAME, GlobalSystemConnector.NAME, ImmutableMap.of());
