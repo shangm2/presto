@@ -28,13 +28,13 @@ public class FunctionHandleThriftCodec
     private static final ThriftType thriftType = createThriftType(FunctionHandle.class);
 
     @Inject
-    public FunctionHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<FunctionHandle> jsonCodec)
+    public FunctionHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManager, JsonCodec<FunctionHandle> jsonCodec)
     {
         super(FunctionHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getFunctionHandleClass,
-                globalThriftCodecManagerProvider);
+                globalThriftCodecManager);
         thriftCatalog.addThriftType(thriftType);
     }
 

@@ -28,13 +28,13 @@ public class SplitThriftCodec
     private static final ThriftType thriftType = createThriftType(ConnectorSplit.class);
 
     @Inject
-    public SplitThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<ConnectorSplit> jsonCodec)
+    public SplitThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManager, JsonCodec<ConnectorSplit> jsonCodec)
     {
         super(ConnectorSplit.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getSplitClass,
-                globalThriftCodecManagerProvider);
+                globalThriftCodecManager);
         System.out.println("==========> SplitThriftCodec thriftcatalog  " + System.identityHashCode(thriftCatalog));
         thriftCatalog.addThriftType(thriftType);
     }

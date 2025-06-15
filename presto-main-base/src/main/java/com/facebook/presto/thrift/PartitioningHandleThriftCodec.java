@@ -28,13 +28,13 @@ public class PartitioningHandleThriftCodec
     private static final ThriftType thriftType = createThriftType(ConnectorPartitioningHandle.class);
 
     @Inject
-    public PartitioningHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<ConnectorPartitioningHandle> jsonCodec)
+    public PartitioningHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManager, JsonCodec<ConnectorPartitioningHandle> jsonCodec)
     {
         super(ConnectorPartitioningHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getPartitioningHandleClass,
-                globalThriftCodecManagerProvider);
+                globalThriftCodecManager);
         thriftCatalog.addThriftType(thriftType);
     }
 

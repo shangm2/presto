@@ -28,13 +28,13 @@ public class ColumnHandleThriftCodec
     private static final ThriftType thriftType = createThriftType(ColumnHandle.class);
 
     @Inject
-    public ColumnHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<ColumnHandle> jsonCodec)
+    public ColumnHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManager, JsonCodec<ColumnHandle> jsonCodec)
     {
         super(ColumnHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getColumnHandleClass,
-                globalThriftCodecManagerProvider);
+                globalThriftCodecManager);
         thriftCatalog.addThriftType(thriftType);
     }
 

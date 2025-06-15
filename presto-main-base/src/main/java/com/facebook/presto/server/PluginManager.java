@@ -368,6 +368,7 @@ public class PluginManager
         public void installThriftCodec(Plugin plugin, ClassLoader pluginClassLoader)
         {
             for (ThriftCodecProvider thriftCodecProvider : plugin.getThriftCodecProviders()) {
+                System.out.println("=========> thriftCodecProvider: " + thriftCodecProvider.getClass().getName());
                 globalThriftCodecManager.registerCodecsFromProvider(thriftCodecProvider, pluginClassLoader);
             }
         }

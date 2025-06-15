@@ -28,13 +28,13 @@ public class TableLayoutHandleThriftCodec
     private static final ThriftType thriftType = createThriftType(ConnectorTableLayoutHandle.class);
 
     @Inject
-    public TableLayoutHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManagerProvider, JsonCodec<ConnectorTableLayoutHandle> jsonCodec)
+    public TableLayoutHandleThriftCodec(HandleResolver handleResolver, ThriftCatalog thriftCatalog, GlobalThriftCodecManager globalThriftCodecManager, JsonCodec<ConnectorTableLayoutHandle> jsonCodec)
     {
         super(ConnectorTableLayoutHandle.class,
                 jsonCodec,
                 handleResolver::getId,
                 handleResolver::getTableLayoutHandleClass,
-                globalThriftCodecManagerProvider);
+                globalThriftCodecManager);
         thriftCatalog.addThriftType(thriftType);
     }
 

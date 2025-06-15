@@ -192,17 +192,19 @@ public abstract class AbstractTypedThriftCodec<T>
         String typeId = nameResolver.apply(value);
         requireNonNull(typeId, "typeId is null");
 
-        System.out.println(format("==========> type id: %s, base class: %s, concrete class: %s", typeId, baseClass.getSimpleName(), value.getClass().getSimpleName()));
         writer.writeString(typeId);
         writer.writeFieldEnd();
 
         if (isThriftEnabled(typeId, baseClass)) {
+            System.out.println(format("==========> type id: %s, base class: %s, concrete class: %s", typeId, baseClass.getSimpleName(), value.getClass().getSimpleName()));
+
             writer.writeFieldBegin(new TField(THRIFT_VALUE_PROPERTY, TType.STRUCT, THRIFT_FIELD_ID));
             Class<?> concreteType = value.getClass();
+            System.out.println("==========> AbstractTypedThriftCodec thriftcodecmanager  " + System.identityHashCode(thriftCodecManagerProvider.get()));
             ThriftCatalog thriftCatalog = thriftCodecManagerProvider.get().getCatalog();
             System.out.println("==========> AbstractTypedThriftCodec thriftcatalog  " + System.identityHashCode(thriftCatalog));
             if (concreteType.getSimpleName().equals("HiveSplit")) {
-                System.out.println("==========>" + Joiner.on(", ").withKeyValueSeparator("=").join(thriftCatalog.getManualTypes()));
+                System.out.println("==========> thriftcatalog " + Joiner.on(", ").withKeyValueSeparator("=").join(thriftCatalog.getManualTypes()));
             }
             ThriftCodec concreteCodec = thriftCodecManagerProvider.get().getCodec(concreteType);
             concreteCodec.write(value, writer);

@@ -21,10 +21,10 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 @Singleton
@@ -44,26 +44,18 @@ public class GlobalThriftCodecManager
         requireNonNull(provider, "provider is null");
         requireNonNull(pluginClassLoader, "pluginClassLoader is null");
 
-        for (ThriftCodec<?> thriftCodecClass : provider.getThriftCodecClasses()) {
-            Class<?> codecClass = thriftCodecClass.getClass();
+        System.out.println("==========> GlobalThriftCodecManager thriftcodecmanager  " + System.identityHashCode(thriftCodecManagerProvider.get()));
+
+        for (ThriftCodec<?> thriftCodec : provider.getThriftCodecClasses()) {
+            System.out.println(format("==========> thriftcodec %s, with id: %s", thriftCodec.getClass().getName(), System.identityHashCode(thriftCodec)));
+            Class<?> codecClass = thriftCodec.getClass();
             if (registeredCodecs.add(codecClass)) {
                 try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(pluginClassLoader)) {
-                    thriftCodecManagerProvider.get().addCodec(thriftCodecClass);
+                    System.out.println("==========> add codec to manager: " + codecClass);
+                    thriftCodecManagerProvider.get().addCodec(thriftCodec);
+                    thriftCodecManagerProvider.get().getCatalog().addThriftType(thriftCodec.getType());
                 }
             }
-        }
-    }
-
-    private Object createCodecInstance(Class<?> thriftCodecClass)
-    {
-        try {
-            return thriftCodecClass.getConstructor().newInstance();
-        }
-        catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
-        catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
         }
     }
 
