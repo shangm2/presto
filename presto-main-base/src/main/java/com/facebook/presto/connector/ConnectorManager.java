@@ -342,6 +342,7 @@ public class ConnectorManager
                         }
                     }
                     catch (Throwable t) {
+                        String s = "java.lang.LinkageError: loader constraint violation in interface itable initialization for class com.facebook.presto.hive.thrift.HiveBucketPropertyThriftCodec: when selecting method 'void com.facebook.drift.codec.ThriftCodec.write(java.lang.Object, com.facebook.drift.protocol.TProtocolWriter)' the class loader 'app' for super interface com.facebook.drift.codec.ThriftCodec, and the class loader com.facebook.presto.server.PluginClassLoader @5209c486 of the selected method's class, com.facebook.presto.hive.thrift.HiveBucketPropertyThriftCodec have different Class objects for the type com.facebook.drift.protocol.TProtocolWriter used in the signature (com.facebook.drift.codec.ThriftCodec is in unnamed module of loader 'app'; com.facebook.presto.hive.thrift.HiveBucketPropertyThriftCodec is in unnamed module of loader com.facebook.presto.server.PluginClassLoader @5209c486, parent loader 'platform')";
                         log.error(t, "Error shutting down connector: %s", connectorId);
                     }
                 });
