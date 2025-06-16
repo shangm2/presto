@@ -13,11 +13,9 @@
  */
 package com.facebook.presto.spi.thrift;
 
-import com.facebook.drift.codec.ThriftCodec;
-
 import java.util.Set;
 
 public interface ThriftCodecProvider
 {
-    Set<ThriftCodec<?>> getThriftCodecClasses();
+    Set<PluginThriftCodec<?>> getThriftCodec();
 }

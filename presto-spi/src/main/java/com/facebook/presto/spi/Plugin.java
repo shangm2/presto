@@ -30,7 +30,6 @@ import com.facebook.presto.spi.security.SystemAccessControlFactory;
 import com.facebook.presto.spi.session.SessionPropertyConfigurationManagerFactory;
 import com.facebook.presto.spi.statistics.HistoryBasedPlanStatisticsProvider;
 import com.facebook.presto.spi.storage.TempStorageFactory;
-import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.facebook.presto.spi.tracing.TracerProvider;
 import com.facebook.presto.spi.ttl.ClusterTtlProviderFactory;
 import com.facebook.presto.spi.ttl.NodeTtlFetcherFactory;
@@ -151,11 +150,6 @@ public interface Plugin
     }
 
     default Iterable<ClientRequestFilterFactory> getClientRequestFilterFactories()
-    {
-        return emptyList();
-    }
-
-    default Iterable<ThriftCodecProvider> getThriftCodecProviders()
     {
         return emptyList();
     }

@@ -11,17 +11,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.server;
+package com.facebook.presto.spi.thrift;
 
-import com.facebook.presto.spi.CoordinatorPlugin;
-import com.facebook.presto.spi.Plugin;
-import com.facebook.presto.spi.RouterPlugin;
+import com.facebook.drift.codec.ThriftCodec;
 
-public interface PluginInstaller
+public interface PluginThriftCodec<T>
+        extends ThriftCodec<T>
 {
-    void installPlugin(Plugin plugin);
-
-    void installCoordinatorPlugin(CoordinatorPlugin plugin);
-
-    default void installRouterPlugin(RouterPlugin plugin) {}
 }

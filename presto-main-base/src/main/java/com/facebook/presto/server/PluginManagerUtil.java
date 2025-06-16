@@ -165,7 +165,6 @@ public class PluginManagerUtil
             if (plugin instanceof Plugin) {
                 Plugin p = (Plugin) plugin;
                 pluginInstaller.installPlugin(p);
-                pluginInstaller.installThriftCodec(p, pluginClassLoader);
             }
             else if (plugin instanceof CoordinatorPlugin) {
                 pluginInstaller.installCoordinatorPlugin((CoordinatorPlugin) plugin);

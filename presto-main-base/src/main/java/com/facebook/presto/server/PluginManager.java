@@ -49,7 +49,6 @@ import com.facebook.presto.spi.session.WorkerSessionPropertyProviderFactory;
 import com.facebook.presto.spi.sql.planner.ExpressionOptimizerFactory;
 import com.facebook.presto.spi.statistics.HistoryBasedPlanStatisticsProvider;
 import com.facebook.presto.spi.storage.TempStorageFactory;
-import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.facebook.presto.spi.tracing.TracerProvider;
 import com.facebook.presto.spi.ttl.ClusterTtlProviderFactory;
 import com.facebook.presto.spi.ttl.NodeTtlFetcherFactory;
@@ -362,15 +361,6 @@ public class PluginManager
         public void installCoordinatorPlugin(CoordinatorPlugin plugin)
         {
             pluginManager.installCoordinatorPlugin(plugin);
-        }
-
-        @Override
-        public void installThriftCodec(Plugin plugin, ClassLoader pluginClassLoader)
-        {
-            for (ThriftCodecProvider thriftCodecProvider : plugin.getThriftCodecProviders()) {
-                System.out.println("=========> thriftCodecProvider: " + thriftCodecProvider.getClass().getName());
-                globalThriftCodecManager.registerCodecsFromProvider(thriftCodecProvider, pluginClassLoader);
-            }
         }
     }
 }

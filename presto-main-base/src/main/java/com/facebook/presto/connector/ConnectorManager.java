@@ -15,6 +15,8 @@ package com.facebook.presto.connector;
 
 import com.facebook.airlift.log.Logger;
 import com.facebook.airlift.node.NodeInfo;
+import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.common.block.BlockEncodingSerde;
 import com.facebook.presto.common.type.TypeManager;
 import com.facebook.presto.connector.informationSchema.InformationSchemaConnector;
@@ -57,6 +59,8 @@ import com.facebook.presto.spi.relation.DeterminismEvaluator;
 import com.facebook.presto.spi.relation.DomainTranslator;
 import com.facebook.presto.spi.relation.PredicateCompiler;
 import com.facebook.presto.spi.session.PropertyMetadata;
+import com.facebook.presto.spi.thrift.PluginThriftCodec;
+import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.facebook.presto.split.PageSinkManager;
 import com.facebook.presto.split.PageSourceManager;
 import com.facebook.presto.split.RecordPageSourceProvider;
@@ -68,6 +72,7 @@ import com.facebook.presto.sql.planner.PartitioningProviderManager;
 import com.facebook.presto.sql.planner.planPrinter.RowExpressionFormatter;
 import com.facebook.presto.sql.relational.ConnectorRowExpressionService;
 import com.facebook.presto.sql.relational.FunctionResolution;
+import com.facebook.presto.thrift.GlobalThriftCodecManager;
 import com.facebook.presto.transaction.TransactionManager;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -76,6 +81,7 @@ import javax.annotation.PreDestroy;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import javax.inject.Inject;
+import javax.inject.Provider;
 
 import java.util.List;
 import java.util.Map;
@@ -132,6 +138,8 @@ public class ConnectorManager
 
     private final AtomicBoolean stopped = new AtomicBoolean();
 
+    private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+
     @Inject
     public ConnectorManager(
             MetadataManager metadataManager,
@@ -158,7 +166,8 @@ public class ConnectorManager
             DeterminismEvaluator determinismEvaluator,
             FilterStatsCalculator filterStatsCalculator,
             BlockEncodingSerde blockEncodingSerde,
-            FeaturesConfig featuresConfig)
+            FeaturesConfig featuresConfig,
+            GlobalThriftCodecManager globalThriftCodecManager)
     {
         this.metadataManager = requireNonNull(metadataManager, "metadataManager is null");
         this.catalogManager = requireNonNull(catalogManager, "catalogManager is null");
@@ -185,6 +194,7 @@ public class ConnectorManager
         this.filterStatsCalculator = requireNonNull(filterStatsCalculator, "filterStatsCalculator is null");
         this.blockEncodingSerde = requireNonNull(blockEncodingSerde, "blockEncodingSerde is null");
         this.connectorSystemConfig = () -> featuresConfig.isNativeExecutionEnabled();
+        this.thriftCodecManagerProvider = requireNonNull(globalThriftCodecManager, "globalThriftCodecManager is null").getThriftCodecManagerProvider();
     }
 
     @PreDestroy
@@ -317,10 +327,24 @@ public class ConnectorManager
                 .ifPresent(metadataUpdaterProvider -> connectorMetadataUpdaterManager.addMetadataUpdaterProvider(connectorId, metadataUpdaterProvider));
 
         connector.getConnectorTypeSerdeProvider()
-                        .ifPresent(
-                                connectorTypeSerdeProvider ->
+                .ifPresent(
+                        connectorTypeSerdeProvider ->
                                 connectorTypeSerdeManager.addConnectorTypeSerdeProvider(connectorId, connectorTypeSerdeProvider));
 
+        connector.getThriftCodecProvider().ifPresent(
+                provider -> {
+                    try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(connector.getClass().getClassLoader())) {
+                        Set<PluginThriftCodec<?>> codecs = provider.getThriftCodec();
+                        System.out.println(format("==========> ConnectorManager connector: %s, number of codecs: %d", connectorId, codecs.size()));
+                        for (ThriftCodec<?> codec : codecs) {
+                            System.out.println(format("==========> ConnectorManager %s", codec.getClass().getName()));
+                            thriftCodecManagerProvider.get().addCodec(codec);
+                        }
+                    }
+                    catch (Throwable t) {
+                        log.error(t, "Error shutting down connector: %s", connectorId);
+                    }
+                });
         metadataManager.getProcedureRegistry().addProcedures(connectorId, connector.getProcedures());
 
         connector.getAccessControl()
@@ -418,6 +442,7 @@ public class ConnectorManager
         private final List<PropertyMetadata<?>> schemaProperties;
         private final List<PropertyMetadata<?>> columnProperties;
         private final List<PropertyMetadata<?>> analyzeProperties;
+        private final Optional<ThriftCodecProvider> thriftCodecProvider;
 
         public MaterializedConnector(ConnectorId connectorId, Connector connector)
         {
@@ -509,6 +534,15 @@ public class ConnectorManager
             catch (UnsupportedOperationException ignored) {
             }
             this.connectorTypeSerdeProvider = Optional.ofNullable(connectorTypeSerdeProvider);
+
+            ThriftCodecProvider thriftCodecProvider = null;
+            try {
+                thriftCodecProvider = connector.getThriftCodecProvider();
+                requireNonNull(thriftCodecProvider, format("Connector %s returned null thrift codec provider", connectorId));
+            }
+            catch (UnsupportedOperationException ignored) {
+            }
+            this.thriftCodecProvider = Optional.ofNullable(thriftCodecProvider);
 
             ConnectorAccessControl accessControl = null;
             try {
@@ -627,6 +661,11 @@ public class ConnectorManager
         public List<PropertyMetadata<?>> getAnalyzeProperties()
         {
             return analyzeProperties;
+        }
+
+        public Optional<ThriftCodecProvider> getThriftCodecProvider()
+        {
+            return thriftCodecProvider;
         }
     }
 }

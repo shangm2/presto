@@ -492,6 +492,9 @@ public class LocalQueryRunner
         this.joinFilterFunctionCompiler = new JoinFilterFunctionCompiler(metadata);
         this.pluginNodeManager = new PluginNodeManager(nodeManager, "test");
 
+        ThriftCodecManager codecManager = new ThriftCodecManager();
+        GlobalThriftCodecManager globalThriftCodecManager = new GlobalThriftCodecManager(() -> codecManager);
+
         NodeVersion nodeVersion = new NodeVersion("testversion");
         this.connectorManager = new ConnectorManager(
                 metadata,
@@ -518,7 +521,8 @@ public class LocalQueryRunner
                 new RowExpressionDeterminismEvaluator(metadata.getFunctionAndTypeManager()),
                 new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer),
                 blockEncodingManager,
-                featuresConfig);
+                featuresConfig,
+                globalThriftCodecManager);
 
         GlobalSystemConnectorFactory globalSystemConnectorFactory = new GlobalSystemConnectorFactory(ImmutableSet.of(
                 new NodeSystemTable(nodeManager),

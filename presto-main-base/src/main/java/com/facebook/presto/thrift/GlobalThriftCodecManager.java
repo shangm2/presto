@@ -46,7 +46,7 @@ public class GlobalThriftCodecManager
 
         System.out.println("==========> GlobalThriftCodecManager thriftcodecmanager  " + System.identityHashCode(thriftCodecManagerProvider.get()));
 
-        for (ThriftCodec<?> thriftCodec : provider.getThriftCodecClasses()) {
+        for (ThriftCodec<?> thriftCodec : provider.getThriftCodec()) {
             System.out.println(format("==========> thriftcodec %s, with id: %s", thriftCodec.getClass().getName(), System.identityHashCode(thriftCodec)));
             Class<?> codecClass = thriftCodec.getClass();
             if (registeredCodecs.add(codecClass)) {

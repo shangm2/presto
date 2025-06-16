@@ -16,6 +16,7 @@ package com.facebook.presto.spi.connector;
 import com.facebook.presto.spi.SystemTable;
 import com.facebook.presto.spi.procedure.Procedure;
 import com.facebook.presto.spi.session.PropertyMetadata;
+import com.facebook.presto.spi.thrift.ThriftCodecProvider;
 import com.facebook.presto.spi.transaction.IsolationLevel;
 
 import java.util.List;
@@ -203,5 +204,10 @@ public interface Connector
     default Set<ConnectorCapabilities> getCapabilities()
     {
         return emptySet();
+    }
+
+    default ThriftCodecProvider getThriftCodecProvider()
+    {
+        throw new UnsupportedOperationException();
     }
 }
