@@ -112,6 +112,9 @@ public class HttpRemoteTaskFactory
     private final DecayCounter taskUpdateRequestSize;
     private final boolean taskUpdateSizeTrackingEnabled;
     private final Optional<SafeEventLoopGroup> eventLoopGroup;
+    private final int maxExecutionFailureInfoDepth;
+    private final int maxStackTraceDepth;
+    private final int maxSuppressedExceptions;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -228,6 +231,9 @@ public class HttpRemoteTaskFactory
                 return new SafeEventLoop(this, executor);
             }
         }) : Optional.empty();
+        this.maxExecutionFailureInfoDepth = taskConfig.getMaxExecutionFailureInfoDepth();
+        this.maxStackTraceDepth = taskConfig.getMaxStackTraceDepth();
+        this.maxSuppressedExceptions = taskConfig.getMaxSuppressedExceptions();
     }
 
     @Managed
@@ -307,7 +313,10 @@ public class HttpRemoteTaskFactory
                     handleResolver,
                     connectorTypeSerdeManager,
                     schedulerStatsTracker,
-                    (SafeEventLoopGroup.SafeEventLoop) eventLoopGroup.get().next());
+                    (SafeEventLoopGroup.SafeEventLoop) eventLoopGroup.get().next(),
+                    maxExecutionFailureInfoDepth,
+                    maxStackTraceDepth,
+                    maxSuppressedExceptions);
         }
         // Use default executor based HttpRemoteTask
         return new HttpRemoteTask(

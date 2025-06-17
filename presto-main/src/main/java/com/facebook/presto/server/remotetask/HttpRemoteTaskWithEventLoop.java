@@ -123,7 +123,7 @@ import static com.facebook.presto.server.thrift.ThriftCodecWrapper.unwrapThriftC
 import static com.facebook.presto.spi.StandardErrorCode.EXCEEDED_TASK_UPDATE_SIZE_LIMIT;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.REMOTE_TASK_ERROR;
-import static com.facebook.presto.util.Failures.toFailure;
+import static com.facebook.presto.util.Failures.toFailureWithLimitedTrace;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -239,6 +239,9 @@ public final class HttpRemoteTaskWithEventLoop
 
     private final SafeEventLoopGroup.SafeEventLoop taskEventLoop;
     private final String loggingPrefix;
+    private final int maxExecutionFailureInfoDepth;
+    private final int maxStackTraceDepth;
+    private final int maxSuppressedExceptions;
 
     public static HttpRemoteTaskWithEventLoop createHttpRemoteTaskWithEventLoop(
             Session session,
@@ -279,7 +282,10 @@ public final class HttpRemoteTaskWithEventLoop
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager,
             SchedulerStatsTracker schedulerStatsTracker,
-            SafeEventLoopGroup.SafeEventLoop taskEventLoop)
+            SafeEventLoopGroup.SafeEventLoop taskEventLoop,
+            int maxExecutionFailureInfoDepth,
+            int maxStackTraceDepth,
+            int maxSuppressedExceptions)
     {
         HttpRemoteTaskWithEventLoop task = new HttpRemoteTaskWithEventLoop(session,
                 taskId,
@@ -319,7 +325,10 @@ public final class HttpRemoteTaskWithEventLoop
                 handleResolver,
                 connectorTypeSerdeManager,
                 schedulerStatsTracker,
-                taskEventLoop);
+                taskEventLoop,
+                maxExecutionFailureInfoDepth,
+                maxStackTraceDepth,
+                maxSuppressedExceptions);
         task.initialize();
         return task;
     }
@@ -362,7 +371,10 @@ public final class HttpRemoteTaskWithEventLoop
             HandleResolver handleResolver,
             ConnectorTypeSerdeManager connectorTypeSerdeManager,
             SchedulerStatsTracker schedulerStatsTracker,
-            SafeEventLoopGroup.SafeEventLoop taskEventLoop)
+            SafeEventLoopGroup.SafeEventLoop taskEventLoop,
+            int maxExecutionFailureInfoDepth,
+            int maxStackTraceDepth,
+            int maxSuppressedExceptions)
     {
         requireNonNull(session, "session is null");
         requireNonNull(taskId, "taskId is null");
@@ -489,6 +501,9 @@ public final class HttpRemoteTaskWithEventLoop
                 connectorTypeSerdeManager,
                 thriftProtocol);
         this.loggingPrefix = format("Query: %s, Task: %s", session.getQueryId(), taskId);
+        this.maxExecutionFailureInfoDepth = maxExecutionFailureInfoDepth;
+        this.maxStackTraceDepth = maxStackTraceDepth;
+        this.maxSuppressedExceptions = maxSuppressedExceptions;
     }
 
     // this is a separate method to ensure that the `this` reference is not leaked during construction
@@ -1244,7 +1259,7 @@ public final class HttpRemoteTaskWithEventLoop
             log.debug(cause, "Remote task %s failed with %s", taskStatus.getSelf(), cause);
         }
 
-        TaskStatus failedTaskStatus = failWith(getTaskStatus(), FAILED, ImmutableList.of(toFailure(cause)));
+        TaskStatus failedTaskStatus = failWith(getTaskStatus(), FAILED, ImmutableList.of(toFailureWithLimitedTrace(cause, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, session.getRuntimeStats())));
         // Transition task to failed state without waiting for the final task info returned by the abort request.
         // The abort request is very likely not to succeed, leaving the task and the stage in the limbo state for
         // the entire duration of abort retries. If the task is failed, it is not that important to actually

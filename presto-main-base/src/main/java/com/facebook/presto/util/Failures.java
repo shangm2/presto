@@ -17,6 +17,8 @@ import com.facebook.presto.ExceededMemoryLimitException;
 import com.facebook.presto.client.ErrorLocation;
 import com.facebook.presto.common.ErrorCode;
 import com.facebook.presto.common.InvalidTypeDefinitionException;
+import com.facebook.presto.common.RuntimeStats;
+import com.facebook.presto.common.RuntimeUnit;
 import com.facebook.presto.execution.ExecutionFailureInfo;
 import com.facebook.presto.execution.Failure;
 import com.facebook.presto.spi.ErrorCause;
@@ -29,7 +31,6 @@ import com.facebook.presto.sql.analyzer.SemanticException;
 import com.facebook.presto.sql.parser.ParsingException;
 import com.facebook.presto.sql.tree.NodeLocation;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import io.airlift.slice.SliceTooLargeException;
 
 import javax.annotation.Nullable;
@@ -38,19 +39,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.facebook.presto.spi.ErrorCause.UNKNOWN;
 import static com.facebook.presto.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static com.facebook.presto.spi.StandardErrorCode.INVALID_TYPE_DEFINITION;
 import static com.facebook.presto.spi.StandardErrorCode.SLICE_TOO_LARGE;
 import static com.facebook.presto.spi.StandardErrorCode.SYNTAX_ERROR;
-import static com.google.common.base.Functions.toStringFunction;
 import static com.google.common.base.MoreObjects.firstNonNull;
 import static com.google.common.base.Throwables.throwIfInstanceOf;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Sets.newIdentityHashSet;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 
 public final class Failures
@@ -62,11 +62,20 @@ public final class Failures
 
     public static final String REMOTE_TASK_MISMATCH_ERROR = "Could not communicate with the remote task. " + NODE_CRASHED_ERROR;
 
+    private static final int defaultExecutionFailureInfoDepth = 10;
+    private static final int defaultStackTraceDepth = 10;
+    private static final int defaultSuppressedExceptions = 10;
+
     private Failures() {}
 
     public static ExecutionFailureInfo toFailure(Throwable failure)
     {
         return toFailure(failure, newIdentityHashSet());
+    }
+
+    public static ExecutionFailureInfo toFailureWithLimitedTrace(Throwable failure, int maxExecutionFailureInfoDepth, int maxStackTraceDepth, int maxSuppressedExceptions, RuntimeStats runtimeStats)
+    {
+        return toFailureWithLimitedTrace(failure, newIdentityHashSet(), 0, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, runtimeStats);
     }
 
     public static void checkArgument(boolean expression, String errorMessage)
@@ -99,7 +108,16 @@ public final class Failures
 
     private static ExecutionFailureInfo toFailure(Throwable throwable, Set<Throwable> seenFailures)
     {
-        if (throwable == null) {
+        return toFailureWithLimitedTrace(throwable, seenFailures, 0, defaultExecutionFailureInfoDepth, defaultStackTraceDepth, defaultSuppressedExceptions, new RuntimeStats());
+    }
+
+    private static ExecutionFailureInfo toFailureWithLimitedTrace(Throwable throwable, Set<Throwable> seenFailures,
+            int currentDepth, int maxExecutionFailureInfoDepth,
+            int maxStackTraceDepth, int maxSuppressedExceptions,
+            RuntimeStats runtimeStats)
+    {
+        runtimeStats.addMetricValue("executionFailureInfoDepth", RuntimeUnit.NONE, currentDepth);
+        if (throwable == null || currentDepth >= maxExecutionFailureInfoDepth) {
             return null;
         }
 
@@ -121,7 +139,7 @@ public final class Failures
         }
         seenFailures.add(throwable);
 
-        ExecutionFailureInfo cause = toFailure(throwable.getCause(), seenFailures);
+        ExecutionFailureInfo cause = toFailureWithLimitedTrace(throwable.getCause(), seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, runtimeStats);
         ErrorCode errorCode = toErrorCode(throwable);
         if (errorCode == null) {
             if (cause == null) {
@@ -131,15 +149,20 @@ public final class Failures
                 errorCode = cause.getErrorCode();
             }
         }
+        Throwable[] throwables = throwable.getSuppressed();
+        runtimeStats.addMetricValue("suppressedExceptionsCount", RuntimeUnit.NONE, throwables.length);
+        StackTraceElement[] stackTraceElements = throwable.getStackTrace();
+        runtimeStats.addMetricValue("stackTraceElementsCount", RuntimeUnit.NONE, stackTraceElements.length);
 
         return new ExecutionFailureInfo(
                 type,
                 throwable.getMessage(),
                 cause,
-                Arrays.stream(throwable.getSuppressed())
-                        .map(failure -> toFailure(failure, seenFailures))
+                Arrays.stream(throwables)
+                        .limit(maxSuppressedExceptions)
+                        .map(failure -> toFailureWithLimitedTrace(failure, seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, runtimeStats))
                         .collect(toImmutableList()),
-                Lists.transform(asList(throwable.getStackTrace()), toStringFunction()),
+                Arrays.stream(stackTraceElements).limit(maxStackTraceDepth).map(Object::toString).collect(Collectors.toList()),
                 getErrorLocation(throwable),
                 errorCode,
                 remoteHost,

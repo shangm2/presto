@@ -103,6 +103,9 @@ public class TaskManagerConfig
     private double highMemoryTaskKillerHeapMemoryThreshold = 0.9;
     private boolean enableEventLoop;
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
+    private int maxExecutionFailureInfoDepth = 100;
+    private int maxStackTraceDepth = 100;
+    private int maxSuppressedExceptions = 100;
 
     public long getSlowMethodThresholdOnEventLoop()
     {
@@ -704,6 +707,42 @@ public class TaskManagerConfig
     public TaskManagerConfig setTaskUpdateSizeTrackingEnabled(boolean taskUpdateSizeTrackingEnabled)
     {
         this.taskUpdateSizeTrackingEnabled = taskUpdateSizeTrackingEnabled;
+        return this;
+    }
+
+    public int getMaxExecutionFailureInfoDepth()
+    {
+        return maxExecutionFailureInfoDepth;
+    }
+
+    @Config("task.max-execution-failure-info-depth")
+    public TaskManagerConfig setMaxExecutionFailureInfoDepth(int maxExecutionFailureInfoDepth)
+    {
+        this.maxExecutionFailureInfoDepth = maxExecutionFailureInfoDepth;
+        return this;
+    }
+
+    public int getMaxStackTraceDepth()
+    {
+        return maxStackTraceDepth;
+    }
+
+    @Config("task.max-stack-trace-depth")
+    public TaskManagerConfig setMaxStackTraceDepth(int maxStackTraceDepth)
+    {
+        this.maxStackTraceDepth = maxStackTraceDepth;
+        return this;
+    }
+
+    public int getMaxSuppressedExceptions()
+    {
+        return maxSuppressedExceptions;
+    }
+
+    @Config("task.max-suppressed-exceptions")
+    public TaskManagerConfig setMaxSuppressedExceptions(int maxSuppressedExceptions)
+    {
+        this.maxSuppressedExceptions = maxSuppressedExceptions;
         return this;
     }
 }
