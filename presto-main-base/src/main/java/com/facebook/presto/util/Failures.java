@@ -62,9 +62,10 @@ public final class Failures
 
     public static final String REMOTE_TASK_MISMATCH_ERROR = "Could not communicate with the remote task. " + NODE_CRASHED_ERROR;
 
-    private static final int defaultExecutionFailureInfoDepth = 10;
-    private static final int defaultStackTraceDepth = 10;
-    private static final int defaultSuppressedExceptions = 10;
+    // no limitation by default
+    private static final int defaultExecutionFailureInfoDepth = Integer.MAX_VALUE;
+    private static final int defaultStackTraceElementCount = Integer.MAX_VALUE;
+    private static final int defaultSuppressedExceptionsCount = Integer.MAX_VALUE;
 
     private Failures() {}
 
@@ -108,12 +109,12 @@ public final class Failures
 
     private static ExecutionFailureInfo toFailure(Throwable throwable, Set<Throwable> seenFailures)
     {
-        return toFailureWithLimitedTrace(throwable, seenFailures, 0, defaultExecutionFailureInfoDepth, defaultStackTraceDepth, defaultSuppressedExceptions, new RuntimeStats());
+        return toFailureWithLimitedTrace(throwable, seenFailures, 0, defaultExecutionFailureInfoDepth, defaultStackTraceElementCount, defaultSuppressedExceptionsCount, new RuntimeStats());
     }
 
     private static ExecutionFailureInfo toFailureWithLimitedTrace(Throwable throwable, Set<Throwable> seenFailures,
             int currentDepth, int maxExecutionFailureInfoDepth,
-            int maxStackTraceDepth, int maxSuppressedExceptions,
+            int maxStackTraceElementCount, int maxSuppressedExceptionsCount,
             RuntimeStats runtimeStats)
     {
         runtimeStats.addMetricValue("executionFailureInfoDepth", RuntimeUnit.NONE, currentDepth);
@@ -139,7 +140,7 @@ public final class Failures
         }
         seenFailures.add(throwable);
 
-        ExecutionFailureInfo cause = toFailureWithLimitedTrace(throwable.getCause(), seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, runtimeStats);
+        ExecutionFailureInfo cause = toFailureWithLimitedTrace(throwable.getCause(), seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceElementCount, maxSuppressedExceptionsCount, runtimeStats);
         ErrorCode errorCode = toErrorCode(throwable);
         if (errorCode == null) {
             if (cause == null) {
@@ -159,10 +160,10 @@ public final class Failures
                 throwable.getMessage(),
                 cause,
                 Arrays.stream(throwables)
-                        .limit(maxSuppressedExceptions)
-                        .map(failure -> toFailureWithLimitedTrace(failure, seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceDepth, maxSuppressedExceptions, runtimeStats))
+                        .limit(maxSuppressedExceptionsCount)
+                        .map(failure -> toFailureWithLimitedTrace(failure, seenFailures, currentDepth + 1, maxExecutionFailureInfoDepth, maxStackTraceElementCount, maxSuppressedExceptionsCount, runtimeStats))
                         .collect(toImmutableList()),
-                Arrays.stream(stackTraceElements).limit(maxStackTraceDepth).map(Object::toString).collect(Collectors.toList()),
+                Arrays.stream(stackTraceElements).limit(maxStackTraceElementCount).map(Object::toString).collect(Collectors.toList()),
                 getErrorLocation(throwable),
                 errorCode,
                 remoteHost,
