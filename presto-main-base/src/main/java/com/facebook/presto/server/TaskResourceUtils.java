@@ -59,7 +59,7 @@ public class TaskResourceUtils
                 taskInfo.getNoMoreSplits(),
                 convertToThriftTaskStats(taskInfo.getStats()),
                 taskInfo.isNeedsPlan(),
-                convertToThriftMetadataUpdates(taskInfo.getMetadataUpdates(), connectorTypeSerdeManager, handleResolver),
+                null,
                 taskInfo.getNodeId());
     }
 
@@ -298,7 +298,7 @@ public class TaskResourceUtils
                 thriftTaskInfo.getNoMoreSplits(),
                 convertFromThriftTaskStats(thriftTaskInfo.getStats()),
                 thriftTaskInfo.isNeedsPlan(),
-                convertFromThriftMetadataUpdates(thriftTaskInfo.getMetadataUpdates(), connectorTypeSerdeManager, handleResolver),
+                new MetadataUpdates(null, ImmutableList.of()),
                 thriftTaskInfo.getNodeId());
     }
 
