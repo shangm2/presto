@@ -63,6 +63,18 @@ These improvements enable:
 
 6. **Cross-Language Support**: Coordinating with C++ worker implementations to ensure protocol compatibility.
 
+## Open Source Collaboration
+
+As Presto is an open source project, we created and presented an RFC to the Presto Technical Steering Committee. This
+step was crucial to:
+
+- Gather feedback from the broader Presto community
+- Ensure our approach aligned with Presto's architectural vision
+- Discuss potential impacts on various Presto deployments
+- Gain insights from community members with different use cases
+
+The RFC process helped refine our approach and ensured the changes would benefit the broader Presto ecosystem.
+
 ## Teamwork
 
 This project was a collaborative effort among:
