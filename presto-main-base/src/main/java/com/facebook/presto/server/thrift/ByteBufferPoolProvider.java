@@ -11,20 +11,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.spi;
+package com.facebook.presto.server.thrift;
 
-import com.facebook.presto.spi.api.Experimental;
+import com.facebook.drift.buffer.ByteBufferPool;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.function.Consumer;
+import java.util.concurrent.ConcurrentHashMap;
 
-@Experimental
-public interface ConnectorCodec<T>
+public class ByteBufferPoolProvider
 {
-    void serialize(T value, Consumer<List<ByteBuffer>> consumer)
-            throws Exception;
+    private final ConcurrentHashMap<Thread, ByteBufferPool> threadPools = new ConcurrentHashMap<>();
 
-    T deserialize(List<ByteBuffer> byteBufferList)
-            throws Exception;
+    public ByteBufferPool getPool()
+    {
+        System.out.println("======> getting a pool");
+        return threadPools.computeIfAbsent(Thread.currentThread(), t -> new ByteBufferPool());
+    }
 }

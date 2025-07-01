@@ -143,6 +143,7 @@ import com.facebook.presto.resourcemanager.ResourceManagerInconsistentException;
 import com.facebook.presto.resourcemanager.ResourceManagerResourceGroupService;
 import com.facebook.presto.server.remotetask.HttpLocationFactory;
 import com.facebook.presto.server.remotetask.ReactorNettyHttpClientConfig;
+import com.facebook.presto.server.thrift.ByteBufferPoolProvider;
 import com.facebook.presto.server.thrift.FixedAddressSelector;
 import com.facebook.presto.server.thrift.HandleThriftModule;
 import com.facebook.presto.server.thrift.ThriftServerInfoClient;
@@ -840,6 +841,8 @@ public class ServerMainModule
         // Node manager binding
         binder.bind(PluginNodeManager.class).in(Scopes.SINGLETON);
         binder.bind(NodeManager.class).to(PluginNodeManager.class).in(Scopes.SINGLETON);
+
+        binder.bind(ByteBufferPoolProvider.class).in(Scopes.SINGLETON);
     }
 
     @Provides

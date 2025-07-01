@@ -334,6 +334,22 @@ public class CoordinatorModule
 
     @Provides
     @Singleton
+    @ForCoordinatorBufferPool
+    public static ByteBufferPool createBufferPool(TaskManagerConfig config)
+    {
+        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
+    }
+
+    @Provides
+    @Singleton
+    @ForCoordinatorBufferPool
+    public static DistributionStat createSplitSizeTracker()
+    {
+        return new DistributionStat();
+    }
+
+    @Provides
+    @Singleton
     public static ResourceGroupManager<?> getResourceGroupManager(@SuppressWarnings("rawtypes") ResourceGroupManager manager)
     {
         return manager;
