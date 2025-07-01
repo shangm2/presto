@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.tpcds;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.NodeManager;
@@ -110,7 +111,7 @@ public class TpcdsConnectorFactory
             @Override
             public ConnectorCodecProvider getConnectorCodecProvider()
             {
-                return new TpcdsCodecProvider(new ThriftCodecManager());
+                return new TpcdsCodecProvider(ThriftCodecManager::new, new ByteBufferPool());
             }
         };
     }

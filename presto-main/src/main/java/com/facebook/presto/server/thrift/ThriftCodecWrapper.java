@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.server.thrift;
 
-import com.facebook.airlift.http.client.thrift.ThriftProtocolException;
-import com.facebook.airlift.http.client.thrift.ThriftProtocolUtils;
+import com.facebook.airlift.http.client.thrift.TInputStreamTransport;
+import com.facebook.airlift.http.client.thrift.TOutputStreamTransport;
 import com.facebook.airlift.json.Codec;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.transport.netty.codec.Protocol;
@@ -56,10 +56,12 @@ public class ThriftCodecWrapper<T>
     {
         try {
             SliceOutput sliceOutput = new DynamicSliceOutput(1024);
-            ThriftProtocolUtils.write(instance, thriftCodec, Protocol.BINARY, sliceOutput);
+//            ThriftProtocolUtils.write(instance, thriftCodec, Protocol.BINARY, sliceOutput);
+
+            thriftCodec.write(instance, Protocol.BINARY.createProtocol(new TOutputStreamTransport(sliceOutput)));
             return sliceOutput.slice().getBytes();
         }
-        catch (ThriftProtocolException e) {
+        catch (Exception e) {
             throw new PrestoException(NOT_SUPPORTED, "Can not serialize instance to bytes", e);
         }
     }
@@ -68,9 +70,10 @@ public class ThriftCodecWrapper<T>
     public T fromBytes(byte[] bytes)
     {
         try {
-            return ThriftProtocolUtils.read(thriftCodec, Protocol.BINARY, Slices.wrappedBuffer(bytes).getInput());
+//            return ThriftProtocolUtils.read(thriftCodec, Protocol.BINARY, Slices.wrappedBuffer(bytes).getInput());
+            return thriftCodec.read(Protocol.BINARY.createProtocol(new TInputStreamTransport(Slices.wrappedBuffer(bytes).getInput())));
         }
-        catch (ThriftProtocolException e) {
+        catch (Exception e) {
             throw new PrestoException(NOT_SUPPORTED, "Can not deserialize instance from bytes", e);
         }
     }

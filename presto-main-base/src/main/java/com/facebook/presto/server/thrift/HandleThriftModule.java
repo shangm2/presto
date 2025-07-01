@@ -27,6 +27,7 @@ import com.google.inject.Scopes;
 
 import static com.facebook.airlift.json.JsonCodecBinder.jsonCodecBinder;
 import static com.facebook.drift.codec.guice.ThriftCodecBinder.thriftCodecBinder;
+import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
 public class HandleThriftModule
         implements Module
@@ -35,6 +36,7 @@ public class HandleThriftModule
     public void configure(Binder binder)
     {
         thriftCodecBinder(binder).bindCustomThriftCodec(ConnectorSplitThriftCodec.class);
+        newExporter(binder).export(ConnectorSplitThriftCodec.class).withGeneratedName();
         thriftCodecBinder(binder).bindCustomThriftCodec(TransactionHandleThriftCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(OutputTableHandleThriftCodec.class);
         thriftCodecBinder(binder).bindCustomThriftCodec(InsertTableHandleThriftCodec.class);

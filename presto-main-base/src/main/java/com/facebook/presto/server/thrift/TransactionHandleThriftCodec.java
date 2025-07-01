@@ -14,17 +14,20 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.drift.TException;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
 import javax.inject.Inject;
 
-import java.nio.ByteBuffer;
+import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
@@ -33,15 +36,21 @@ public class TransactionHandleThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorTransactionHandle.class);
     private final ConnectorCodecManager connectorCodecManager;
+    private final ByteBufferPool pool;
 
     @Inject
-    public TransactionHandleThriftCodec(HandleResolver handleResolver, ConnectorCodecManager connectorCodecManager, JsonCodec<ConnectorTransactionHandle> jsonCodec)
+    public TransactionHandleThriftCodec(HandleResolver handleResolver,
+            ConnectorCodecManager connectorCodecManager,
+            JsonCodec<ConnectorTransactionHandle> jsonCodec,
+            @ForPooledByteBuffer ByteBufferPool pool)
     {
         super(ConnectorTransactionHandle.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
                 requireNonNull(handleResolver, "handleResolver is null")::getId,
                 handleResolver::getTransactionHandleClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
+        this.pool = requireNonNull(pool, "pool is null");
+        System.out.println("=====> TransactionHandleThriftCodec, id: " + pool.getId());
     }
 
     @CodecThriftType
@@ -60,10 +69,26 @@ public class TransactionHandleThriftCodec
     public ConnectorTransactionHandle readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        ByteBuffer byteBuffer = reader.readBinary();
-        assert (byteBuffer.position() == 0);
-        byte[] bytes = byteBuffer.array();
-        return connectorCodecManager.getTransactionHandleCodec(connectorId).map(codec -> codec.deserialize(bytes)).orElse(null);
+        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
+
+        if (byteBufferList.isEmpty()) {
+            return null;
+        }
+        return connectorCodecManager.getTransactionHandleCodec(connectorId)
+                .map(codec -> {
+                    try {
+                        return codec.deserialize(byteBufferList);
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException("Failed to deserialize connector transaction handle", e);
+                    }
+                    finally {
+                        for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                            buffer.release();
+                        }
+                    }
+                })
+                .orElse(null);
     }
 
     @Override
@@ -71,7 +96,27 @@ public class TransactionHandleThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        writer.writeBinary(ByteBuffer.wrap(connectorCodecManager.getTransactionHandleCodec(connectorId).map(codec -> codec.serialize(value)).orElseThrow(() -> new IllegalArgumentException("Can not serialize " + value))));
+        connectorCodecManager.getTransactionHandleCodec(connectorId)
+                .ifPresent(codec -> {
+                    try {
+                        codec.serialize(value, byteBufferList -> {
+                            try {
+                                writer.writeBinaryFromBufferList(byteBufferList);
+                            }
+                            catch (TException e) {
+                                throw new IllegalStateException("Failed to serialize connector handle", e);
+                            }
+                            finally {
+                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                    buffer.release();
+                                }
+                            }
+                        });
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException("Failed to serialize connector handle", e);
+                    }
+                });
     }
 
     @Override

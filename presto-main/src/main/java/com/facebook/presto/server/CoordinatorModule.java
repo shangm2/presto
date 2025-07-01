@@ -17,6 +17,8 @@ import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.discovery.server.EmbeddedDiscoveryModule;
 import com.facebook.airlift.http.server.HttpServerBinder.HttpResourceBinding;
+import com.facebook.airlift.stats.DistributionStat;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.presto.client.QueryResults;
 import com.facebook.presto.cost.CostCalculator;
 import com.facebook.presto.cost.CostCalculator.EstimatedExchanges;
@@ -84,6 +86,7 @@ import com.facebook.presto.server.protocol.QueuedStatementResource;
 import com.facebook.presto.server.protocol.RetryCircuitBreaker;
 import com.facebook.presto.server.remotetask.HttpRemoteTaskFactory;
 import com.facebook.presto.server.remotetask.RemoteTaskStats;
+import com.facebook.presto.server.thrift.ByteBufferPoolStats;
 import com.facebook.presto.spi.memory.ClusterMemoryPoolManager;
 import com.facebook.presto.spi.security.SelectedRole;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
@@ -142,7 +145,7 @@ public class CoordinatorModule
 {
     private static final String DEFAULT_WEBUI_CSP =
             "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-            "font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self'; img-src http: https: data:";
+                    "font-src 'self' https://fonts.gstatic.com; frame-ancestors 'self'; img-src http: https: data:";
 
     public static HttpResourceBinding webUIBinder(Binder binder, String path, String classPathResourceBase)
     {
@@ -265,6 +268,9 @@ public class CoordinatorModule
         binder.bind(RemoteTaskFactory.class).to(HttpRemoteTaskFactory.class).in(Scopes.SINGLETON);
         newExporter(binder).export(RemoteTaskFactory.class).withGeneratedName();
 
+        binder.bind(ByteBufferPoolStats.class).in(Scopes.SINGLETON);
+        newExporter(binder).export(ByteBufferPoolStats.class).withGeneratedName();
+
         binder.bind(RemoteTaskStats.class).in(Scopes.SINGLETON);
         newExporter(binder).export(RemoteTaskStats.class).withGeneratedName();
 
@@ -321,6 +327,22 @@ public class CoordinatorModule
 
         // cleanup
         binder.bind(ExecutorCleanup.class).in(Scopes.SINGLETON);
+    }
+
+    @Provides
+    @Singleton
+    @ForCoordinatorBufferPool
+    public static ByteBufferPool createBufferPool(TaskManagerConfig config)
+    {
+        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
+    }
+
+    @Provides
+    @Singleton
+    @ForCoordinatorBufferPool
+    public static DistributionStat createSplitSizeTracker()
+    {
+        return new DistributionStat();
     }
 
     @Provides
