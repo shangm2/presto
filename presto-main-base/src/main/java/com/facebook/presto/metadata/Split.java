@@ -63,7 +63,7 @@ public final class Split
         this.connectorId = requireNonNull(connectorId, "connectorId is null");
         this.transactionHandle = requireNonNull(transactionHandle, "transactionHandle is null");
         this.connectorSplit = requireNonNull(connectorSplit, "connectorSplit is null");
-        this.lifespan = requireNonNull(lifespan, "lifespan is null");
+        this.lifespan = lifespan; // requireNonNull(lifespan, "lifespan is null");
         this.splitContext = requireNonNull(splitContext, "splitContext is null");
     }
 
