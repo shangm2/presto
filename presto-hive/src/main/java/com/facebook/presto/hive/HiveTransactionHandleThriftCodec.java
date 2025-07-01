@@ -15,32 +15,58 @@ package com.facebook.presto.hive;
 
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.protocol.TChunkedBinaryProtocol;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
-import static com.facebook.presto.hive.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.hive.thrift.ThriftCodecUtils.toThrift;
+import java.util.List;
+import java.util.function.Consumer;
+
 import static java.util.Objects.requireNonNull;
 
 public class HiveTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final ThriftCodec<HiveTransactionHandle> thriftCodec;
+    private final ByteBufAllocator allocator;
 
-    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager)
+    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager, ByteBufAllocator allocator)
     {
         this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(HiveTransactionHandle.class);
+        this.allocator = requireNonNull(allocator, "allocator is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorTransactionHandle handle)
+    public void serialize(ConnectorTransactionHandle transactionHandle, Consumer<List<ByteBuf>> bufferConsumer)
     {
-        return toThrift((HiveTransactionHandle) handle, thriftCodec);
+        requireNonNull(transactionHandle, "transactionHandle is null");
+        requireNonNull(bufferConsumer, "bufferConsumer is null");
+
+        HiveTransactionHandle hiveTransactionHandle = (HiveTransactionHandle) transactionHandle;
+
+        try {
+            TChunkedBinaryProtocol.serialize(
+                    allocator,
+                    hiveTransactionHandle,
+                    thriftCodec::write,
+                    bufferConsumer);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize HiveTransactionHandle", e);
+        }
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(byte[] bytes)
+    public ConnectorTransactionHandle deserialize(List<ByteBuf> buffers)
     {
-        return fromThrift(bytes, thriftCodec);
+        requireNonNull(buffers, "buffers is null");
+        try {
+            return TChunkedBinaryProtocol.deserialize(buffers, thriftCodec::read);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize HiveTransactionHandle", e);
+        }
     }
 }

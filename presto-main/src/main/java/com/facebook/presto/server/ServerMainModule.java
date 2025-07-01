@@ -251,6 +251,8 @@ import com.google.inject.multibindings.MapBinder;
 import io.airlift.slice.Slice;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import javax.annotation.PreDestroy;
 import javax.inject.Singleton;
@@ -864,6 +866,13 @@ public class ServerMainModule
         // Node manager binding
         binder.bind(PluginNodeManager.class).in(Scopes.SINGLETON);
         binder.bind(NodeManager.class).to(PluginNodeManager.class).in(Scopes.SINGLETON);
+    }
+
+    @Provides
+    @Singleton
+    public static ByteBufAllocator createByteBufAllocator()
+    {
+        return PooledByteBufAllocator.DEFAULT;
     }
 
     @Provides
