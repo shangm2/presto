@@ -24,6 +24,7 @@ import com.facebook.airlift.stats.PauseMeter;
 import com.facebook.drift.client.ExceptionClassification;
 import com.facebook.drift.client.address.AddressSelector;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
+import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
 import com.facebook.drift.transport.netty.client.DriftNettyClientModule;
 import com.facebook.drift.transport.netty.server.DriftNettyServerModule;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
@@ -251,6 +252,8 @@ import com.google.inject.multibindings.MapBinder;
 import io.airlift.slice.Slice;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 
 import javax.annotation.PreDestroy;
 import javax.inject.Singleton;
@@ -864,6 +867,22 @@ public class ServerMainModule
         // Node manager binding
         binder.bind(PluginNodeManager.class).in(Scopes.SINGLETON);
         binder.bind(NodeManager.class).to(PluginNodeManager.class).in(Scopes.SINGLETON);
+    }
+
+    @Provides
+    @Singleton
+    @ForChunkedProtocol
+    public static ByteBufAllocator createByteBufAllocator()
+    {
+        return new PooledByteBufAllocator(
+                true,
+                8,
+                0,
+                8192,
+                10,
+                0,
+                0,
+                true);
     }
 
     @Provides

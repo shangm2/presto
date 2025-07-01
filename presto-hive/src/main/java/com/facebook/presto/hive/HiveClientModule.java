@@ -18,6 +18,7 @@ import com.facebook.airlift.concurrent.ExecutorServiceAdapter;
 import com.facebook.airlift.event.client.EventClient;
 import com.facebook.drift.codec.guice.ThriftCodecModule;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
+import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
 import com.facebook.presto.cache.ForCachingFileSystem;
 import com.facebook.presto.hive.HiveDwrfEncryptionProvider.ForCryptoService;
 import com.facebook.presto.hive.HiveDwrfEncryptionProvider.ForUnknown;
@@ -90,6 +91,8 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
 import org.weakref.jmx.MBeanExporter;
 
 import javax.inject.Singleton;
@@ -259,6 +262,22 @@ public class HiveClientModule
 
         binder.bind(PartitionMutator.class).to(HivePartitionMutator.class).in(Scopes.SINGLETON);
         binder.bind(ColumnConverterProvider.class).to(HiveColumnConverterProvider.class).in(Scopes.SINGLETON);
+    }
+
+    @Provides
+    @Singleton
+    @ForChunkedProtocol
+    public static ByteBufAllocator createByteBufAllocator()
+    {
+        return new PooledByteBufAllocator(
+                true,
+                8,
+                0,
+                8192,
+                10,
+                0,
+                0,
+                true);
     }
 
     @ForHiveClient

@@ -21,10 +21,12 @@ import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
+import io.netty.buffer.ByteBuf;
 
 import javax.inject.Inject;
 
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
@@ -60,8 +62,22 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        byte[] bytes = reader.readBinary().array();
-        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).map(codec -> codec.deserialize(bytes)).orElse(null);
+        List<ByteBuf> buffers = reader.readBinaryAsByteBufList();
+        try {
+            return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                    .map(codec -> {
+                        try {
+                            return codec.deserialize(buffers);
+                        }
+                        catch (Exception e) {
+                            throw new RuntimeException("Failed to deserialize connector split", e);
+                        }
+                    })
+                    .orElse(null);
+        }
+        finally {
+            buffers.forEach(ByteBuf::release);
+        }
     }
 
     @Override
@@ -69,7 +85,24 @@ public class ConnectorSplitThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        writer.writeBinary(ByteBuffer.wrap(connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).map(codec -> codec.serialize(value)).orElseThrow(() -> new IllegalArgumentException("Cannot serialize " + value))));
+
+        List<ByteBuf> buffers = new ArrayList<>();
+        connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                .ifPresent(codec -> {
+                    try {
+                        codec.serialize(value, buffers::addAll);
+                        if (buffers.isEmpty()) {
+                            throw new RuntimeException("Failed to serialize connector split");
+                        }
+                        writer.writeBinary(buffers);
+                    }
+                    catch (Exception e) {
+                        throw new RuntimeException("Failed to serialize connector split", e);
+                    }
+                    finally {
+                        buffers.forEach(ByteBuf::release);
+                    }
+                });
     }
 
     @Override

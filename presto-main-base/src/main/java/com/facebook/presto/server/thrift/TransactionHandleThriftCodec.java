@@ -21,10 +21,12 @@ import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
+import io.netty.buffer.ByteBuf;
 
 import javax.inject.Inject;
 
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
@@ -60,8 +62,22 @@ public class TransactionHandleThriftCodec
     public ConnectorTransactionHandle readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        byte[] bytes = reader.readBinary().array();
-        return connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId).map(codec -> codec.deserialize(bytes)).orElse(null);
+        List<ByteBuf> buffers = reader.readBinaryAsByteBufList();
+        try {
+            return connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
+                    .map(codec -> {
+                        try {
+                            return codec.deserialize(buffers);
+                        }
+                        catch (Exception e) {
+                            throw new RuntimeException("Failed to deserialize connector transaction handle", e);
+                        }
+                    })
+                    .orElse(null);
+        }
+        finally {
+            buffers.forEach(ByteBuf::release);
+        }
     }
 
     @Override
@@ -69,7 +85,24 @@ public class TransactionHandleThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        writer.writeBinary(ByteBuffer.wrap(connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId).map(codec -> codec.serialize(value)).orElseThrow(() -> new IllegalArgumentException("Can not serialize " + value))));
+
+        List<ByteBuf> buffers = new ArrayList<>();
+        connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
+                .ifPresent(codec -> {
+                    try {
+                        codec.serialize(value, buffers::addAll);
+                        if (buffers.isEmpty()) {
+                            throw new RuntimeException("Empty buffer list. Failed to serialize connector split");
+                        }
+                        writer.writeBinary(buffers);
+                    }
+                    catch (Exception e) {
+                        throw new RuntimeException("Failed to serialize connector transaction handle", e);
+                    }
+                    finally {
+                        buffers.forEach(ByteBuf::release);
+                    }
+                });
     }
 
     @Override

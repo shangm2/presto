@@ -19,6 +19,7 @@ import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorThriftCodecProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.inject.Provider;
+import io.netty.buffer.ByteBufAllocator;
 
 import java.util.Optional;
 
@@ -28,21 +29,23 @@ public class RemoteThriftCodecProvider
         implements ConnectorThriftCodecProvider
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufAllocator allocator;
 
-    public RemoteThriftCodecProvider(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public RemoteThriftCodecProvider(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufAllocator allocator)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.allocator = requireNonNull(allocator, "allocator is null");
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorSplit>> getConnectorSplitCodec()
     {
-        return Optional.of(new RemoteSplitThriftCodec(thriftCodecManagerProvider));
+        return Optional.of(new RemoteSplitThriftCodec(thriftCodecManagerProvider, allocator));
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorTransactionHandle>> getConnectorTransactionHandleCodec()
     {
-        return Optional.of(new RemoteTransactionHandleThriftCodec(thriftCodecManagerProvider));
+        return Optional.of(new RemoteTransactionHandleThriftCodec(thriftCodecManagerProvider, allocator));
     }
 }

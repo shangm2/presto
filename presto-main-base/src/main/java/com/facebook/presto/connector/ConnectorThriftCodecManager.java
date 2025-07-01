@@ -14,6 +14,7 @@
 package com.facebook.presto.connector;
 
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
@@ -21,6 +22,7 @@ import com.facebook.presto.spi.connector.ConnectorThriftCodecProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.thrift.RemoteThriftCodecProvider;
 import com.google.inject.Provider;
+import io.netty.buffer.ByteBufAllocator;
 
 import javax.inject.Inject;
 
@@ -36,11 +38,10 @@ public class ConnectorThriftCodecManager
     private final Map<String, ConnectorThriftCodecProvider> connectorThriftCodecProviders = new ConcurrentHashMap<>();
 
     @Inject
-    public ConnectorThriftCodecManager(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public ConnectorThriftCodecManager(Provider<ThriftCodecManager> thriftCodecManagerProvider, @ForChunkedProtocol ByteBufAllocator allocator)
     {
         requireNonNull(thriftCodecManagerProvider, "thriftCodecManager is null");
-
-        connectorThriftCodecProviders.put(REMOTE_CONNECTOR_ID.toString(), new RemoteThriftCodecProvider(thriftCodecManagerProvider));
+        connectorThriftCodecProviders.put(REMOTE_CONNECTOR_ID.toString(), new RemoteThriftCodecProvider(thriftCodecManagerProvider, allocator));
     }
 
     public void addConnectorThriftCodecProvider(ConnectorId connectorId, ConnectorThriftCodecProvider connectorThriftCodecProvider)
