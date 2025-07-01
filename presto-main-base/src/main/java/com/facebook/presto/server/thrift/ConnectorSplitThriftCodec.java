@@ -14,17 +14,21 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.stats.DistributionStat;
+import com.facebook.drift.TException;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
 
 import javax.inject.Inject;
 
-import java.nio.ByteBuffer;
+import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
@@ -33,15 +37,23 @@ public class ConnectorSplitThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorSplit.class);
     private final ConnectorThriftCodecManager connectorThriftCodecManager;
+    private final ByteBufferPool pool;
+    private final DistributionStat splitSizeTracker;
 
     @Inject
-    public ConnectorSplitThriftCodec(HandleResolver handleResolver, ConnectorThriftCodecManager connectorThriftCodecManager, JsonCodec<ConnectorSplit> jsonCodec)
+    public ConnectorSplitThriftCodec(HandleResolver handleResolver,
+            ConnectorThriftCodecManager connectorThriftCodecManager,
+            JsonCodec<ConnectorSplit> jsonCodec,
+            @ForPooledByteBuffer ByteBufferPool pool,
+            @ForPooledByteBuffer DistributionStat splitSizeTracker)
     {
         super(ConnectorSplit.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
                 requireNonNull(handleResolver, "handleResolver is null")::getId,
                 handleResolver::getSplitClass);
         this.connectorThriftCodecManager = requireNonNull(connectorThriftCodecManager, "connectorThriftCodecManager is null");
+        this.pool = requireNonNull(pool, "pool is null");
+        this.splitSizeTracker = requireNonNull(splitSizeTracker, "splitSizeTracker is null");
     }
 
     @CodecThriftType
@@ -60,8 +72,26 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        byte[] bytes = reader.readBinary().array();
-        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).map(codec -> codec.deserialize(bytes)).orElse(null);
+        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
+
+        if (byteBufferList.isEmpty()) {
+            return null;
+        }
+        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                .map(codec -> {
+                    try {
+                        return codec.deserialize(byteBufferList);
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException("Failed to deserialize connector split", e);
+                    }
+                    finally {
+                        for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                            buffer.release();
+                        }
+                    }
+                })
+                .orElse(null);
     }
 
     @Override
@@ -69,13 +99,39 @@ public class ConnectorSplitThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        writer.writeBinary(ByteBuffer.wrap(connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).map(codec -> codec.serialize(value)).orElseThrow(() -> new IllegalArgumentException("Cannot serialize " + value))));
+
+        connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                .ifPresent(codec -> {
+                    try {
+                        codec.serialize(value, byteBufferList -> {
+                            try {
+                                int size = 0;
+                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                    size += buffer.getBuffer().remaining();
+                                }
+                                splitSizeTracker.add(size);
+
+                                writer.writeBinaryFromBufferList(byteBufferList);
+                            }
+                            catch (TException e) {
+                                throw new IllegalStateException("Failed to serialize connector split", e);
+                            }
+                            finally {
+                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                    buffer.release();
+                                }
+                            }
+                        });
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException("Failed to serialize connector split", e);
+                    }
+                });
     }
 
     @Override
     public boolean isThriftCodecAvailable(String connectorId)
     {
-        boolean result = connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
-        return result;
+        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
     }
 }

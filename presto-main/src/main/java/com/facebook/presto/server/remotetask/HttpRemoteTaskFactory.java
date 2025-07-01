@@ -20,8 +20,11 @@ import com.facebook.airlift.json.Codec;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.smile.SmileCodec;
 import com.facebook.airlift.stats.DecayCounter;
+import com.facebook.airlift.stats.DistributionStat;
 import com.facebook.airlift.stats.ExponentialDecay;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.drift.transport.netty.codec.Protocol;
 import com.facebook.presto.Session;
 import com.facebook.presto.connector.ConnectorTypeSerdeManager;
@@ -112,6 +115,8 @@ public class HttpRemoteTaskFactory
     private final DecayCounter taskUpdateRequestSize;
     private final boolean taskUpdateSizeTrackingEnabled;
     private final Optional<SafeEventLoopGroup> eventLoopGroup;
+    private final ByteBufferPool pool;
+    private final DistributionStat splitSizeTracker;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -137,7 +142,9 @@ public class HttpRemoteTaskFactory
             MetadataManager metadataManager,
             QueryManager queryManager,
             HandleResolver handleResolver,
-            ConnectorTypeSerdeManager connectorTypeSerdeManager)
+            ConnectorTypeSerdeManager connectorTypeSerdeManager,
+            @ForPooledByteBuffer ByteBufferPool pool,
+            @ForPooledByteBuffer DistributionStat splitSizeTracker)
     {
         this.httpClient = httpClient;
         this.locationFactory = locationFactory;
@@ -228,6 +235,21 @@ public class HttpRemoteTaskFactory
                 return new SafeEventLoop(this, executor);
             }
         }) : Optional.empty();
+        this.pool = requireNonNull(pool, "pool is null");
+        this.splitSizeTracker = requireNonNull(splitSizeTracker, "splitSizeTracker is null");
+    }
+
+    @Managed
+    public int getByteBufferPoolSize()
+    {
+        return pool.getSize();
+    }
+
+    @Managed
+    @Nested
+    public DistributionStat getSplitSize()
+    {
+        return splitSizeTracker;
     }
 
     @Managed

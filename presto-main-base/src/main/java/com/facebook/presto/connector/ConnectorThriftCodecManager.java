@@ -13,7 +13,9 @@
  */
 package com.facebook.presto.connector;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
@@ -36,11 +38,10 @@ public class ConnectorThriftCodecManager
     private final Map<String, ConnectorThriftCodecProvider> connectorThriftCodecProviders = new ConcurrentHashMap<>();
 
     @Inject
-    public ConnectorThriftCodecManager(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public ConnectorThriftCodecManager(Provider<ThriftCodecManager> thriftCodecManagerProvider, @ForPooledByteBuffer ByteBufferPool pool)
     {
         requireNonNull(thriftCodecManagerProvider, "thriftCodecManager is null");
-
-        connectorThriftCodecProviders.put(REMOTE_CONNECTOR_ID.toString(), new RemoteThriftCodecProvider(thriftCodecManagerProvider));
+        connectorThriftCodecProviders.put(REMOTE_CONNECTOR_ID.toString(), new RemoteThriftCodecProvider(thriftCodecManagerProvider, pool));
     }
 
     public void addConnectorThriftCodecProvider(ConnectorId connectorId, ConnectorThriftCodecProvider connectorThriftCodecProvider)
