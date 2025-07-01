@@ -78,6 +78,7 @@ public class FunctionPluginManager
     private final AtomicBoolean pluginsLoading = new AtomicBoolean();
     private final AtomicBoolean pluginsLoaded = new AtomicBoolean();
     private final FunctionAndTypeManager functionAndTypeManager;
+
     @Inject
     public FunctionPluginManager(
             PluginManagerConfig config,
