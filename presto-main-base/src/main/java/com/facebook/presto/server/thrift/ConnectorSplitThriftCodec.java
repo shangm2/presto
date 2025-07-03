@@ -14,7 +14,6 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.TException;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -92,22 +91,18 @@ public class ConnectorSplitThriftCodec
                 .ifPresent(codec -> {
                     try {
                         codec.serialize(value, buffers::addAll);
+                        if (buffers.isEmpty()) {
+                            throw new RuntimeException("Failed to serialize connector split");
+                        }
+                        writer.writeBinary(buffers);
                     }
                     catch (Exception e) {
                         throw new RuntimeException("Failed to serialize connector split", e);
                     }
+                    finally {
+                        buffers.forEach(ByteBuf::release);
+                    }
                 });
-        if (buffers.isEmpty()) {
-            throw new RuntimeException("Failed to serialize connector split");
-        }
-        try {
-            writer.writeBinary(buffers);
-        }
-        catch (TException e) {
-            // Release the buffer if fail to write
-            buffers.forEach(ByteBuf::release);
-            throw new RuntimeException(e);
-        }
     }
 
     @Override
