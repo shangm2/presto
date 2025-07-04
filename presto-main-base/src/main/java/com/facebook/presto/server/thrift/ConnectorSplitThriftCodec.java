@@ -75,6 +75,7 @@ public class ConnectorSplitThriftCodec
     @Override
     public boolean isThriftCodecAvailable(String connectorId)
     {
-        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
+        boolean result = connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
+        return result;
     }
 }
