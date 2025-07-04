@@ -68,6 +68,8 @@
                                 <class>com.facebook.presto.hive.HiveBucketProperty</class>
                                 <class>com.facebook.presto.hive.HiveSplit$BucketConversion</class>
                                 <class>com.facebook.presto.hive.HiveColumnHandle</class>
+                                <class>com.facebook.presto.split.RemoteSplit</class>
+                                <class>com.facebook.presto.metadata.RemoteTransactionHandle</class>
                             </classes>
                             <namespaces>
                                 <cpp2>facebook.presto.thrift</cpp2>

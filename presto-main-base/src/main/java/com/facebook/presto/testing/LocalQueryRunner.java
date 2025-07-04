@@ -14,6 +14,7 @@
 package com.facebook.presto.testing;
 
 import com.facebook.airlift.node.NodeInfo;
+import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.ClientRequestFilterManager;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
 import com.facebook.presto.PagesIndexPageSorter;
@@ -517,7 +518,7 @@ public class LocalQueryRunner
                 new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer),
                 blockEncodingManager,
                 featuresConfig,
-                new ConnectorThriftCodecManager());
+                new ConnectorThriftCodecManager(ThriftCodecManager::new));
 
         GlobalSystemConnectorFactory globalSystemConnectorFactory = new GlobalSystemConnectorFactory(ImmutableSet.of(
                 new NodeSystemTable(nodeManager),
