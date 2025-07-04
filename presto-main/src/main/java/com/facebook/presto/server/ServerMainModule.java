@@ -24,6 +24,7 @@ import com.facebook.airlift.stats.PauseMeter;
 import com.facebook.drift.client.ExceptionClassification;
 import com.facebook.drift.client.address.AddressSelector;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
+import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
 import com.facebook.drift.transport.netty.client.DriftNettyClientModule;
 import com.facebook.drift.transport.netty.server.DriftNettyServerModule;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
@@ -870,9 +871,18 @@ public class ServerMainModule
 
     @Provides
     @Singleton
+    @ForChunkedProtocol
     public static ByteBufAllocator createByteBufAllocator()
     {
-        return PooledByteBufAllocator.DEFAULT;
+        return new PooledByteBufAllocator(
+                true,
+                4,
+                4,
+                8192,
+                11,
+                0,
+                0,
+                true);
     }
 
     @Provides

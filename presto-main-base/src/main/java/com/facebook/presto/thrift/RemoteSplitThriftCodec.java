@@ -14,34 +14,60 @@
 package com.facebook.presto.thrift;
 
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.protocol.TChunkedBinaryProtocol;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.split.RemoteSplit;
 import com.google.inject.Provider;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.toThrift;
+import java.util.List;
+import java.util.function.Consumer;
+
 import static java.util.Objects.requireNonNull;
 
 public class RemoteSplitThriftCodec
         implements ConnectorThriftCodec<ConnectorSplit>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufAllocator allocator;
 
-    public RemoteSplitThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public RemoteSplitThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufAllocator allocator)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.allocator = requireNonNull(allocator, "allocator is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorSplit split)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBuf>> bufferConsumer)
     {
-        return toThrift((RemoteSplit) split, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+        requireNonNull(connectorSplit, "split is null");
+        requireNonNull(bufferConsumer, "bufferConsumer is null");
+
+        RemoteSplit remoteSplit = (RemoteSplit) connectorSplit;
+
+        try {
+            TChunkedBinaryProtocol.serialize(
+                    allocator,
+                    remoteSplit,
+                    thriftCodecManagerProvider.get().getCodec(RemoteSplit.class)::write,
+                    bufferConsumer);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize RemoteSplit", e);
+        }
     }
 
     @Override
-    public ConnectorSplit deserialize(byte[] bytes)
+    public ConnectorSplit deserialize(List<ByteBuf> buffers)
     {
-        return fromThrift(bytes, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+        requireNonNull(buffers, "buffers is null");
+        try {
+            return TChunkedBinaryProtocol.deserialize(buffers, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class)::read);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize RemoteSplit", e);
+        }
     }
 }
