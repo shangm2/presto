@@ -270,11 +270,11 @@ public class HiveClientModule
     public static ByteBufAllocator createByteBufAllocator()
     {
         return new PooledByteBufAllocator(
-                true,
-                4,
-                4,
+                false,
+                8,
+                0,
                 8192,
-                11,
+                10,
                 0,
                 0,
                 true);

@@ -875,14 +875,14 @@ public class ServerMainModule
     public static ByteBufAllocator createByteBufAllocator()
     {
         return new PooledByteBufAllocator(
-                true,
-                4,
-                4,
-                8192,
-                11,
-                0,
-                0,
-                true);
+            false,
+            8,
+            0,
+            8192,
+            10,
+            0,
+            0,
+            true);
     }
 
     @Provides
