@@ -19,9 +19,9 @@ import com.facebook.presto.metadata.RemoteTransactionHandle;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.inject.Provider;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -40,7 +40,7 @@ public class RemoteTransactionHandleThriftCodec
     }
 
     @Override
-    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBuf>> bufferConsumer)
+    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBuffer>> bufferConsumer)
     {
         requireNonNull(handle, "split is null");
         requireNonNull(bufferConsumer, "bufferConsumer is null");
@@ -60,7 +60,7 @@ public class RemoteTransactionHandleThriftCodec
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(List<ByteBuf> buffers)
+    public ConnectorTransactionHandle deserialize(List<ByteBuffer> buffers)
     {
         requireNonNull(buffers, "buffers is null");
         try {

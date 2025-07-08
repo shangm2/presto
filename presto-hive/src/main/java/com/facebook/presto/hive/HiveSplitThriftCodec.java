@@ -18,9 +18,9 @@ import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.drift.protocol.TChunkedBinaryProtocol;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -39,7 +39,7 @@ public class HiveSplitThriftCodec
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBuf>> bufferConsumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBuffer>> bufferConsumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(bufferConsumer, "bufferConsumer is null");
@@ -59,7 +59,7 @@ public class HiveSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(List<ByteBuf> buffers)
+    public ConnectorSplit deserialize(List<ByteBuffer> buffers)
     {
         requireNonNull(buffers, "buffers is null");
         try {

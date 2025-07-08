@@ -18,13 +18,16 @@ import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
+import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 
 import javax.inject.Inject;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,15 +38,20 @@ public class ConnectorSplitThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorSplit.class);
     private final ConnectorThriftCodecManager connectorThriftCodecManager;
+    private final ByteBufAllocator allocator;
 
     @Inject
-    public ConnectorSplitThriftCodec(HandleResolver handleResolver, ConnectorThriftCodecManager connectorThriftCodecManager, JsonCodec<ConnectorSplit> jsonCodec)
+    public ConnectorSplitThriftCodec(HandleResolver handleResolver,
+            ConnectorThriftCodecManager connectorThriftCodecManager,
+            JsonCodec<ConnectorSplit> jsonCodec,
+            @ForChunkedProtocol ByteBufAllocator allocator)
     {
         super(ConnectorSplit.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
                 requireNonNull(handleResolver, "handleResolver is null")::getId,
                 handleResolver::getSplitClass);
         this.connectorThriftCodecManager = requireNonNull(connectorThriftCodecManager, "connectorThriftCodecManager is null");
+        this.allocator = requireNonNull(allocator, "allocator is null");
     }
 
     @CodecThriftType
@@ -62,8 +70,21 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBuf> buffers = reader.readBinaryAsByteBufList();
+        List<ByteBuf> byteBufs = reader.readBinaryAsByteBufList();
+        List<ByteBuffer> buffers = new ArrayList<>(byteBufs.size());
         try {
+            for (ByteBuf byteBuf : byteBufs) {
+                if (byteBuf.nioBufferCount() > 0) {
+                    buffers.add(byteBuf.nioBuffer());
+                }
+                else {
+                    // Fallback - should rarely happen
+                    ByteBuffer buffer = ByteBuffer.allocate(byteBuf.readableBytes());
+                    byteBuf.readBytes(buffer);
+                    buffer.flip();
+                    buffers.add(buffer);
+                }
+            }
             return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
                     .map(codec -> {
                         try {
@@ -76,7 +97,8 @@ public class ConnectorSplitThriftCodec
                     .orElse(null);
         }
         finally {
-            buffers.forEach(ByteBuf::release);
+            buffers.clear();
+            byteBufs.forEach(ByteBuf::release);
         }
     }
 
@@ -86,21 +108,36 @@ public class ConnectorSplitThriftCodec
     {
         requireNonNull(value, "value is null");
 
-        List<ByteBuf> buffers = new ArrayList<>();
+        List<ByteBuffer> buffers = new ArrayList<>();
+        List<ByteBuf> byteBufs = new ArrayList<>();
         connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
                 .ifPresent(codec -> {
                     try {
                         codec.serialize(value, buffers::addAll);
-                        if (buffers.isEmpty()) {
+                        for (ByteBuffer buffer : buffers) {
+                            ByteBuf byteBuf;
+                            if (buffer.isDirect()) {
+                                // Wrap direct ByteBuffer without copying
+                                byteBuf = allocator.directBuffer(buffer.remaining());
+                                byteBuf.writeBytes(buffer);
+                            }
+                            else {
+                                // Heap ByteBuffer
+                                byteBuf = allocator.heapBuffer(buffer.remaining());
+                                byteBuf.writeBytes(buffer);
+                            }
+                            byteBufs.add(byteBuf);
+                        }
+                        if (byteBufs.isEmpty()) {
                             throw new RuntimeException("Failed to serialize connector split");
                         }
-                        writer.writeBinary(buffers);
+                        writer.writeBinary(byteBufs);
                     }
                     catch (Exception e) {
                         throw new RuntimeException("Failed to serialize connector split", e);
                     }
                     finally {
-                        buffers.forEach(ByteBuf::release);
+                        byteBufs.forEach(ByteBuf::release);
                     }
                 });
     }
@@ -108,7 +145,6 @@ public class ConnectorSplitThriftCodec
     @Override
     public boolean isThriftCodecAvailable(String connectorId)
     {
-        boolean result = connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
-        return result;
+        return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId).isPresent();
     }
 }
