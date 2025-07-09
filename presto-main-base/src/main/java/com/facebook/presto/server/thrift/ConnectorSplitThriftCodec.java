@@ -14,11 +14,12 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.drift.buffer.BufferPool;
+import com.facebook.drift.buffer.OwnedBufferList;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
@@ -27,7 +28,6 @@ import com.facebook.presto.spi.ConnectorSplit;
 import javax.inject.Inject;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -69,15 +69,17 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBuffer> buffers = reader.readBinaryToBufferList(pool);
-        if (buffers.isEmpty()) {
+        OwnedBufferList ownedBufferList = reader.readBinaryToBufferList(pool);
+        List<ByteBuffer> bufferView = ownedBufferList.getBuffers();
+
+        if (bufferView.isEmpty()) {
             return null;
         }
         try {
             return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
                     .map(codec -> {
                         try {
-                            return codec.deserialize(buffers);
+                            return codec.deserialize(bufferView);
                         }
                         catch (Exception e) {
                             throw new RuntimeException("Failed to deserialize connector split", e);
@@ -86,9 +88,7 @@ public class ConnectorSplitThriftCodec
                     .orElse(null);
         }
         finally {
-            for (ByteBuffer buffer : buffers) {
-                pool.release(buffer);
-            }
+            ownedBufferList.close();
         }
     }
 
@@ -98,25 +98,26 @@ public class ConnectorSplitThriftCodec
     {
         requireNonNull(value, "value is null");
 
-        List<ByteBuffer> buffers = new ArrayList<>();
-        connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
-                .ifPresent(codec -> {
-                    try {
-                        codec.serialize(value, buffers::addAll);
-                        if (buffers.isEmpty()) {
-                            throw new RuntimeException("Failed to serialize connector split");
+        try (OwnedBufferList ownedBufferList = new OwnedBufferList(pool)) {
+            connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                    .ifPresent(codec -> {
+                        try {
+                            codec.serialize(value, );
+                            if (buffers.isEmpty()) {
+                                throw new RuntimeException("Failed to serialize connector split");
+                            }
+                            writer.writeBinaryFromBufferList(buffers);
                         }
-                        writer.writeBinaryFromBufferList(buffers);
-                    }
-                    catch (Exception e) {
-                        throw new RuntimeException("Failed to serialize connector split", e);
-                    }
-                    finally {
-                        for (ByteBuffer buffer : buffers) {
-                            pool.release(buffer);
+                        catch (Exception e) {
+                            throw new RuntimeException("Failed to serialize connector split", e);
                         }
-                    }
-                });
+                        finally {
+                            for (ByteBuffer buffer : buffers) {
+                                pool.release(buffer);
+                            }
+                        }
+                    });
+        }
     }
 
     @Override

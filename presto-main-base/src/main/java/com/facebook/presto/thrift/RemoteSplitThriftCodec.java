@@ -13,16 +13,15 @@
  */
 package com.facebook.presto.thrift;
 
+import com.facebook.drift.buffer.BufferPool;
+import com.facebook.drift.buffer.OwnedBufferList;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.presto.server.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.split.RemoteSplit;
 import com.google.inject.Provider;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -40,7 +39,7 @@ public class RemoteSplitThriftCodec
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBuffer>> consumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<OwnedBufferList> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -56,7 +55,7 @@ public class RemoteSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(List<ByteBuffer> buffers)
+    public ConnectorSplit deserialize(OwnedBufferList buffers)
     {
         requireNonNull(buffers, "buffers is null");
 
