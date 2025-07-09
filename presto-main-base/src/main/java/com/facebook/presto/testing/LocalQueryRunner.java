@@ -15,6 +15,7 @@ package com.facebook.presto.testing;
 
 import com.facebook.airlift.node.NodeInfo;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.presto.ClientRequestFilterManager;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
 import com.facebook.presto.PagesIndexPageSorter;
@@ -243,7 +244,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Closer;
 import io.airlift.units.Duration;
-import io.netty.buffer.UnpooledByteBufAllocator;
 import org.intellij.lang.annotations.Language;
 import org.weakref.jmx.MBeanExporter;
 import org.weakref.jmx.testing.TestingMBeanServer;
@@ -519,7 +519,7 @@ public class LocalQueryRunner
                 new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer),
                 blockEncodingManager,
                 featuresConfig,
-                new ConnectorThriftCodecManager(ThriftCodecManager::new, new UnpooledByteBufAllocator(false)));
+                new ConnectorThriftCodecManager(ThriftCodecManager::new, new BufferPool(200, 10 * 1024 * 1024)));
 
         GlobalSystemConnectorFactory globalSystemConnectorFactory = new GlobalSystemConnectorFactory(ImmutableSet.of(
                 new NodeSystemTable(nodeManager),

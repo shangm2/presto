@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 @Experimental
 public interface ConnectorThriftCodec<T>
 {
-    void serialize(T value, Consumer<List<ByteBuffer>> bufferConsumer)
+    void serialize(T value, Consumer<List<ByteBuffer>> consumer)
             throws Exception;
 
     T deserialize(List<ByteBuffer> buffers)

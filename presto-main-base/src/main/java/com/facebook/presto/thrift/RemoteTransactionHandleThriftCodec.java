@@ -14,12 +14,12 @@
 package com.facebook.presto.thrift;
 
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TChunkedBinaryProtocol;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.presto.metadata.RemoteTransactionHandle;
+import com.facebook.presto.server.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.inject.Provider;
-import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -31,28 +31,24 @@ public class RemoteTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufAllocator allocator;
+    private final BufferPool pool;
 
-    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufAllocator allocator)
+    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, BufferPool pool)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.allocator = requireNonNull(allocator, "allocator is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBuffer>> bufferConsumer)
+    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBuffer>> consumer)
     {
         requireNonNull(handle, "split is null");
-        requireNonNull(bufferConsumer, "bufferConsumer is null");
+        requireNonNull(consumer, "consumer is null");
 
         RemoteTransactionHandle remoteHandle = (RemoteTransactionHandle) handle;
 
         try {
-            TChunkedBinaryProtocol.serialize(
-                    allocator,
-                    remoteHandle,
-                    thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class)::write,
-                    bufferConsumer);
+            ThriftCodecUtils.serializeToBufferList(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);
@@ -64,7 +60,7 @@ public class RemoteTransactionHandleThriftCodec
     {
         requireNonNull(buffers, "buffers is null");
         try {
-            return TChunkedBinaryProtocol.deserialize(buffers, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class)::read);
+            return ThriftCodecUtils.deserializeFromBufferList(buffers, pool, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), RemoteTransactionHandleThriftCodec.class);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteTransactionHandle", e);

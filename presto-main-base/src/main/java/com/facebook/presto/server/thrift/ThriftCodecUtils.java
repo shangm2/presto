@@ -26,15 +26,24 @@ import com.facebook.drift.protocol.TBinaryProtocol;
 import com.facebook.drift.protocol.TField;
 import com.facebook.drift.protocol.TMemoryBuffer;
 import com.facebook.drift.protocol.TMemoryBufferWriteOnly;
+import com.facebook.drift.protocol.TProtocol;
 import com.facebook.drift.protocol.TProtocolException;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
+import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
+import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
+import com.facebook.presto.split.RemoteSplit;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static com.facebook.drift.annotations.ThriftField.Requiredness.NONE;
 import static java.lang.String.format;
@@ -134,6 +143,81 @@ public class ThriftCodecUtils
         }
         catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T deserializeFromBufferList(
+            List<ByteBuffer> buffers,
+            BufferPool pool,
+            ThriftCodec<T> codec,
+            Class clazz)
+            throws Exception
+    {
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (ByteBuffer buffer : buffers) {
+                ByteBuffer duplicate = buffer.duplicate();
+                while (duplicate.hasRemaining()) {
+                    byte b = duplicate.get();
+                    sb.append(String.format("%02X", b & 0xFF));
+                }
+            }
+
+            if (clazz == RemoteSplit.class) {
+                System.out.println(format("=====> Original buffer list %s", sb));
+            }
+
+            ByteBufferInputTransport transport = new ByteBufferInputTransport(buffers);
+            TProtocol protocol = new TBinaryProtocol(transport);
+            T value = codec.read(protocol);
+
+            for (ByteBuffer buffer : buffers) {
+                pool.release(buffer);
+            }
+            if (value instanceof RemoteSplit) {
+                System.out.println(format("=====> After deserialization: %s", value));
+            }
+
+            return value;
+        }
+        catch (Exception e) {
+            for (ByteBuffer buffer : buffers) {
+                pool.release(buffer);
+            }
+            throw e;
+        }
+    }
+
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, BufferPool pool, Consumer<List<ByteBuffer>> consumer)
+            throws Exception
+    {
+        List<ByteBuffer> buffers = new ArrayList<>();
+        ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, buffers);
+
+        try {
+            TProtocol protocol = new TBinaryProtocol(transport);
+            codec.write(value, protocol);
+
+            transport.finish();
+            consumer.accept(buffers);
+        }
+        catch (Exception e) {
+            for (ByteBuffer buffer : buffers) {
+                pool.release(buffer);
+            }
+            throw e;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (ByteBuffer buffer : buffers) {
+            ByteBuffer duplicate = buffer.duplicate();
+            while (duplicate.hasRemaining()) {
+                byte b = duplicate.get();
+                sb.append(String.format("%02X", b & 0xFF));
+            }
+        }
+
+        if (value instanceof RemoteSplit) {
+            System.out.println(format("=====> Original split %s, after serialization: %s", value, sb));
         }
     }
 }

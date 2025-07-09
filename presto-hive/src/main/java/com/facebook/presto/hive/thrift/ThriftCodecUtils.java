@@ -26,15 +26,23 @@ import com.facebook.drift.protocol.TBinaryProtocol;
 import com.facebook.drift.protocol.TField;
 import com.facebook.drift.protocol.TMemoryBuffer;
 import com.facebook.drift.protocol.TMemoryBufferWriteOnly;
+import com.facebook.drift.protocol.TProtocol;
 import com.facebook.drift.protocol.TProtocolException;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
+import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
+import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static com.facebook.drift.annotations.ThriftField.Requiredness.NONE;
 import static java.lang.String.format;
@@ -134,6 +142,46 @@ public class ThriftCodecUtils
         }
         catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T deserializeFromBufferList(
+            List<ByteBuffer> buffers,
+            BufferPool pool,
+            ThriftCodec<T> codec)
+            throws Exception
+    {
+        try {
+            ByteBufferInputTransport transport = new ByteBufferInputTransport(buffers);
+            TProtocol protocol = new TBinaryProtocol(transport);
+            return codec.read(protocol);
+        }
+        catch (Exception e) {
+            for (ByteBuffer buffer : buffers) {
+                pool.release(buffer);
+            }
+            throw e;
+        }
+    }
+
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, BufferPool pool, Consumer<List<ByteBuffer>> consumer)
+            throws Exception
+    {
+        List<ByteBuffer> buffers = new ArrayList<>();
+        ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, buffers);
+
+        try {
+            TProtocol protocol = new TBinaryProtocol(transport);
+            codec.write(value, protocol);
+
+            transport.finish();
+            consumer.accept(buffers);
+        }
+        catch (Exception e) {
+            for (ByteBuffer buffer : buffers) {
+                pool.release(buffer);
+            }
+            throw e;
         }
     }
 }

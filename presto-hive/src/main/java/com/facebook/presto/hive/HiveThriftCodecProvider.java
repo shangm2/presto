@@ -14,12 +14,12 @@
 package com.facebook.presto.hive;
 
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorThriftCodecProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import io.netty.buffer.ByteBufAllocator;
 
 import javax.inject.Inject;
 
@@ -31,24 +31,24 @@ public class HiveThriftCodecProvider
         implements ConnectorThriftCodecProvider
 {
     private final ThriftCodecManager thriftCodecManager;
-    private final ByteBufAllocator allocator;
+    private final BufferPool pool;
 
     @Inject
-    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager, @ForChunkedProtocol ByteBufAllocator allocator)
+    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager, @ForPooledByteBuffer BufferPool pool)
     {
         this.thriftCodecManager = requireNonNull(thriftCodecManager, "thriftCodecManager is null");
-        this.allocator = requireNonNull(allocator, "allocator is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorSplit>> getConnectorSplitCodec()
     {
-        return Optional.of(new HiveSplitThriftCodec(thriftCodecManager, allocator));
+        return Optional.of(new HiveSplitThriftCodec(thriftCodecManager, pool));
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorTransactionHandle>> getConnectorTransactionHandleCodec()
     {
-        return Optional.of(new HiveTransactionHandleThriftCodec(thriftCodecManager, allocator));
+        return Optional.of(new HiveTransactionHandleThriftCodec(thriftCodecManager, pool));
     }
 }

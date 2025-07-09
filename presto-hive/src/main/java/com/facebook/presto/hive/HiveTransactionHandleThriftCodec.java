@@ -15,10 +15,10 @@ package com.facebook.presto.hive;
 
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TChunkedBinaryProtocol;
+import com.facebook.drift.protocol.bytebuffer.BufferPool;
+import com.facebook.presto.hive.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import io.netty.buffer.ByteBufAllocator;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -30,28 +30,24 @@ public class HiveTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final ThriftCodec<HiveTransactionHandle> thriftCodec;
-    private final ByteBufAllocator allocator;
+    private final BufferPool pool;
 
-    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager, ByteBufAllocator allocator)
+    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager, BufferPool pool)
     {
         this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(HiveTransactionHandle.class);
-        this.allocator = requireNonNull(allocator, "allocator is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorTransactionHandle transactionHandle, Consumer<List<ByteBuffer>> bufferConsumer)
+    public void serialize(ConnectorTransactionHandle transactionHandle, Consumer<List<ByteBuffer>> consumer)
     {
         requireNonNull(transactionHandle, "transactionHandle is null");
-        requireNonNull(bufferConsumer, "bufferConsumer is null");
+        requireNonNull(consumer, "consumer is null");
 
         HiveTransactionHandle hiveTransactionHandle = (HiveTransactionHandle) transactionHandle;
 
         try {
-            TChunkedBinaryProtocol.serialize(
-                    allocator,
-                    hiveTransactionHandle,
-                    thriftCodec::write,
-                    bufferConsumer);
+            ThriftCodecUtils.serializeToBufferList(hiveTransactionHandle, thriftCodec, pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize HiveTransactionHandle", e);
@@ -63,7 +59,7 @@ public class HiveTransactionHandleThriftCodec
     {
         requireNonNull(buffers, "buffers is null");
         try {
-            return TChunkedBinaryProtocol.deserialize(buffers, thriftCodec::read);
+            return ThriftCodecUtils.deserializeFromBufferList(buffers, pool, thriftCodec);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize HiveTransactionHandle", e);
