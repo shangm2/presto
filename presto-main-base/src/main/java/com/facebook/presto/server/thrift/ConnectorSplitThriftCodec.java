@@ -70,6 +70,9 @@ public class ConnectorSplitThriftCodec
             throws Exception
     {
         List<ByteBuffer> buffers = reader.readBinaryToBufferList(pool);
+        if (buffers.isEmpty()) {
+            return null;
+        }
         try {
             return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
                     .map(codec -> {

@@ -207,16 +207,17 @@ public class ThriftCodecUtils
             }
             throw e;
         }
-        StringBuilder sb = new StringBuilder();
-        for (ByteBuffer buffer : buffers) {
-            ByteBuffer duplicate = buffer.duplicate();
-            while (duplicate.hasRemaining()) {
-                byte b = duplicate.get();
-                sb.append(String.format("%02X", b & 0xFF));
-            }
-        }
 
         if (value instanceof RemoteSplit) {
+            StringBuilder sb = new StringBuilder();
+            for (ByteBuffer buffer : buffers) {
+                ByteBuffer duplicate = buffer.duplicate();
+                while (duplicate.hasRemaining()) {
+                    byte b = duplicate.get();
+                    sb.append(String.format("%02X", b & 0xFF));
+                }
+            }
+
             System.out.println(format("=====> Original split %s, after serialization: %s", value, sb));
         }
     }

@@ -519,7 +519,7 @@ public class LocalQueryRunner
                 new FilterStatsCalculator(metadata, scalarStatsCalculator, statsNormalizer),
                 blockEncodingManager,
                 featuresConfig,
-                new ConnectorThriftCodecManager(ThriftCodecManager::new, new BufferPool(200, 10 * 1024 * 1024)));
+                new ConnectorThriftCodecManager(ThriftCodecManager::new, new BufferPool()));
 
         GlobalSystemConnectorFactory globalSystemConnectorFactory = new GlobalSystemConnectorFactory(ImmutableSet.of(
                 new NodeSystemTable(nodeManager),

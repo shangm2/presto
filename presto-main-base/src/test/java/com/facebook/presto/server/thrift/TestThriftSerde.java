@@ -24,7 +24,7 @@ public class TestThriftSerde
         ThriftCodec<RemoteSplit> thriftCodec = codecManager.getCodec(RemoteSplit.class);
         BufferPool bufferPool = new BufferPool(8, 1024);
 
-        RemoteSplit expectedSplit = new RemoteSplit(new Location("http://127.0.0.1:8080/v1/task/20250709_081315_00001_8kddd.2.0.0.0/results/0"), new TaskId("20250709_081315_00001_8kddd", 2, 0, 0, 0));
+        RemoteSplit expectedSplit = new RemoteSplit(new Location("http://127.0.0.1:56080/v1/task/20250709_104120_00002_wekgx.1.0.0.0/results/0"), new TaskId("20250709_104120_00002_wekgx", 1, 0, 0, 0));
 
         System.out.println(expectedSplit);
 
@@ -37,12 +37,17 @@ public class TestThriftSerde
                     buffers::addAll);
             bufferCount = buffers.size();
 
-            ByteBuffer duplicate = buffers.get(0).duplicate();
-            StringBuilder sb = new StringBuilder(duplicate.remaining() * 3);
-            while (duplicate.hasRemaining()) {
-                byte b = duplicate.get();
-                sb.append(String.format("%02X", b & 0xFF));
+            System.out.println(bufferCount);
+            StringBuilder sb = new StringBuilder();
+            for (ByteBuffer buffer : buffers) {
+                ByteBuffer duplicate = buffer.duplicate();
+                while (duplicate.hasRemaining()) {
+                    byte b = duplicate.get();
+                    sb.append(String.format("%02X", b & 0xFF));
+                }
             }
+
+            System.out.println("in test: " + sb);
 
             RemoteSplit split = ThriftCodecUtils.deserializeFromBufferList(buffers, bufferPool, thriftCodec, RemoteSplit.class);
 
