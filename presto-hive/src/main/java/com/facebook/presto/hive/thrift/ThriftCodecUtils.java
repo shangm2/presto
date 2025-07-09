@@ -15,6 +15,8 @@ package com.facebook.presto.hive.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.TException;
+import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.metadata.DefaultThriftTypeReference;
 import com.facebook.drift.codec.metadata.FieldKind;
@@ -32,15 +34,11 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -146,42 +144,33 @@ public class ThriftCodecUtils
     }
 
     public static <T> T deserializeFromBufferList(
-            List<ByteBuffer> buffers,
-            BufferPool pool,
+            ByteBufferList byteBufferList,
             ThriftCodec<T> codec)
             throws Exception
     {
         try {
-            ByteBufferInputTransport transport = new ByteBufferInputTransport(buffers);
+            ByteBufferInputTransport transport = new ByteBufferInputTransport(byteBufferList);
             TProtocol protocol = new TBinaryProtocol(transport);
             return codec.read(protocol);
         }
-        catch (Exception e) {
-            for (ByteBuffer buffer : buffers) {
-                pool.release(buffer);
-            }
-            throw e;
+        finally {
+            byteBufferList.close();
         }
     }
 
-    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, BufferPool pool, Consumer<List<ByteBuffer>> consumer)
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<ByteBufferList> consumer)
             throws Exception
     {
-        List<ByteBuffer> buffers = new ArrayList<>();
-        ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, buffers);
-
+        ByteBufferList byteBufferList = new ByteBufferList(pool);
+        ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, byteBufferList);
+        TProtocol protocol = new TBinaryProtocol(transport);
         try {
-            TProtocol protocol = new TBinaryProtocol(transport);
             codec.write(value, protocol);
-
             transport.finish();
-            consumer.accept(buffers);
+            consumer.accept(byteBufferList);
         }
-        catch (Exception e) {
-            for (ByteBuffer buffer : buffers) {
-                pool.release(buffer);
-            }
-            throw e;
+        finally {
+            byteBufferList.close();
         }
     }
 }

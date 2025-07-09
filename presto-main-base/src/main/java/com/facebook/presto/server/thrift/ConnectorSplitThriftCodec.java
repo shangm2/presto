@@ -14,8 +14,8 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.buffer.BufferPool;
-import com.facebook.drift.buffer.OwnedBufferList;
+import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -37,13 +37,13 @@ public class ConnectorSplitThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorSplit.class);
     private final ConnectorThriftCodecManager connectorThriftCodecManager;
-    private final BufferPool pool;
+    private final ByteBufferPool pool;
 
     @Inject
     public ConnectorSplitThriftCodec(HandleResolver handleResolver,
             ConnectorThriftCodecManager connectorThriftCodecManager,
             JsonCodec<ConnectorSplit> jsonCodec,
-            @ForPooledByteBuffer BufferPool pool)
+            @ForPooledByteBuffer ByteBufferPool pool)
     {
         super(ConnectorSplit.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
@@ -69,8 +69,8 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        OwnedBufferList ownedBufferList = reader.readBinaryToBufferList(pool);
-        List<ByteBuffer> bufferView = ownedBufferList.getBuffers();
+        ByteBufferList byteBufferList = reader.readBinaryToBufferList(pool);
+        List<ByteBuffer> bufferView = byteBufferList.getBuffers();
 
         if (bufferView.isEmpty()) {
             return null;
@@ -79,16 +79,19 @@ public class ConnectorSplitThriftCodec
             return connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
                     .map(codec -> {
                         try {
-                            return codec.deserialize(bufferView);
+                            return codec.deserialize(byteBufferList);
                         }
                         catch (Exception e) {
                             throw new RuntimeException("Failed to deserialize connector split", e);
+                        }
+                        finally {
+                            byteBufferList.close();
                         }
                     })
                     .orElse(null);
         }
         finally {
-            ownedBufferList.close();
+            byteBufferList.close();
         }
     }
 
@@ -98,26 +101,25 @@ public class ConnectorSplitThriftCodec
     {
         requireNonNull(value, "value is null");
 
-        try (OwnedBufferList ownedBufferList = new OwnedBufferList(pool)) {
-            connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
-                    .ifPresent(codec -> {
-                        try {
-                            codec.serialize(value, );
-                            if (buffers.isEmpty()) {
-                                throw new RuntimeException("Failed to serialize connector split");
+        connectorThriftCodecManager.getConnectorSplitThriftCodec(connectorId)
+                .ifPresent(codec -> {
+                    try {
+                        codec.serialize(value, byteBufferList -> {
+                            try {
+                                writer.writeBinaryFromBufferList(byteBufferList);
                             }
-                            writer.writeBinaryFromBufferList(buffers);
-                        }
-                        catch (Exception e) {
-                            throw new RuntimeException("Failed to serialize connector split", e);
-                        }
-                        finally {
-                            for (ByteBuffer buffer : buffers) {
-                                pool.release(buffer);
+                            catch (Exception e) {
+                                throw new RuntimeException(e);
                             }
-                        }
-                    });
-        }
+                            finally {
+                                byteBufferList.close();
+                            }
+                        });
+                    }
+                    catch (Exception e) {
+                        throw new RuntimeException("Failed to serialize connector split", e);
+                    }
+                });
     }
 
     @Override

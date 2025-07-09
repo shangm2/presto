@@ -13,8 +13,7 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.buffer.BufferPool;
-import com.facebook.drift.buffer.OwnedBufferList;
+import com.facebook.drift.buffer.ByteBufferList;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.server.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorSplit;
@@ -39,7 +38,7 @@ public class RemoteSplitThriftCodec
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<OwnedBufferList> consumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<ByteBufferList> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -55,13 +54,13 @@ public class RemoteSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(OwnedBufferList buffers)
+    public ConnectorSplit deserialize(ByteBufferList buffers)
     {
         requireNonNull(buffers, "buffers is null");
 
         ConnectorSplit split;
         try {
-            split = ThriftCodecUtils.deserializeFromBufferList(buffers, pool, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), RemoteSplit.class);
+            split = ThriftCodecUtils.deserializeFromBufferList(buffers, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteSplit", e);

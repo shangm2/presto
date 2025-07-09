@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.connector;
 
+import com.facebook.drift.buffer.BufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.spi.ConnectorId;
 import com.facebook.presto.spi.ConnectorSplit;

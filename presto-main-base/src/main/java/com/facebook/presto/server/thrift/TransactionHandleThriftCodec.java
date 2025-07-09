@@ -14,11 +14,12 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorThriftCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
@@ -37,13 +38,13 @@ public class TransactionHandleThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorTransactionHandle.class);
     private final ConnectorThriftCodecManager connectorThriftCodecManager;
-    private final BufferPool pool;
+    private final ByteBufferPool pool;
 
     @Inject
     public TransactionHandleThriftCodec(HandleResolver handleResolver,
             ConnectorThriftCodecManager connectorThriftCodecManager,
             JsonCodec<ConnectorTransactionHandle> jsonCodec,
-            @ForPooledByteBuffer BufferPool pool)
+            @ForPooledByteBuffer ByteBufferPool pool)
     {
         super(ConnectorTransactionHandle.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
@@ -69,23 +70,25 @@ public class TransactionHandleThriftCodec
     public ConnectorTransactionHandle readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBuffer> buffers = reader.readBinaryToBufferList(pool);
+        ByteBufferList byteBufferList = reader.readBinaryToBufferList(pool);
+        List<ByteBuffer> bufferView = byteBufferList.getBuffers();
         try {
             return connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
                     .map(codec -> {
                         try {
-                            return codec.deserialize(buffers);
+                            return codec.deserialize(byteBufferList);
                         }
                         catch (Exception e) {
                             throw new RuntimeException("Failed to deserialize connector split", e);
+                        }
+                        finally {
+                            byteBufferList.close();
                         }
                     })
                     .orElse(null);
         }
         finally {
-            for (ByteBuffer buffer : buffers) {
-                pool.release(buffer);
-            }
+            byteBufferList.close();
         }
     }
 
@@ -99,19 +102,20 @@ public class TransactionHandleThriftCodec
         connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
                 .ifPresent(codec -> {
                     try {
-                        codec.serialize(value, buffers::addAll);
-                        if (buffers.isEmpty()) {
-                            throw new RuntimeException("Failed to serialize connector split");
-                        }
-                        writer.writeBinaryFromBufferList(buffers);
+                        codec.serialize(value, byteBufferList -> {
+                            try {
+                                writer.writeBinaryFromBufferList(byteBufferList);
+                            }
+                            catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                            finally {
+                                byteBufferList.close();
+                            }
+                        });
                     }
                     catch (Exception e) {
                         throw new RuntimeException("Failed to serialize connector split", e);
-                    }
-                    finally {
-                        for (ByteBuffer buffer : buffers) {
-                            pool.release(buffer);
-                        }
                     }
                 });
     }

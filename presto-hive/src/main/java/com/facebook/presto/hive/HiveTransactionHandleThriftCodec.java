@@ -13,15 +13,14 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.BufferPool;
 import com.facebook.presto.hive.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -30,16 +29,16 @@ public class HiveTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final ThriftCodec<HiveTransactionHandle> thriftCodec;
-    private final BufferPool pool;
+    private final ByteBufferPool pool;
 
-    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager, BufferPool pool)
+    public HiveTransactionHandleThriftCodec(ThriftCodecManager thriftCodecManager, ByteBufferPool pool)
     {
         this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(HiveTransactionHandle.class);
         this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorTransactionHandle transactionHandle, Consumer<List<ByteBuffer>> consumer)
+    public void serialize(ConnectorTransactionHandle transactionHandle, Consumer<ByteBufferList> consumer)
     {
         requireNonNull(transactionHandle, "transactionHandle is null");
         requireNonNull(consumer, "consumer is null");
@@ -55,11 +54,11 @@ public class HiveTransactionHandleThriftCodec
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(List<ByteBuffer> buffers)
+    public ConnectorTransactionHandle deserialize(ByteBufferList buffers)
     {
         requireNonNull(buffers, "buffers is null");
         try {
-            return ThriftCodecUtils.deserializeFromBufferList(buffers, pool, thriftCodec);
+            return ThriftCodecUtils.deserializeFromBufferList(buffers, thriftCodec);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize HiveTransactionHandle", e);

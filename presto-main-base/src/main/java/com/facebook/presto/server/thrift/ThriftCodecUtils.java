@@ -15,8 +15,8 @@ package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.TException;
-import com.facebook.drift.buffer.BufferPool;
-import com.facebook.drift.buffer.OwnedBufferList;
+import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.metadata.DefaultThriftTypeReference;
 import com.facebook.drift.codec.metadata.FieldKind;
@@ -36,12 +36,9 @@ import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
-import com.facebook.presto.split.RemoteSplit;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -147,64 +144,33 @@ public class ThriftCodecUtils
     }
 
     public static <T> T deserializeFromBufferList(
-            OwnedBufferList ownedBufferList,
-            BufferPool pool,
-            ThriftCodec<T> codec,
-            Class clazz)
+            ByteBufferList byteBufferList,
+            ThriftCodec<T> codec)
             throws Exception
     {
         try {
-            StringBuilder sb = new StringBuilder();
-            List<ByteBuffer> buffers = ownedBufferList.getBuffers();
-
-            for (ByteBuffer buffer : buffers) {
-                ByteBuffer duplicate = buffer.duplicate();
-                while (duplicate.hasRemaining()) {
-                    byte b = duplicate.get();
-                    sb.append(String.format("%02X", b & 0xFF));
-                }
-            }
-
-            if (clazz == RemoteSplit.class) {
-                System.out.println(format("=====> Original buffer list %s", sb));
-            }
-
-            ByteBufferInputTransport transport = new ByteBufferInputTransport(ownedBufferList);
+            ByteBufferInputTransport transport = new ByteBufferInputTransport(byteBufferList);
             TProtocol protocol = new TBinaryProtocol(transport);
-            T value = codec.read(protocol);
-            if (value instanceof RemoteSplit) {
-                System.out.println(format("=====> After deserialization: %s", value));
-            }
-            return value;
+            return codec.read(protocol);
         }
         finally {
-            ownedBufferList.close();
+            byteBufferList.close();
         }
     }
 
-    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, BufferPool pool, Consumer<OwnedBufferList> consumer)
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<ByteBufferList> consumer)
             throws Exception
     {
-        try (OwnedBufferList ownedBufferList = new OwnedBufferList(pool)) {
-            ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, ownedBufferList);
-            TProtocol protocol = new TBinaryProtocol(transport);
+        ByteBufferList byteBufferList = new ByteBufferList(pool);
+        ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, byteBufferList);
+        TProtocol protocol = new TBinaryProtocol(transport);
+        try {
             codec.write(value, protocol);
-
             transport.finish();
-            consumer.accept(buffers);
-
-            if (value instanceof RemoteSplit) {
-                StringBuilder sb = new StringBuilder();
-                for (ByteBuffer buffer : buffers) {
-                    ByteBuffer duplicate = buffer.duplicate();
-                    while (duplicate.hasRemaining()) {
-                        byte b = duplicate.get();
-                        sb.append(String.format("%02X", b & 0xFF));
-                    }
-                }
-
-                System.out.println(format("=====> Original split %s, after serialization: %s", value, sb));
-            }
+            consumer.accept(byteBufferList);
+        }
+        finally {
+            byteBufferList.close();
         }
     }
 }
