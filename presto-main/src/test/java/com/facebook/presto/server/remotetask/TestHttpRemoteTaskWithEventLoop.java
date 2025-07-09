@@ -22,6 +22,8 @@ import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.json.JsonModule;
 import com.facebook.airlift.json.smile.SmileCodec;
 import com.facebook.airlift.json.smile.SmileModule;
+import com.facebook.airlift.stats.DistributionStat;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.guice.ThriftCodecModule;
 import com.facebook.drift.codec.utils.DataSizeToBytesThriftCodec;
@@ -440,7 +442,9 @@ public class TestHttpRemoteTaskWithEventLoop
                                 createTestMetadataManager(),
                                 new TestQueryManager(),
                                 new HandleResolver(),
-                                new ConnectorTypeSerdeManager(new ConnectorMetadataUpdateHandleJsonSerde()));
+                                new ConnectorTypeSerdeManager(new ConnectorMetadataUpdateHandleJsonSerde()),
+                                new ByteBufferPool(),
+                                new DistributionStat());
                     }
                 });
         Injector injector = app

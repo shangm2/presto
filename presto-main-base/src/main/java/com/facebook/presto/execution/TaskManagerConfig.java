@@ -26,6 +26,7 @@ import io.airlift.units.MinDuration;
 
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
@@ -102,6 +103,34 @@ public class TaskManagerConfig
     private double highMemoryTaskKillerHeapMemoryThreshold = 0.9;
     private boolean enableEventLoop;
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
+    private int byteBufferSize = 2048; // 2KB
+    private int maxBufferCount = 1024 * 256; // 2KB * 1024 * 256 = 512 MB
+
+    @Min(512)
+    @Max(1024 * 1024)
+    public int getByteBufferSize()
+    {
+        return byteBufferSize;
+    }
+
+    @Config("task.byte-buffer-size")
+    public TaskManagerConfig setByteBufferSize(DataSize byteBufferSize)
+    {
+        this.byteBufferSize = (int) byteBufferSize.toBytes();
+        return this;
+    }
+
+    @Config("task.max-byte-buffer-count")
+    public TaskManagerConfig setMaxBufferCount(int maxBufferCount)
+    {
+        this.maxBufferCount = maxBufferCount;
+        return this;
+    }
+
+    public int getMaxBufferCount()
+    {
+        return maxBufferCount;
+    }
 
     public long getSlowMethodThresholdOnEventLoop()
     {

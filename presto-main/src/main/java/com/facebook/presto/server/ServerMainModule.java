@@ -18,13 +18,15 @@ import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.discovery.client.ServiceAnnouncement;
 import com.facebook.airlift.http.server.TheServlet;
 import com.facebook.airlift.json.JsonObjectMapperProvider;
+import com.facebook.airlift.stats.DistributionStat;
 import com.facebook.airlift.stats.GcMonitor;
 import com.facebook.airlift.stats.JmxGcMonitor;
 import com.facebook.airlift.stats.PauseMeter;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.client.ExceptionClassification;
 import com.facebook.drift.client.address.AddressSelector;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
-import com.facebook.drift.protocol.bytebuffer.ForChunkedProtocol;
+import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.drift.transport.netty.client.DriftNettyClientModule;
 import com.facebook.drift.transport.netty.server.DriftNettyServerModule;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
@@ -252,8 +254,6 @@ import com.google.inject.multibindings.MapBinder;
 import io.airlift.slice.Slice;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
-import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.PooledByteBufAllocator;
 
 import javax.annotation.PreDestroy;
 import javax.inject.Singleton;
@@ -871,18 +871,18 @@ public class ServerMainModule
 
     @Provides
     @Singleton
-    @ForChunkedProtocol
-    public static ByteBufAllocator createByteBufAllocator()
+    @ForPooledByteBuffer
+    public static ByteBufferPool createBufferPool(TaskManagerConfig config)
     {
-        return new PooledByteBufAllocator(
-                true,
-                8,
-                0,
-                8192,
-                10,
-                0,
-                0,
-                true);
+        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
+    }
+
+    @Provides
+    @Singleton
+    @ForPooledByteBuffer
+    public static DistributionStat createSplitSizeTracker()
+    {
+        return new DistributionStat();
     }
 
     @Provides

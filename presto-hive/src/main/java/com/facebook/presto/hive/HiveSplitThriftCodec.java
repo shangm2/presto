@@ -13,14 +13,13 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TChunkedBinaryProtocol;
+import com.facebook.presto.hive.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
-import io.netty.buffer.ByteBufAllocator;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -30,28 +29,24 @@ public class HiveSplitThriftCodec
         implements ConnectorThriftCodec<ConnectorSplit>
 {
     private final ThriftCodec<HiveSplit> thriftCodec;
-    private final ByteBufAllocator allocator;
+    private final ByteBufferPool pool;
 
-    public HiveSplitThriftCodec(ThriftCodecManager thriftCodecManager, ByteBufAllocator allocator)
+    public HiveSplitThriftCodec(ThriftCodecManager thriftCodecManager, ByteBufferPool pool)
     {
         this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(HiveSplit.class);
-        this.allocator = requireNonNull(allocator, "allocator is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBuffer>> bufferConsumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
-        requireNonNull(bufferConsumer, "bufferConsumer is null");
+        requireNonNull(consumer, "consumer is null");
 
         HiveSplit hiveSplit = (HiveSplit) connectorSplit;
 
         try {
-            TChunkedBinaryProtocol.serialize(
-                    allocator,
-                    hiveSplit,
-                    thriftCodec::write,
-                    bufferConsumer);
+            ThriftCodecUtils.serializeToBufferList(hiveSplit, thriftCodec, pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize HiveSplit", e);
@@ -59,11 +54,11 @@ public class HiveSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(List<ByteBuffer> buffers)
+    public ConnectorSplit deserialize(List<ByteBufferPool.ReusableByteBuffer> buffers)
     {
         requireNonNull(buffers, "buffers is null");
         try {
-            return TChunkedBinaryProtocol.deserialize(buffers, thriftCodec::read);
+            return ThriftCodecUtils.deserializeFromBufferList(buffers, thriftCodec);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize HiveSplit", e);

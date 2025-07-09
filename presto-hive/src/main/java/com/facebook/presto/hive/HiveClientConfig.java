@@ -30,6 +30,7 @@ import org.joda.time.DateTimeZone;
 
 import javax.validation.constraints.DecimalMax;
 import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
@@ -224,6 +225,34 @@ public class HiveClientConfig
     private boolean legacyTimestampBucketing;
     private boolean optimizeParsingOfPartitionValues;
     private int optimizeParsingOfPartitionValuesThreshold = 500;
+    private int byteBufferSize = 4096; // 4KB
+    private int maxBufferCount = 1024 * 1024; // 4KB * 1024 * 1024 = 4GB
+
+    @Min(512)
+    @Max(1024 * 1024)
+    public int getByteBufferSize()
+    {
+        return byteBufferSize;
+    }
+
+    @Config("hive.byte-buffer-size")
+    public HiveClientConfig setByteBufferSize(DataSize byteBufferSize)
+    {
+        this.byteBufferSize = (int) byteBufferSize.toBytes();
+        return this;
+    }
+
+    public int getMaxBufferCount()
+    {
+        return maxBufferCount;
+    }
+
+    @Config("hive.max-byte-buffer-count")
+    public HiveClientConfig setMaxBufferCount(int maxBufferCount)
+    {
+        this.maxBufferCount = maxBufferCount;
+        return this;
+    }
 
     @Min(0)
     public int getMaxInitialSplits()
@@ -682,6 +711,7 @@ public class HiveClientConfig
         this.maxPartitionsPerWriter = maxPartitionsPerWriter;
         return this;
     }
+
     public int getWriteValidationThreads()
     {
         return writeValidationThreads;
