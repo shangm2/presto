@@ -21,8 +21,7 @@ import com.facebook.presto.execution.TaskId;
 import com.facebook.presto.split.RemoteSplit;
 import org.testng.annotations.Test;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.testng.Assert.assertEquals;
 
@@ -35,28 +34,65 @@ public class TestThriftSerde
         ThriftCodecManager codecManager = new ThriftCodecManager();
         ThriftCodec<RemoteSplit> thriftCodec = codecManager.getCodec(RemoteSplit.class);
         ByteBufferPool bufferPool = new ByteBufferPool(8, 1024);
-        RemoteSplit expectedSplit = new RemoteSplit(new Location("http://127.0.0.1:56080/v1/task/20250709_104120_00002_wekgx.1.0.0.0/results/0"), new TaskId("20250709_104120_00002_wekgx", 1, 0, 0, 0));
+        RemoteSplit split1 = new RemoteSplit(new Location("http://127.0.0.1:56080/v1/task/20250709_104120_00002_wekgx.1.0.0.0/results/0"), new TaskId("20250709_104120_00002_wekgx", 1, 0, 0, 0));
 
-        for (int i = 0; i < 10; i++) {
-            ThriftCodecUtils.serializeToBufferList(expectedSplit,
-                    thriftCodec,
-                    bufferPool,
-                    byteBufferList -> {
-                        List<ByteBuffer> buffers = byteBufferList.getBuffers();
-                        int bufferCount = buffers.size();
+        RemoteSplit split2 = new RemoteSplit(new Location("https://www.example.com/this/is/a/very/long/url/that/keeps/going/on/and/on/and/on/and/it/just/does/not/stop/it/keeps/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going/and/going"), new TaskId("20250709_104120_00002_wekgx", 1, 2, 3, 4));
 
-                        RemoteSplit split;
-                        try {
-                            split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodec);
-                        }
-                        catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
+        final AtomicInteger maxSize = new AtomicInteger();
 
-                        assertEquals(bufferCount, bufferPool.getCount());
-                        assertEquals(expectedSplit.getLocation().getLocation(), split.getLocation().getLocation());
-                        assertEquals(expectedSplit.getRemoteSourceTaskId(), split.getRemoteSourceTaskId());
-                    });
-        }
+        new Thread(() ->
+        {
+            try {
+                ThriftCodecUtils.serializeToBufferList(split1,
+                        thriftCodec,
+                        bufferPool,
+                        byteBufferList -> {
+                            RemoteSplit split;
+                            try {
+                                split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodec);
+                            }
+                            catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+
+                            maxSize.set(Math.max(maxSize.get(), byteBufferList.size()));
+                            assertEquals(split1.getLocation().getLocation(), split.getLocation().getLocation());
+                            assertEquals(split1.getRemoteSourceTaskId(), split.getRemoteSourceTaskId());
+                        });
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+
+        new Thread(() ->
+        {
+            try {
+                // Give the other thread enough time to finish
+                Thread.sleep(200);
+
+                ThriftCodecUtils.serializeToBufferList(split2,
+                        thriftCodec,
+                        bufferPool,
+                        byteBufferList -> {
+                            RemoteSplit split;
+                            try {
+                                split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodec);
+                            }
+                            catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+
+                            maxSize.set(Math.max(maxSize.get(), byteBufferList.size()));
+                            assertEquals(split2.getLocation().getLocation(), split.getLocation().getLocation());
+                            assertEquals(split2.getRemoteSourceTaskId(), split.getRemoteSourceTaskId());
+                        });
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+
+        assertEquals(maxSize.get(), bufferPool.getSize());
     }
 }

@@ -13,17 +13,18 @@
  */
 package com.facebook.presto.spi;
 
-import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.presto.spi.api.Experimental;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 @Experimental
 public interface ConnectorThriftCodec<T>
 {
-    void serialize(T value, Consumer<ByteBufferList> consumer)
+    void serialize(T value, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
             throws Exception;
 
-    T deserialize(ByteBufferList byteBufferList)
+    T deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
             throws Exception;
 }

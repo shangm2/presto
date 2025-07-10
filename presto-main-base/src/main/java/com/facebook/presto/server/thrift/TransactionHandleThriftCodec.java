@@ -14,7 +14,7 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
@@ -27,8 +27,6 @@ import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 
 import javax.inject.Inject;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
@@ -70,26 +68,26 @@ public class TransactionHandleThriftCodec
     public ConnectorTransactionHandle readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        ByteBufferList byteBufferList = reader.readBinaryToBufferList(pool);
-        List<ByteBuffer> bufferView = byteBufferList.getBuffers();
-        try {
-            return connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
-                    .map(codec -> {
-                        try {
-                            return codec.deserialize(byteBufferList);
-                        }
-                        catch (Exception e) {
-                            throw new RuntimeException("Failed to deserialize connector split", e);
-                        }
-                        finally {
-                            byteBufferList.close();
-                        }
-                    })
-                    .orElse(null);
+        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
+
+        if (byteBufferList.isEmpty()) {
+            return null;
         }
-        finally {
-            byteBufferList.close();
-        }
+        return connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
+                .map(codec -> {
+                    try {
+                        return codec.deserialize(byteBufferList);
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException("Failed to deserialize connector transaction handle", e);
+                    }
+                    finally {
+                        for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                            buffer.release();
+                        }
+                    }
+                })
+                .orElse(null);
     }
 
     @Override
@@ -98,7 +96,6 @@ public class TransactionHandleThriftCodec
     {
         requireNonNull(value, "value is null");
 
-        List<ByteBuffer> buffers = new ArrayList<>();
         connectorThriftCodecManager.getConnectorTransactionHandleThriftCodec(connectorId)
                 .ifPresent(codec -> {
                     try {
@@ -106,16 +103,18 @@ public class TransactionHandleThriftCodec
                             try {
                                 writer.writeBinaryFromBufferList(byteBufferList);
                             }
-                            catch (Exception e) {
-                                throw new RuntimeException(e);
+                            catch (TException e) {
+                                throw new IllegalStateException("Failed to serialize connector handle", e);
                             }
                             finally {
-                                byteBufferList.close();
+                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                    buffer.release();
+                                }
                             }
                         });
                     }
                     catch (Exception e) {
-                        throw new RuntimeException("Failed to serialize connector split", e);
+                        throw new IllegalStateException("Failed to serialize connector handle", e);
                     }
                 });
     }

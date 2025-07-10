@@ -15,7 +15,6 @@ package com.facebook.presto.hive.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.TException;
-import com.facebook.drift.buffer.ByteBufferList;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.metadata.DefaultThriftTypeReference;
@@ -39,6 +38,8 @@ import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -144,7 +145,7 @@ public class ThriftCodecUtils
     }
 
     public static <T> T deserializeFromBufferList(
-            ByteBufferList byteBufferList,
+            List<ByteBufferPool.ReusableByteBuffer> byteBufferList,
             ThriftCodec<T> codec)
             throws Exception
     {
@@ -154,14 +155,16 @@ public class ThriftCodecUtils
             return codec.read(protocol);
         }
         finally {
-            byteBufferList.close();
+            for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                buffer.release();
+            }
         }
     }
 
-    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<ByteBufferList> consumer)
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
             throws Exception
     {
-        ByteBufferList byteBufferList = new ByteBufferList(pool);
+        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = new ArrayList<>();
         ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, byteBufferList);
         TProtocol protocol = new TBinaryProtocol(transport);
         try {
@@ -170,7 +173,9 @@ public class ThriftCodecUtils
             consumer.accept(byteBufferList);
         }
         finally {
-            byteBufferList.close();
+            for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                buffer.release();
+            }
         }
     }
 }

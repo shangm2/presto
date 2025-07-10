@@ -13,7 +13,6 @@
  */
 package com.facebook.presto.hive;
 
-import com.facebook.drift.buffer.ByteBufferList;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.codec.ThriftCodecManager;
@@ -21,6 +20,7 @@ import com.facebook.presto.hive.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -38,7 +38,7 @@ public class HiveSplitThriftCodec
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<ByteBufferList> consumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -54,7 +54,7 @@ public class HiveSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(ByteBufferList buffers)
+    public ConnectorSplit deserialize(List<ByteBufferPool.ReusableByteBuffer> buffers)
     {
         requireNonNull(buffers, "buffers is null");
         try {

@@ -13,7 +13,7 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.server.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorSplit;
@@ -21,6 +21,7 @@ import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.split.RemoteSplit;
 import com.google.inject.Provider;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -29,16 +30,16 @@ public class RemoteSplitThriftCodec
         implements ConnectorThriftCodec<ConnectorSplit>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final BufferPool pool;
+    private final ByteBufferPool pool;
 
-    public RemoteSplitThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, BufferPool pool)
+    public RemoteSplitThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
         this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<ByteBufferList> consumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -54,13 +55,13 @@ public class RemoteSplitThriftCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(ByteBufferList buffers)
+    public ConnectorSplit deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
     {
-        requireNonNull(buffers, "buffers is null");
+        requireNonNull(byteBufferList, "byteBufferList is null");
 
         ConnectorSplit split;
         try {
-            split = ThriftCodecUtils.deserializeFromBufferList(buffers, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+            split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteSplit", e);

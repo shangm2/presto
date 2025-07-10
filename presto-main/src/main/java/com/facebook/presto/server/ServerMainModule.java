@@ -21,7 +21,7 @@ import com.facebook.airlift.json.JsonObjectMapperProvider;
 import com.facebook.airlift.stats.GcMonitor;
 import com.facebook.airlift.stats.JmxGcMonitor;
 import com.facebook.airlift.stats.PauseMeter;
-import com.facebook.drift.buffer.BufferPool;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.client.ExceptionClassification;
 import com.facebook.drift.client.address.AddressSelector;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
@@ -871,9 +871,9 @@ public class ServerMainModule
     @Provides
     @Singleton
     @ForPooledByteBuffer
-    public static BufferPool createBufferPool()
+    public static ByteBufferPool createBufferPool()
     {
-        return new BufferPool();
+        return new ByteBufferPool();
     }
 
     @Provides

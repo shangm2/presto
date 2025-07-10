@@ -13,7 +13,7 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.buffer.ByteBufferList;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.metadata.RemoteTransactionHandle;
 import com.facebook.presto.server.thrift.ThriftCodecUtils;
@@ -21,6 +21,7 @@ import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.inject.Provider;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -29,16 +30,16 @@ public class RemoteTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final BufferPool pool;
+    private final ByteBufferPool pool;
 
-    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, BufferPool pool)
+    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
         this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public void serialize(ConnectorTransactionHandle handle, Consumer<ByteBufferList> consumer)
+    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
     {
         requireNonNull(handle, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -54,11 +55,11 @@ public class RemoteTransactionHandleThriftCodec
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(ByteBufferList buffers)
+    public ConnectorTransactionHandle deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
     {
-        requireNonNull(buffers, "buffers is null");
+        requireNonNull(byteBufferList, "byteBufferList is null");
         try {
-            return ThriftCodecUtils.deserializeFromBufferList(buffers, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
+            return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteTransactionHandle", e);

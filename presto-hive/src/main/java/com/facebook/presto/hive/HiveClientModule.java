@@ -16,7 +16,7 @@ package com.facebook.presto.hive;
 import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.concurrent.ExecutorServiceAdapter;
 import com.facebook.airlift.event.client.EventClient;
-import com.facebook.drift.buffer.BufferPool;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.guice.ThriftCodecModule;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
 import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
@@ -266,9 +266,9 @@ public class HiveClientModule
     @Provides
     @Singleton
     @ForPooledByteBuffer
-    public static BufferPool createBufferPool()
+    public static ByteBufferPool createBufferPool()
     {
-        return new BufferPool();
+        return new ByteBufferPool();
     }
 
     @ForHiveClient
