@@ -15,7 +15,6 @@ package com.facebook.presto.hive;
 
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorThriftCodecProvider;
@@ -34,7 +33,7 @@ public class HiveThriftCodecProvider
     private final ByteBufferPool pool;
 
     @Inject
-    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager, @ForPooledByteBuffer ByteBufferPool pool)
+    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager, @ForHiveClient ByteBufferPool pool)
     {
         this.thriftCodecManager = requireNonNull(thriftCodecManager, "thriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");

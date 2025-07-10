@@ -103,8 +103,8 @@ public class TaskManagerConfig
     private double highMemoryTaskKillerHeapMemoryThreshold = 0.9;
     private boolean enableEventLoop;
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
-    private int byteBufferSize = 4096; // 4KB
-    private int maxBufferCount = 1024 * 1024; // 4KB * 1024 * 1024 = 4GB
+    private int byteBufferSize = 2048; // 2KB
+    private int maxBufferCount = 1024 * 256; // 2KB * 1024 * 256 = 512 MB
 
     @Min(512)
     @Max(1024 * 1024)

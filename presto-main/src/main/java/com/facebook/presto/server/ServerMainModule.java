@@ -18,6 +18,7 @@ import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.discovery.client.ServiceAnnouncement;
 import com.facebook.airlift.http.server.TheServlet;
 import com.facebook.airlift.json.JsonObjectMapperProvider;
+import com.facebook.airlift.stats.DistributionStat;
 import com.facebook.airlift.stats.GcMonitor;
 import com.facebook.airlift.stats.JmxGcMonitor;
 import com.facebook.airlift.stats.PauseMeter;
@@ -874,6 +875,14 @@ public class ServerMainModule
     public static ByteBufferPool createBufferPool(TaskManagerConfig config)
     {
         return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
+    }
+
+    @Provides
+    @Singleton
+    @ForPooledByteBuffer
+    public static DistributionStat createSplitSizeTracker()
+    {
+        return new DistributionStat();
     }
 
     @Provides

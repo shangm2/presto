@@ -14,6 +14,7 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
+import com.facebook.airlift.stats.DistributionStat;
 import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
@@ -37,12 +38,14 @@ public class ConnectorSplitThriftCodec
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorSplit.class);
     private final ConnectorThriftCodecManager connectorThriftCodecManager;
     private final ByteBufferPool pool;
+    private final DistributionStat splitSizeTracker;
 
     @Inject
     public ConnectorSplitThriftCodec(HandleResolver handleResolver,
             ConnectorThriftCodecManager connectorThriftCodecManager,
             JsonCodec<ConnectorSplit> jsonCodec,
-            @ForPooledByteBuffer ByteBufferPool pool)
+            @ForPooledByteBuffer ByteBufferPool pool,
+            @ForPooledByteBuffer DistributionStat splitSizeTracker)
     {
         super(ConnectorSplit.class,
                 requireNonNull(jsonCodec, "jsonCodec is null"),
@@ -50,6 +53,7 @@ public class ConnectorSplitThriftCodec
                 handleResolver::getSplitClass);
         this.connectorThriftCodecManager = requireNonNull(connectorThriftCodecManager, "connectorThriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");
+        this.splitSizeTracker = requireNonNull(splitSizeTracker, "splitSizeTracker is null");
     }
 
     @CodecThriftType
@@ -101,6 +105,12 @@ public class ConnectorSplitThriftCodec
                     try {
                         codec.serialize(value, byteBufferList -> {
                             try {
+                                int size = 0;
+                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                    size += buffer.getBuffer().remaining();
+                                }
+                                splitSizeTracker.add(size);
+
                                 writer.writeBinaryFromBufferList(byteBufferList);
                             }
                             catch (TException e) {
