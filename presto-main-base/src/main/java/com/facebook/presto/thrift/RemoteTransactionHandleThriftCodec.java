@@ -13,35 +13,56 @@
  */
 package com.facebook.presto.thrift;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.metadata.RemoteTransactionHandle;
+import com.facebook.presto.server.thrift.ThriftCodecUtils;
 import com.facebook.presto.spi.ConnectorThriftCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.inject.Provider;
 
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.toThrift;
+import java.util.List;
+import java.util.function.Consumer;
+
 import static java.util.Objects.requireNonNull;
 
 public class RemoteTransactionHandleThriftCodec
         implements ConnectorThriftCodec<ConnectorTransactionHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufferPool pool;
 
-    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public RemoteTransactionHandleThriftCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorTransactionHandle handle)
+    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
     {
-        return toThrift((RemoteTransactionHandle) handle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
+        requireNonNull(handle, "split is null");
+        requireNonNull(consumer, "consumer is null");
+
+        RemoteTransactionHandle remoteHandle = (RemoteTransactionHandle) handle;
+
+        try {
+            ThriftCodecUtils.serializeToBufferList(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize RemoteSplit", e);
+        }
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(byte[] bytes)
+    public ConnectorTransactionHandle deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
     {
-        return fromThrift(bytes, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
+        requireNonNull(byteBufferList, "byteBufferList is null");
+        try {
+            return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize RemoteTransactionHandle", e);
+        }
     }
 }

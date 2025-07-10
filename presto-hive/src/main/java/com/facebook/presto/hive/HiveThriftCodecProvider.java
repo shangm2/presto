@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.hive;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
@@ -29,22 +30,24 @@ public class HiveThriftCodecProvider
         implements ConnectorThriftCodecProvider
 {
     private final ThriftCodecManager thriftCodecManager;
+    private final ByteBufferPool pool;
 
     @Inject
-    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager)
+    public HiveThriftCodecProvider(ThriftCodecManager thriftCodecManager, @ForHiveClient ByteBufferPool pool)
     {
         this.thriftCodecManager = requireNonNull(thriftCodecManager, "thriftCodecManager is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorSplit>> getConnectorSplitCodec()
     {
-        return Optional.of(new HiveSplitThriftCodec(thriftCodecManager));
+        return Optional.of(new HiveSplitThriftCodec(thriftCodecManager, pool));
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorTransactionHandle>> getConnectorTransactionHandleCodec()
     {
-        return Optional.of(new HiveTransactionHandleThriftCodec(thriftCodecManager));
+        return Optional.of(new HiveTransactionHandleThriftCodec(thriftCodecManager, pool));
     }
 }

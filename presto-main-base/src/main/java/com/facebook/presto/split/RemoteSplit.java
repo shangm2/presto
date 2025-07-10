@@ -83,8 +83,8 @@ public class RemoteSplit
     public String toString()
     {
         return toStringHelper(this)
-                .add("location", location)
-                .add("remoteSourceTaskId", remoteSourceTaskId)
+                .add("location", location.getLocation())
+                .add("remoteSourceTaskId", remoteSourceTaskId.toString())
                 .toString();
     }
 }

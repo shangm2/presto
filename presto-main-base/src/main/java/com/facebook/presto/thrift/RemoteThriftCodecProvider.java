@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.thrift;
 
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorThriftCodec;
@@ -28,21 +29,23 @@ public class RemoteThriftCodecProvider
         implements ConnectorThriftCodecProvider
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufferPool pool;
 
-    public RemoteThriftCodecProvider(Provider<ThriftCodecManager> thriftCodecManagerProvider)
+    public RemoteThriftCodecProvider(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorSplit>> getConnectorSplitCodec()
     {
-        return Optional.of(new RemoteSplitThriftCodec(thriftCodecManagerProvider));
+        return Optional.of(new RemoteSplitThriftCodec(thriftCodecManagerProvider, pool));
     }
 
     @Override
     public Optional<ConnectorThriftCodec<ConnectorTransactionHandle>> getConnectorTransactionHandleCodec()
     {
-        return Optional.of(new RemoteTransactionHandleThriftCodec(thriftCodecManagerProvider));
+        return Optional.of(new RemoteTransactionHandleThriftCodec(thriftCodecManagerProvider, pool));
     }
 }
