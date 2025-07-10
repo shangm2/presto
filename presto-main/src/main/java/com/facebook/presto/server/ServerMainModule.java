@@ -871,9 +871,9 @@ public class ServerMainModule
     @Provides
     @Singleton
     @ForPooledByteBuffer
-    public static ByteBufferPool createBufferPool()
+    public static ByteBufferPool createBufferPool(TaskManagerConfig config)
     {
-        return new ByteBufferPool();
+        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
     }
 
     @Provides

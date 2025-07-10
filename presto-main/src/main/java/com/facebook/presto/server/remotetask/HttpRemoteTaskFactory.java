@@ -156,8 +156,8 @@ public class HttpRemoteTaskFactory
         binaryTransportEnabled = communicationConfig.isBinaryTransportEnabled();
         thriftTransportEnabled = communicationConfig.isThriftTransportEnabled();
         taskInfoThriftTransportEnabled = communicationConfig.isTaskInfoThriftTransportEnabled();
-        taskUpdateRequestThriftSerdeEnabled = true; //communicationConfig.isTaskUpdateRequestThriftSerdeEnabled();
-        taskInfoResponseThriftSerdeEnabled = true; //communicationConfig.isTaskInfoResponseThriftSerdeEnabled();
+        taskUpdateRequestThriftSerdeEnabled = communicationConfig.isTaskUpdateRequestThriftSerdeEnabled();
+        taskInfoResponseThriftSerdeEnabled = communicationConfig.isTaskInfoResponseThriftSerdeEnabled();
 
         thriftProtocol = communicationConfig.getThriftProtocol();
         this.maxTaskUpdateSizeInBytes = toIntExact(requireNonNull(communicationConfig, "communicationConfig is null").getMaxTaskUpdateSize().toBytes());
@@ -219,8 +219,7 @@ public class HttpRemoteTaskFactory
         this.taskUpdateRequestSize = new DecayCounter(ExponentialDecay.oneMinute());
         this.taskUpdateSizeTrackingEnabled = taskConfig.isTaskUpdateSizeTrackingEnabled();
 
-        boolean isEventLoopEnabled = taskConfig.isEventLoopEnabled();
-        this.eventLoopGroup = isEventLoopEnabled ? Optional.of(new SafeEventLoopGroup(config.getRemoteTaskMaxCallbackThreads(),
+        this.eventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(config.getRemoteTaskMaxCallbackThreads(),
                 new ThreadFactoryBuilder().setNameFormat("task-event-loop-%s").setDaemon(true).build(), taskConfig.getSlowMethodThresholdOnEventLoop())
         {
             @Override
