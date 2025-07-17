@@ -16,6 +16,8 @@ package com.facebook.presto.server.thrift;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.codec.internal.coercion.FromThrift;
+import com.facebook.drift.codec.internal.coercion.ToThrift;
 import com.facebook.drift.codec.metadata.ThriftCatalog;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -39,6 +41,8 @@ public class MetadataUpdatesCodec
 
     private final JsonCodec<MetadataUpdates> jsonCodec;
 
+    private static final ThriftType THRIFT_TYPE = new ThriftType(ThriftType.STRING, MetadataUpdates.class);
+
     @Inject
     public MetadataUpdatesCodec(JsonCodec<MetadataUpdates> jsonCodec, ThriftCatalog thriftCatalog)
     {
@@ -49,13 +53,13 @@ public class MetadataUpdatesCodec
     @CodecThriftType
     public static ThriftType getThriftType()
     {
-        return SYNTHETIC_STRUCT_TYPE;
+        return THRIFT_TYPE;
     }
 
     @Override
     public ThriftType getType()
     {
-        return SYNTHETIC_STRUCT_TYPE;
+        return THRIFT_TYPE;
     }
 
     @Override
@@ -70,5 +74,18 @@ public class MetadataUpdatesCodec
             throws Exception
     {
         writeSingleJsonField(value, protocol, jsonCodec, METADATA_UPDATES_DATA_FIELD_ID, METADATA_UPDATES_DATA_FIELD_NAME, METADATA_UPDATES_STRUCT_NAME);
+    }
+
+    @FromThrift
+    public static MetadataUpdates stringToMetadataUpdates(String json)
+    {
+        return null;
+    }
+
+    @ToThrift
+    public static String metadataUpdatesToString(MetadataUpdates metadataUpdates)
+    {
+        requireNonNull(metadataUpdates, "metadataUpdates is null");
+        return "";
     }
 }
