@@ -14,6 +14,9 @@
 
 package com.facebook.presto.execution.scheduler;
 
+import com.facebook.drift.annotations.ThriftConstructor;
+import com.facebook.drift.annotations.ThriftField;
+import com.facebook.drift.annotations.ThriftStruct;
 import com.facebook.presto.Session;
 import com.facebook.presto.metadata.AnalyzeTableHandle;
 import com.facebook.presto.metadata.Metadata;
@@ -38,6 +41,7 @@ import static com.google.common.graph.Traverser.forTree;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+@ThriftStruct(builder = TableWriteInfo.Builder.class)
 public class TableWriteInfo
 {
     private final Optional<ExecutionWriterTarget> writerTarget;
@@ -51,6 +55,11 @@ public class TableWriteInfo
         this.writerTarget = requireNonNull(writerTarget, "writerTarget is null");
         this.analyzeTableHandle = requireNonNull(analyzeTableHandle, "analyzeTableHandle is null");
         checkArgument(!analyzeTableHandle.isPresent() || !writerTarget.isPresent(), "analyzeTableHandle is present, so no other fields should be present");
+    }
+
+    public TableWriteInfo(ExecutionWriterTargetUnion writerTargetUnion, Optional<AnalyzeTableHandle> analyzeTableHandle)
+    {
+        this(Optional.ofNullable(writerTargetUnion).map(ExecutionWriterTargetUnion::toExecutionWriterTarget), analyzeTableHandle);
     }
 
     public static TableWriteInfo createTableWriteInfo(StreamingSubPlan plan, Metadata metadata, Session session)
@@ -159,9 +168,42 @@ public class TableWriteInfo
         return writerTarget;
     }
 
+    @ThriftField(value = 1, name = "writerTargetUnion")
+    public ExecutionWriterTargetUnion getWriterTargetUnion()
+    {
+        return writerTarget.map(ExecutionWriterTargetUnion::fromExecutionWriterTarget).orElse(null);
+    }
+
     @JsonProperty
+    @ThriftField(value = 2)
     public Optional<AnalyzeTableHandle> getAnalyzeTableHandle()
     {
         return analyzeTableHandle;
+    }
+
+    public static class Builder
+    {
+        private Optional<ExecutionWriterTargetUnion> writerTargetUnion = Optional.empty();
+        private Optional<AnalyzeTableHandle> analyzeTableHandle = Optional.empty();
+
+        @ThriftField(value = 1)
+        public Builder setWriterTargetUnion(ExecutionWriterTargetUnion writerTargetUnion)
+        {
+            this.writerTargetUnion = Optional.ofNullable(writerTargetUnion);
+            return this;
+        }
+
+        @ThriftField(value = 2)
+        public Builder setAnalyzeTableHandle(Optional<AnalyzeTableHandle> analyzeTableHandle)
+        {
+            this.analyzeTableHandle = analyzeTableHandle;
+            return this;
+        }
+
+        @ThriftConstructor
+        public TableWriteInfo create()
+        {
+            return new TableWriteInfo(writerTargetUnion.map(ExecutionWriterTargetUnion::toExecutionWriterTarget), analyzeTableHandle);
+        }
     }
 }
