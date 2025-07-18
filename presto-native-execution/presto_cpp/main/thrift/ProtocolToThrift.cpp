@@ -329,110 +329,62 @@ void fromThrift(
 }
 
 void toThrift(
-    const facebook::presto::protocol::ConnectorSplit& proto,
-    ConnectorSplit& thrift) {
-  toThrift(proto., thrift.connectorId_ref());
-  toThrift(proto., thrift.customSerializedValue_ref());
-  toThrift(proto., thrift.jsonValue_ref());
+    const facebook::presto::protocol::TableWriteInfo& tableWriteInfo,
+    TableWriteInfoWrapper& thriftTableWriteInfoWrapper) {
+  toThrift(tableWriteInfo, *thriftTableWriteInfoWrapper.tableWriteInfo_ref());
 }
-void fromThrift(
-    const ConnectorSplit& thrift,
-    facebook::presto::protocol::ConnectorSplit& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.);
-  fromThrift(thrift.customSerializedValue_ref(), proto.);
-  fromThrift(thrift.jsonValue_ref(), proto.);
-}
-
 void toThrift(
-    const facebook::presto::protocol::ConnectorTransactionHandle& proto,
-    ConnectorTransactionHandle& thrift) {
-  toThrift(proto., thrift.connectorId_ref());
-  toThrift(proto., thrift.customSerializedValue_ref());
-  toThrift(proto., thrift.jsonValue_ref());
+    const facebook::presto::protocol::TableWriteInfo& tableWriteInfo,
+    std::string& thriftTableWriteInfo) {
+  json jsonTableWriteInfo = tableWriteInfo;
+  std::string str = jsonTableWriteInfo.dump();
+  toThrift(str, thriftTableWriteInfo);
 }
 void fromThrift(
-    const ConnectorTransactionHandle& thrift,
-    facebook::presto::protocol::ConnectorTransactionHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.);
-  fromThrift(thrift.customSerializedValue_ref(), proto.);
-  fromThrift(thrift.jsonValue_ref(), proto.);
+    const TableWriteInfoWrapper& thriftTableWriteInfoWrapper,
+    facebook::presto::protocol::TableWriteInfo& tableWriteInfo) {
+  fromThrift(*thriftTableWriteInfoWrapper.tableWriteInfo_ref(), tableWriteInfo);
 }
-
+void fromThrift(
+    const std::string& thriftTableWriteInfo,
+    facebook::presto::protocol::TableWriteInfo& tableWriteInfo) {
+  json j = json::parse(thriftTableWriteInfo);
+  tableWriteInfo = j;
+}
 void toThrift(
-    const facebook::presto::protocol::ConnectorOutputTableHandle& proto,
-    ConnectorOutputTableHandle& thrift) {
-  toThrift(proto.connectorId, thrift.connectorId_ref());
-  toThrift(proto.customSerializedValue, thrift.customSerializedValue_ref());
-  toThrift(proto.jsonValue, thrift.jsonValue_ref());
-}
+    const std::shared_ptr<facebook::presto::protocol::ConnectorSplit>& proto,
+    ConnectorSplitWrapper& thrift) {}
 void fromThrift(
-    const ConnectorOutputTableHandle& thrift,
-    facebook::presto::protocol::ConnectorOutputTableHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(thrift.customSerializedValue_ref(), proto.customSerializedValue);
-  fromThrift(thrift.jsonValue_ref(), proto.jsonValue);
+    const ConnectorSplitWrapper& thrift,
+    std::shared_ptr<facebook::presto::protocol::ConnectorSplit>& proto) {
+  if (thrift.connectorId().has_value() &&
+      thrift.customSerializedValue().has_value()) {
+    facebook::presto::protocol::getConnectorProtocol(
+        thrift.connectorId().value())
+        .deserialize(thrift.customSerializedValue().value(), proto);
+  } else if (thrift.jsonValue().has_value()) {
+    json j = json::parse(thrift.jsonValue().value());
+    from_json(j, proto);
+  }
 }
-
 void toThrift(
-    const facebook::presto::protocol::ConnectorDeleteTableHandle& proto,
-    ConnectorDeleteTableHandle& thrift) {
-  toThrift(proto.connectorId, thrift.connectorId_ref());
-  toThrift(proto.customSerializedValue, thrift.customSerializedValue_ref());
-  toThrift(proto.jsonValue, thrift.jsonValue_ref());
-}
+    const std::shared_ptr<
+        facebook::presto::protocol::ConnectorTransactionHandle>& proto,
+    ConnectorTransactionHandleWrapper& thrift) {}
 void fromThrift(
-    const ConnectorDeleteTableHandle& thrift,
-    facebook::presto::protocol::ConnectorDeleteTableHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(thrift.customSerializedValue_ref(), proto.customSerializedValue);
-  fromThrift(thrift.jsonValue_ref(), proto.jsonValue);
+    const ConnectorTransactionHandleWrapper& thrift,
+    std::shared_ptr<facebook::presto::protocol::ConnectorTransactionHandle>&
+        proto) {
+  if (thrift.connectorId().has_value() &&
+      thrift.customSerializedValue().has_value()) {
+    facebook::presto::protocol::getConnectorProtocol(
+        thrift.connectorId().value())
+        .deserialize(thrift.customSerializedValue().value(), proto);
+  } else if (thrift.jsonValue().has_value()) {
+    json j = json::parse(thrift.jsonValue().value());
+    from_json(j, proto);
+  }
 }
-
-void toThrift(
-    const facebook::presto::protocol::ConnectorInsertTableHandle& proto,
-    ConnectorInsertTableHandle& thrift) {
-  toThrift(proto.connectorId, thrift.connectorId_ref());
-  toThrift(proto.customSerializedValue, thrift.customSerializedValue_ref());
-  toThrift(proto.jsonValue, thrift.jsonValue_ref());
-}
-void fromThrift(
-    const ConnectorInsertTableHandle& thrift,
-    facebook::presto::protocol::ConnectorInsertTableHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(thrift.customSerializedValue_ref(), proto.customSerializedValue);
-  fromThrift(thrift.jsonValue_ref(), proto.jsonValue);
-}
-
-void toThrift(
-    const facebook::presto::protocol::ConnectorTableHandle& proto,
-    ConnectorTableHandle& thrift) {
-  toThrift(proto.connectorId, thrift.connectorId_ref());
-  toThrift(proto.customSerializedValue, thrift.customSerializedValue_ref());
-  toThrift(proto.jsonValue, thrift.jsonValue_ref());
-}
-void fromThrift(
-    const ConnectorTableHandle& thrift,
-    facebook::presto::protocol::ConnectorTableHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(thrift.customSerializedValue_ref(), proto.customSerializedValue);
-  fromThrift(thrift.jsonValue_ref(), proto.jsonValue);
-}
-
-void toThrift(
-    const facebook::presto::protocol::ConnectorTableLayoutHandle& proto,
-    ConnectorTableLayoutHandle& thrift) {
-  toThrift(proto.connectorId, thrift.connectorId_ref());
-  toThrift(proto.customSerializedValue, thrift.customSerializedValue_ref());
-  toThrift(proto.jsonValue, thrift.jsonValue_ref());
-}
-void fromThrift(
-    const ConnectorTableLayoutHandle& thrift,
-    facebook::presto::protocol::ConnectorTableLayoutHandle& proto) {
-  fromThrift(thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(thrift.customSerializedValue_ref(), proto.customSerializedValue);
-  fromThrift(thrift.jsonValue_ref(), proto.jsonValue);
-}
-
 void toThrift(
     const facebook::presto::protocol::Lifespan& proto,
     Lifespan& thrift) {
@@ -811,109 +763,6 @@ void fromThrift(
 }
 
 void toThrift(
-    const facebook::presto::protocol::OutputTableHandle& proto,
-    OutputTableHandle& thrift) {
-  toThrift(proto.connectorId, *thrift.connectorId_ref());
-  toThrift(proto.transactionHandle, *thrift.transactionHandle_ref());
-  toThrift(proto.connectorHandle, *thrift.connectorHandle_ref());
-}
-void fromThrift(
-    const OutputTableHandle& thrift,
-    facebook::presto::protocol::OutputTableHandle& proto) {
-  fromThrift(*thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(*thrift.transactionHandle_ref(), proto.transactionHandle);
-  fromThrift(*thrift.connectorHandle_ref(), proto.connectorHandle);
-}
-
-void toThrift(
-    const facebook::presto::protocol::SchemaTableName& proto,
-    SchemaTableName& thrift) {
-  toThrift(proto.schemaName, *thrift.schemaName_ref());
-  toThrift(proto.tableName, *thrift.tableName_ref());
-}
-void fromThrift(
-    const SchemaTableName& thrift,
-    facebook::presto::protocol::SchemaTableName& proto) {
-  fromThrift(*thrift.schemaName_ref(), proto.schemaName);
-  fromThrift(*thrift.tableName_ref(), proto.tableName);
-}
-
-void toThrift(
-    const facebook::presto::protocol::InsertTableHandle& proto,
-    InsertTableHandle& thrift) {
-  toThrift(proto.connectorId, *thrift.connectorId_ref());
-  toThrift(proto.transactionHandle, *thrift.transactionHandle_ref());
-  toThrift(proto.connectorHandle, *thrift.connectorHandle_ref());
-}
-void fromThrift(
-    const InsertTableHandle& thrift,
-    facebook::presto::protocol::InsertTableHandle& proto) {
-  fromThrift(*thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(*thrift.transactionHandle_ref(), proto.transactionHandle);
-  fromThrift(*thrift.connectorHandle_ref(), proto.connectorHandle);
-}
-
-void toThrift(
-    const facebook::presto::protocol::DeleteTableHandle& proto,
-    DeleteTableHandle& thrift) {
-  toThrift(proto.connectorId, *thrift.connectorId_ref());
-  toThrift(proto.transactionHandle, *thrift.transactionHandle_ref());
-  toThrift(proto.connectorHandle, *thrift.connectorHandle_ref());
-}
-void fromThrift(
-    const DeleteTableHandle& thrift,
-    facebook::presto::protocol::DeleteTableHandle& proto) {
-  fromThrift(*thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(*thrift.transactionHandle_ref(), proto.transactionHandle);
-  fromThrift(*thrift.connectorHandle_ref(), proto.connectorHandle);
-}
-
-void toThrift(
-    const facebook::presto::protocol::RefreshMaterializedViewHandle& proto,
-    RefreshMaterializedViewHandle& thrift) {
-  toThrift(proto.handle, *thrift.handle_ref());
-  toThrift(proto.schemaTableName, *thrift.schemaTableName_ref());
-}
-void fromThrift(
-    const RefreshMaterializedViewHandle& thrift,
-    facebook::presto::protocol::RefreshMaterializedViewHandle& proto) {
-  fromThrift(*thrift.handle_ref(), proto.handle);
-  fromThrift(*thrift.schemaTableName_ref(), proto.schemaTableName);
-}
-
-void toThrift(
-    const facebook::presto::protocol::TableHandle& proto,
-    TableHandle& thrift) {
-  toThrift(proto.connectorId, *thrift.connectorId_ref());
-  toThrift(proto.connectorHandle, *thrift.connectorHandle_ref());
-  toThrift(proto.transaction, *thrift.transaction_ref());
-  toThrift(proto.layout, thrift.layout_ref());
-}
-void fromThrift(
-    const TableHandle& thrift,
-    facebook::presto::protocol::TableHandle& proto) {
-  fromThrift(*thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(*thrift.connectorHandle_ref(), proto.connectorHandle);
-  fromThrift(*thrift.transaction_ref(), proto.transaction);
-  fromThrift(thrift.layout_ref(), proto.layout);
-}
-
-void toThrift(
-    const facebook::presto::protocol::AnalyzeTableHandle& proto,
-    AnalyzeTableHandle& thrift) {
-  toThrift(proto.connectorId, *thrift.connectorId_ref());
-  toThrift(proto.transactionHandle, *thrift.transactionHandle_ref());
-  toThrift(proto.connectorHandle, *thrift.connectorHandle_ref());
-}
-void fromThrift(
-    const AnalyzeTableHandle& thrift,
-    facebook::presto::protocol::AnalyzeTableHandle& proto) {
-  fromThrift(*thrift.connectorId_ref(), proto.connectorId);
-  fromThrift(*thrift.transactionHandle_ref(), proto.transactionHandle);
-  fromThrift(*thrift.connectorHandle_ref(), proto.connectorHandle);
-}
-
-void toThrift(
     const facebook::presto::protocol::TaskStatus& proto,
     TaskStatus& thrift) {
   toThrift(
@@ -1131,14 +980,6 @@ void toThrift(
   toThrift(proto.fullGcCount, *thrift.fullGcCount_ref());
   toThrift(proto.fullGcTimeInMillis, *thrift.fullGcTimeInMillis_ref());
   toThrift(proto.runtimeStats, *thrift.runtimeStats_ref());
-  toThrift(proto.totalSplits, *thrift.totalSplits_ref());
-  toThrift(proto.queuedSplits, *thrift.queuedSplits_ref());
-  toThrift(proto.runningSplits, *thrift.runningSplits_ref());
-  toThrift(proto.completedSplits, *thrift.completedSplits_ref());
-  toThrift(proto.totalNewDrivers, *thrift.totalNewDrivers_ref());
-  toThrift(proto.queuedNewDrivers, *thrift.queuedNewDrivers_ref());
-  toThrift(proto.runningNewDrivers, *thrift.runningNewDrivers_ref());
-  toThrift(proto.completedNewDrivers, *thrift.completedNewDrivers_ref());
 }
 void fromThrift(
     const TaskStats& thrift,
@@ -1209,14 +1050,6 @@ void fromThrift(
   fromThrift(*thrift.fullGcCount_ref(), proto.fullGcCount);
   fromThrift(*thrift.fullGcTimeInMillis_ref(), proto.fullGcTimeInMillis);
   fromThrift(*thrift.runtimeStats_ref(), proto.runtimeStats);
-  fromThrift(*thrift.totalSplits_ref(), proto.totalSplits);
-  fromThrift(*thrift.queuedSplits_ref(), proto.queuedSplits);
-  fromThrift(*thrift.runningSplits_ref(), proto.runningSplits);
-  fromThrift(*thrift.completedSplits_ref(), proto.completedSplits);
-  fromThrift(*thrift.totalNewDrivers_ref(), proto.totalNewDrivers);
-  fromThrift(*thrift.queuedNewDrivers_ref(), proto.queuedNewDrivers);
-  fromThrift(*thrift.runningNewDrivers_ref(), proto.runningNewDrivers);
-  fromThrift(*thrift.completedNewDrivers_ref(), proto.completedNewDrivers);
 }
 
 void toThrift(
@@ -1523,55 +1356,24 @@ void fromThrift(
 }
 
 void toThrift(
-    const facebook::presto::protocol::CreateHandle& proto,
-    CreateHandle& thrift) {
-  toThrift(proto.handle, *thrift.handle_ref());
-  toThrift(proto.schemaTableName, *thrift.schemaTableName_ref());
+    const facebook::presto::protocol::TaskUpdateRequest& proto,
+    TaskUpdateRequest& thrift) {
+  toThrift(proto.session, *thrift.session_ref());
+  toThrift(proto.extraCredentials, *thrift.extraCredentials_ref());
+  toThrift(proto.fragment, thrift.fragment_ref());
+  toThrift(proto.sources, *thrift.sources_ref());
+  toThrift(proto.outputIds, *thrift.outputIds_ref());
+  toThrift(proto.tableWriteInfo, thrift.tableWriteInfo_ref());
 }
 void fromThrift(
-    const CreateHandle& thrift,
-    facebook::presto::protocol::CreateHandle& proto) {
-  fromThrift(*thrift.handle_ref(), proto.handle);
-  fromThrift(*thrift.schemaTableName_ref(), proto.schemaTableName);
-}
-
-void toThrift(
-    const facebook::presto::protocol::InsertHandle& proto,
-    InsertHandle& thrift) {
-  toThrift(proto.handle, *thrift.handle_ref());
-  toThrift(proto.schemaTableName, *thrift.schemaTableName_ref());
-}
-void fromThrift(
-    const InsertHandle& thrift,
-    facebook::presto::protocol::InsertHandle& proto) {
-  fromThrift(*thrift.handle_ref(), proto.handle);
-  fromThrift(*thrift.schemaTableName_ref(), proto.schemaTableName);
-}
-
-void toThrift(
-    const facebook::presto::protocol::DeleteHandle& proto,
-    DeleteHandle& thrift) {
-  toThrift(proto.handle, *thrift.handle_ref());
-  toThrift(proto.schemaTableName, *thrift.schemaTableName_ref());
-}
-void fromThrift(
-    const DeleteHandle& thrift,
-    facebook::presto::protocol::DeleteHandle& proto) {
-  fromThrift(*thrift.handle_ref(), proto.handle);
-  fromThrift(*thrift.schemaTableName_ref(), proto.schemaTableName);
-}
-
-void toThrift(
-    const facebook::presto::protocol::UpdateHandle& proto,
-    UpdateHandle& thrift) {
-  toThrift(proto.handle, *thrift.handle_ref());
-  toThrift(proto.schemaTableName, *thrift.schemaTableName_ref());
-}
-void fromThrift(
-    const UpdateHandle& thrift,
-    facebook::presto::protocol::UpdateHandle& proto) {
-  fromThrift(*thrift.handle_ref(), proto.handle);
-  fromThrift(*thrift.schemaTableName_ref(), proto.schemaTableName);
+    const TaskUpdateRequest& thrift,
+    facebook::presto::protocol::TaskUpdateRequest& proto) {
+  fromThrift(*thrift.session_ref(), proto.session);
+  fromThrift(*thrift.extraCredentials_ref(), proto.extraCredentials);
+  fromThrift(thrift.fragment_ref(), proto.fragment);
+  fromThrift(*thrift.sources_ref(), proto.sources);
+  fromThrift(*thrift.outputIds_ref(), proto.outputIds);
+  fromThrift(thrift.tableWriteInfo_ref(), proto.tableWriteInfo);
 }
 
 void toThrift(
@@ -1667,25 +1469,6 @@ void fromThrift(
   fromThrift(*thrift.sequenceId_ref(), proto.sequenceId);
   fromThrift(*thrift.planNodeId_ref(), proto.planNodeId);
   fromThrift(*thrift.split_ref(), proto.split);
-}
-
-void toThrift(
-    const facebook::presto::protocol::ExecutionWriterTargetUnion& proto,
-    ExecutionWriterTargetUnion& thrift) {
-  toThrift(proto., *thrift.createHandle_ref());
-  toThrift(proto., *thrift.insertHandle_ref());
-  toThrift(proto., *thrift.deleteHandle_ref());
-  toThrift(proto., *thrift.refreshMaterializedViewHandle_ref());
-  toThrift(proto., *thrift.updateHandle_ref());
-}
-void fromThrift(
-    const ExecutionWriterTargetUnion& thrift,
-    facebook::presto::protocol::ExecutionWriterTargetUnion& proto) {
-  fromThrift(*thrift.createHandle_ref(), proto.);
-  fromThrift(*thrift.insertHandle_ref(), proto.);
-  fromThrift(*thrift.deleteHandle_ref(), proto.);
-  fromThrift(*thrift.refreshMaterializedViewHandle_ref(), proto.);
-  fromThrift(*thrift.updateHandle_ref(), proto.);
 }
 
 void toThrift(
@@ -1861,42 +1644,6 @@ void fromThrift(
   fromThrift(
       *thrift.isBlockedAllocationInBytes_ref(),
       proto.isBlockedAllocationInBytes);
-}
-
-void toThrift(
-    const facebook::presto::protocol::TableWriteInfo& proto,
-    TableWriteInfo& thrift) {
-  toThrift(proto., thrift.writerTarget_ref());
-  toThrift(proto., thrift.analyzeTableHandle_ref());
-  toThrift(proto., *thrift.dummy_ref());
-}
-void fromThrift(
-    const TableWriteInfo& thrift,
-    facebook::presto::protocol::TableWriteInfo& proto) {
-  fromThrift(thrift.writerTarget_ref(), proto.);
-  fromThrift(thrift.analyzeTableHandle_ref(), proto.);
-  fromThrift(*thrift.dummy_ref(), proto.);
-}
-
-void toThrift(
-    const facebook::presto::protocol::TaskUpdateRequest& proto,
-    TaskUpdateRequest& thrift) {
-  toThrift(proto.session, *thrift.session_ref());
-  toThrift(proto.extraCredentials, *thrift.extraCredentials_ref());
-  toThrift(proto.fragment, thrift.fragment_ref());
-  toThrift(proto.sources, *thrift.sources_ref());
-  toThrift(proto.outputIds, *thrift.outputIds_ref());
-  toThrift(proto.tableWriteInfo, thrift.tableWriteInfo_ref());
-}
-void fromThrift(
-    const TaskUpdateRequest& thrift,
-    facebook::presto::protocol::TaskUpdateRequest& proto) {
-  fromThrift(*thrift.session_ref(), proto.session);
-  fromThrift(*thrift.extraCredentials_ref(), proto.extraCredentials);
-  fromThrift(thrift.fragment_ref(), proto.fragment);
-  fromThrift(*thrift.sources_ref(), proto.sources);
-  fromThrift(*thrift.outputIds_ref(), proto.outputIds);
-  fromThrift(thrift.tableWriteInfo_ref(), proto.tableWriteInfo);
 }
 
 } // namespace facebook::presto::thrift
