@@ -45,13 +45,7 @@ public class TpcdsTableHandleCodec
         requireNonNull(consumer, "consumer is null");
 
         TpcdsTableHandle handle = (TpcdsTableHandle) tableHandle;
-
-        try {
-            ThriftCodecUtils.serializeToBufferList(handle, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class), pool, consumer);
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to serialize TpcdsTableHandle", e);
-        }
+        ThriftCodecUtils.serializeToBufferList(handle, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class), pool, consumer);
     }
 
     @Override
@@ -59,14 +53,6 @@ public class TpcdsTableHandleCodec
             throws Exception
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
-
-        TpcdsTableHandle tableHandle;
-        try {
-            tableHandle = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize TpcdsTableHandle", e);
-        }
-        return tableHandle;
+        return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class));
     }
 }

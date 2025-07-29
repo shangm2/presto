@@ -52,7 +52,6 @@ public class OutputTableHandleThriftCodec
                 handleResolver::getOutputTableHandleClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");
-        System.out.println("=====> OutputTableHandleThriftCodec, id: " + pool.getId());
     }
 
     @CodecThriftType
@@ -96,7 +95,7 @@ public class OutputTableHandleThriftCodec
                     writer.writeBinaryFromBufferList(byteBufferList);
                 }
                 catch (TException e) {
-                    throw new IllegalStateException("Failed to serialize connector split", e);
+                    throw new IllegalStateException("Failed to serialize ConnectorOutputTableHandle", e);
                 }
             });
         }

@@ -52,7 +52,6 @@ public class TransactionHandleThriftCodec
                 handleResolver::getTransactionHandleClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");
-        System.out.println("=====> TransactionHandleThriftCodec, id: " + pool.getId());
     }
 
     @CodecThriftType
@@ -96,7 +95,7 @@ public class TransactionHandleThriftCodec
                     writer.writeBinaryFromBufferList(byteBufferList);
                 }
                 catch (TException e) {
-                    throw new IllegalStateException("Failed to serialize connector handle", e);
+                    throw new IllegalStateException("Failed to serialize ConnectorTransactionHandle", e);
                 }
             });
         }

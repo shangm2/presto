@@ -45,13 +45,7 @@ public class TpcdsSplitCodec
         requireNonNull(consumer, "consumer is null");
 
         TpcdsSplit remoteSplit = (TpcdsSplit) connectorSplit;
-
-        try {
-            ThriftCodecUtils.serializeToBufferList(remoteSplit, thriftCodecManagerProvider.get().getCodec(TpcdsSplit.class), pool, consumer);
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to serialize TpcdsSplit", e);
-        }
+        ThriftCodecUtils.serializeToBufferList(remoteSplit, thriftCodecManagerProvider.get().getCodec(TpcdsSplit.class), pool, consumer);
     }
 
     @Override
@@ -59,14 +53,6 @@ public class TpcdsSplitCodec
             throws Exception
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
-
-        ConnectorSplit split;
-        try {
-            split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsSplit.class));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize TpcdsSplit", e);
-        }
-        return split;
+        return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsSplit.class));
     }
 }

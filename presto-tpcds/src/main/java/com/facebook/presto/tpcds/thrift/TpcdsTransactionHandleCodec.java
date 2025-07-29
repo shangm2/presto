@@ -45,13 +45,7 @@ public class TpcdsTransactionHandleCodec
         requireNonNull(consumer, "consumer is null");
 
         TpcdsTransactionHandle handle = (TpcdsTransactionHandle) transactionHandle;
-
-        try {
-            ThriftCodecUtils.serializeToBufferList(handle, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class), pool, consumer);
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to serialize TpcdsTransactionHandle", e);
-        }
+        ThriftCodecUtils.serializeToBufferList(handle, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class), pool, consumer);
     }
 
     @Override
@@ -59,14 +53,6 @@ public class TpcdsTransactionHandleCodec
             throws Exception
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
-
-        ConnectorTransactionHandle transactionHandle;
-        try {
-            transactionHandle = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize TpcdsTransactionHandle", e);
-        }
-        return transactionHandle;
+        return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class));
     }
 }

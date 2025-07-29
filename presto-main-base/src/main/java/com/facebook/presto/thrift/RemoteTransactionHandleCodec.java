@@ -40,29 +40,20 @@ public class RemoteTransactionHandleCodec
 
     @Override
     public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
+            throws Exception
     {
         requireNonNull(handle, "split is null");
         requireNonNull(consumer, "consumer is null");
 
         RemoteTransactionHandle remoteHandle = (RemoteTransactionHandle) handle;
-
-        try {
-            ThriftCodecUtils.serializeToBufferList(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to serialize RemoteTransactionHandle", e);
-        }
+        ThriftCodecUtils.serializeToBufferList(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
     }
 
     @Override
     public ConnectorTransactionHandle deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
+            throws Exception
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
-        try {
-            return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
-        }
-        catch (Exception e) {
-            throw new RuntimeException("Failed to deserialize RemoteTransactionHandle", e);
-        }
+        return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
     }
 }
