@@ -82,7 +82,6 @@ public class ThriftCodecUtils
         List<ByteBufferPool.ReusableByteBuffer> byteBufferList = new ArrayList<>();
         ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, byteBufferList);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
-        System.out.println("=====> main-base: " + protocol.isByteBufferTransportEnabled());
         try {
             codec.write(value, protocol);
             transport.finish();

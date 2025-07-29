@@ -17,8 +17,6 @@ import com.facebook.airlift.concurrent.BoundedExecutor;
 import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.discovery.server.EmbeddedDiscoveryModule;
 import com.facebook.airlift.http.server.HttpServerBinder.HttpResourceBinding;
-import com.facebook.airlift.stats.DistributionStat;
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.presto.client.QueryResults;
 import com.facebook.presto.cost.CostCalculator;
 import com.facebook.presto.cost.CostCalculator.EstimatedExchanges;
@@ -327,22 +325,6 @@ public class CoordinatorModule
 
         // cleanup
         binder.bind(ExecutorCleanup.class).in(Scopes.SINGLETON);
-    }
-
-    @Provides
-    @Singleton
-    @ForCoordinatorBufferPool
-    public static ByteBufferPool createBufferPool(TaskManagerConfig config)
-    {
-        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
-    }
-
-    @Provides
-    @Singleton
-    @ForCoordinatorBufferPool
-    public static DistributionStat createSplitSizeTracker()
-    {
-        return new DistributionStat();
     }
 
     @Provides
