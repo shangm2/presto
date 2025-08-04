@@ -40,5 +40,7 @@ org/eclipse/jetty/client/ResponseNotifier.notifyComplete
 com/facebook/airlift/http/client/jetty/BufferingResponseListener.onComplete
 com/facebook/airlift/http/client/jetty/JettyResponseFuture.completed
 com/facebook/airlift/http/client/jetty/JettyResponseFuture.processResponse
-com/facebook/presto/server/smile/AdaptingJsonResponseHandler.handle
-com/facebook/presto/server/smile/AdaptingJsonResponseHandler.handle
+com/facebook/airlift/http/client/thrift/ThriftResponseHandler.handle
+com/facebook/airlift/http/client/thrift/ThriftResponseHandler.handle
+com/facebook/airlift/http/client/thrift/ThriftProtocolUtils.read
+$drift/com/facebook/presto/execution/TaskInfoCodec.read
