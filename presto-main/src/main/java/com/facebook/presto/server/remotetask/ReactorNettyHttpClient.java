@@ -75,7 +75,6 @@ import static io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBeha
 import static io.netty.handler.ssl.ApplicationProtocolNames.HTTP_1_1;
 import static io.netty.handler.ssl.ApplicationProtocolNames.HTTP_2;
 import static io.netty.handler.ssl.SslProtocols.TLS_v1_2;
-import static io.netty.handler.ssl.SslProtocols.TLS_v1_3;
 import static io.netty.handler.ssl.SslProvider.JDK;
 import static io.netty.handler.ssl.SslProvider.OPENSSL;
 import static io.netty.handler.ssl.SslProvider.isAlpnSupported;
@@ -125,7 +124,7 @@ public class ReactorNettyHttpClient
                 SslProvider provider = isAlpnSupported(OPENSSL) ? OPENSSL : JDK;
                 SslContextBuilder sslContextBuilder = SslContextBuilder.forClient()
                         .sslProvider(provider)
-                        .protocols(TLS_v1_3, TLS_v1_2)
+                        .protocols(TLS_v1_2)
                         .keyManager(privateKey, certificateChain)
                         .trustManager(trustChain)
                         .applicationProtocolConfig(new ApplicationProtocolConfig(ALPN, NO_ADVERTISE, ACCEPT, HTTP_2, HTTP_1_1));
