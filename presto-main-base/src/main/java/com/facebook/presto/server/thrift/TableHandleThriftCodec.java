@@ -14,21 +14,23 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
+import com.facebook.drift.buffer.ForPooledByteBuffer;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
-import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
+import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorTableHandle;
 
 import javax.inject.Inject;
 
-import java.util.List;
+import java.util.Optional;
 
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.readConcreteThriftValue;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.writeConcreteThriftValue;
 import static java.util.Objects.requireNonNull;
 
 public class TableHandleThriftCodec
@@ -50,7 +52,6 @@ public class TableHandleThriftCodec
                 handleResolver::getTableHandleClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");
-        System.out.println("=====> TableHandleThriftCodec, id: " + pool.getId());
     }
 
     @CodecThriftType
@@ -69,26 +70,12 @@ public class TableHandleThriftCodec
     public ConnectorTableHandle readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
-
-        if (byteBufferList.isEmpty()) {
+        Optional<ConnectorCodec<ConnectorTableHandle>> codec = connectorCodecManager.getTableHandleCodec(connectorId);
+        if (!codec.isPresent()) {
             return null;
         }
-        return connectorCodecManager.getTableHandleCodec(connectorId)
-                .map(codec -> {
-                    try {
-                        return codec.deserialize(byteBufferList);
-                    }
-                    catch (Exception e) {
-                        throw new IllegalStateException("Failed to deserialize connector split", e);
-                    }
-                    finally {
-                        for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
-                            buffer.release();
-                        }
-                    }
-                })
-                .orElse(null);
+
+        return readConcreteThriftValue(codec.get(), reader, pool);
     }
 
     @Override
@@ -96,27 +83,12 @@ public class TableHandleThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        connectorCodecManager.getTableHandleCodec(connectorId)
-                .ifPresent(codec -> {
-                    try {
-                        codec.serialize(value, byteBufferList -> {
-                            try {
-                                writer.writeBinaryFromBufferList(byteBufferList);
-                            }
-                            catch (TException e) {
-                                throw new IllegalStateException("Failed to serialize connector split", e);
-                            }
-                            finally {
-                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
-                                    buffer.release();
-                                }
-                            }
-                        });
-                    }
-                    catch (Exception e) {
-                        throw new IllegalStateException("Failed to serialize connector split", e);
-                    }
-                });
+        Optional<ConnectorCodec<ConnectorTableHandle>> codec = connectorCodecManager.getTableHandleCodec(connectorId);
+        if (!codec.isPresent()) {
+            return;
+        }
+
+        writeConcreteThriftValue(codec.get(), value, writer);
     }
 
     @Override

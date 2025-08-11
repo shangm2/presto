@@ -14,7 +14,6 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.buffer.ForPooledByteBuffer;
 import com.facebook.drift.codec.CodecThriftType;
@@ -23,12 +22,15 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.presto.connector.ConnectorCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
+import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorSplit;
 
 import javax.inject.Inject;
 
-import java.util.List;
+import java.util.Optional;
 
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.readConcreteThriftValue;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.writeConcreteThriftValue;
 import static java.util.Objects.requireNonNull;
 
 public class ConnectorSplitThriftCodec
@@ -50,7 +52,6 @@ public class ConnectorSplitThriftCodec
                 handleResolver::getSplitClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
         this.pool = requireNonNull(pool, "pool is null");
-        System.out.println("=====> ConnectorSplitThriftCodec, id: " + pool.getId() + ", direct: " + pool.isUseDirect());
     }
 
     @CodecThriftType
@@ -69,26 +70,12 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBufferPool.PooledByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
-
-        if (byteBufferList.isEmpty()) {
+        Optional<ConnectorCodec<ConnectorSplit>> codec = connectorCodecManager.getConnectorSplitCodec(connectorId);
+        if (!codec.isPresent()) {
             return null;
         }
-        return connectorCodecManager.getConnectorSplitCodec(connectorId)
-                .map(codec -> {
-                    try {
-                        return codec.deserialize(byteBufferList);
-                    }
-                    catch (Exception e) {
-                        throw new IllegalStateException("Failed to deserialize connector split", e);
-                    }
-                    finally {
-                        for (ByteBufferPool.PooledByteBuffer buffer : byteBufferList) {
-                            buffer.release();
-                        }
-                    }
-                })
-                .orElse(null);
+
+        return readConcreteThriftValue(codec.get(), reader, pool);
     }
 
     @Override
@@ -96,27 +83,12 @@ public class ConnectorSplitThriftCodec
             throws Exception
     {
         requireNonNull(value, "value is null");
-        connectorCodecManager.getConnectorSplitCodec(connectorId)
-                .ifPresent(codec -> {
-                    try {
-                        codec.serialize(value, byteBufferList -> {
-                            try {
-                                writer.writeBinaryFromBufferList(byteBufferList);
-                            }
-                            catch (TException e) {
-                                throw new IllegalStateException("Failed to serialize connector split", e);
-                            }
-                            finally {
-                                for (ByteBufferPool.PooledByteBuffer buffer : byteBufferList) {
-                                    buffer.release();
-                                }
-                            }
-                        });
-                    }
-                    catch (Exception e) {
-                        throw new IllegalStateException("Failed to serialize connector split", e);
-                    }
-                });
+        Optional<ConnectorCodec<ConnectorSplit>> codec = connectorCodecManager.getConnectorSplitCodec(connectorId);
+        if (!codec.isPresent()) {
+            return;
+        }
+
+        writeConcreteThriftValue(codec.get(), value, writer);
     }
 
     @Override

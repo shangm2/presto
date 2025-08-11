@@ -13,6 +13,7 @@
  */
 package com.facebook.presto.server.thrift;
 
+import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodec;
 import com.facebook.drift.protocol.TBinaryProtocol;
@@ -20,8 +21,11 @@ import com.facebook.drift.protocol.TMemoryBuffer;
 import com.facebook.drift.protocol.TMemoryBufferWriteOnly;
 import com.facebook.drift.protocol.TProtocol;
 import com.facebook.drift.protocol.TProtocolException;
+import com.facebook.drift.protocol.TProtocolReader;
+import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
+import com.facebook.presto.spi.ConnectorCodec;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +63,7 @@ public class ThriftCodecUtils
         }
     }
 
-    public static <T> T deserializeFromBuffers(
+    public static <T> T deserializeFromBufferList(
             List<ByteBufferPool.PooledByteBuffer> byteBufferList,
             ThriftCodec<T> codec)
             throws Exception
@@ -69,7 +73,7 @@ public class ThriftCodecUtils
         return codec.read(protocol);
     }
 
-    public static <T> void serializeToBuffers(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
+    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
             throws Exception
     {
         List<ByteBufferPool.PooledByteBuffer> byteBufferList = new ArrayList<>();
@@ -79,5 +83,41 @@ public class ThriftCodecUtils
         codec.write(value, protocol);
         transport.finish();
         consumer.accept(byteBufferList);
+    }
+
+    public static <T> T readConcreteThriftValue(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
+            throws Exception
+    {
+        List<ByteBufferPool.PooledByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
+        if (byteBufferList.isEmpty()) {
+            return null;
+        }
+
+        try {
+            return codec.deserialize(byteBufferList);
+        }
+        finally {
+            for (ByteBufferPool.PooledByteBuffer pooledByteBuffer : byteBufferList) {
+                pooledByteBuffer.release();
+            }
+        }
+    }
+
+    public static <T> void writeConcreteThriftValue(ConnectorCodec<T> codec, T value, TProtocolWriter writer)
+            throws Exception
+    {
+        codec.serialize(value, byteBufferList -> {
+            try {
+                writer.writeBinaryFromBufferList(byteBufferList);
+            }
+            catch (TException e) {
+                throw new IllegalStateException("Failed to serialize value", e);
+            }
+            finally {
+                for (ByteBufferPool.PooledByteBuffer pooledByteBuffer : byteBufferList) {
+                    pooledByteBuffer.release();
+                }
+            }
+        });
     }
 }
