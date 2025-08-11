@@ -43,13 +43,13 @@ public class TestThriftSerde
         new Thread(() ->
         {
             try {
-                ThriftCodecUtils.serializeToBufferList(split1,
+                ThriftCodecUtils.serializeToBuffers(split1,
                         thriftCodec,
                         bufferPool,
                         byteBufferList -> {
                             RemoteSplit split;
                             try {
-                                split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodec);
+                                split = ThriftCodecUtils.deserializeFromBuffers(byteBufferList, thriftCodec);
                             }
                             catch (Exception e) {
                                 throw new RuntimeException(e);
@@ -71,13 +71,13 @@ public class TestThriftSerde
                 // Give the other thread enough time to finish
                 Thread.sleep(200);
 
-                ThriftCodecUtils.serializeToBufferList(split2,
+                ThriftCodecUtils.serializeToBuffers(split2,
                         thriftCodec,
                         bufferPool,
                         byteBufferList -> {
                             RemoteSplit split;
                             try {
-                                split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodec);
+                                split = ThriftCodecUtils.deserializeFromBuffers(byteBufferList, thriftCodec);
                             }
                             catch (Exception e) {
                                 throw new RuntimeException(e);

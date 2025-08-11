@@ -39,7 +39,7 @@ public class RemoteSplitCodec
     }
 
     @Override
-    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
+    public void serialize(ConnectorSplit connectorSplit, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
     {
         requireNonNull(connectorSplit, "split is null");
         requireNonNull(consumer, "consumer is null");
@@ -47,7 +47,7 @@ public class RemoteSplitCodec
         RemoteSplit remoteSplit = (RemoteSplit) connectorSplit;
 
         try {
-            ThriftCodecUtils.serializeToBufferList(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), pool, consumer);
+            ThriftCodecUtils.serializeToBuffers(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);
@@ -55,13 +55,13 @@ public class RemoteSplitCodec
     }
 
     @Override
-    public ConnectorSplit deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
+    public ConnectorSplit deserialize(List<ByteBufferPool.PooledByteBuffer> byteBufferList)
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
 
         ConnectorSplit split;
         try {
-            split = ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+            split = ThriftCodecUtils.deserializeFromBuffers(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteSplit", e);

@@ -59,38 +59,25 @@ public class ThriftCodecUtils
         }
     }
 
-    public static <T> T deserializeFromBufferList(
-            List<ByteBufferPool.ReusableByteBuffer> byteBufferList,
+    public static <T> T deserializeFromBuffers(
+            List<ByteBufferPool.PooledByteBuffer> byteBufferList,
             ThriftCodec<T> codec)
             throws Exception
     {
-        try {
-            ByteBufferInputTransport transport = new ByteBufferInputTransport(byteBufferList);
-            TProtocol protocol = new TBinaryProtocol(transport);
-            return codec.read(protocol);
-        }
-        finally {
-            for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
-                buffer.release();
-            }
-        }
+        ByteBufferInputTransport transport = new ByteBufferInputTransport(byteBufferList);
+        TProtocol protocol = new TBinaryProtocol(transport);
+        return codec.read(protocol);
     }
 
-    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
+    public static <T> void serializeToBuffers(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
             throws Exception
     {
-        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = new ArrayList<>();
+        List<ByteBufferPool.PooledByteBuffer> byteBufferList = new ArrayList<>();
         ByteBufferOutputTransport transport = new ByteBufferOutputTransport(pool, byteBufferList);
         TProtocol protocol = new TBinaryProtocol(transport);
-        try {
-            codec.write(value, protocol);
-            transport.finish();
-            consumer.accept(byteBufferList);
-        }
-        finally {
-            for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
-                buffer.release();
-            }
-        }
+
+        codec.write(value, protocol);
+        transport.finish();
+        consumer.accept(byteBufferList);
     }
 }

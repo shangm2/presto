@@ -22,9 +22,9 @@ import java.util.function.Consumer;
 @Experimental
 public interface ConnectorCodec<T>
 {
-    void serialize(T value, Consumer<List<ByteBufferPool.ReusableByteBuffer>> consumer)
+    void serialize(T value, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
             throws Exception;
 
-    T deserialize(List<ByteBufferPool.ReusableByteBuffer> byteBufferList)
+    T deserialize(List<ByteBufferPool.PooledByteBuffer> byteBufferList)
             throws Exception;
 }

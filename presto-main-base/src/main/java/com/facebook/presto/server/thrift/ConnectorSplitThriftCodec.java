@@ -16,11 +16,11 @@ package com.facebook.presto.server.thrift;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.TException;
 import com.facebook.drift.buffer.ByteBufferPool;
+import com.facebook.drift.buffer.ForPooledByteBuffer;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
-import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.presto.connector.ConnectorCodecManager;
 import com.facebook.presto.metadata.HandleResolver;
 import com.facebook.presto.spi.ConnectorSplit;
@@ -69,7 +69,7 @@ public class ConnectorSplitThriftCodec
     public ConnectorSplit readConcreteValue(String connectorId, TProtocolReader reader)
             throws Exception
     {
-        List<ByteBufferPool.ReusableByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
+        List<ByteBufferPool.PooledByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
 
         if (byteBufferList.isEmpty()) {
             return null;
@@ -83,7 +83,7 @@ public class ConnectorSplitThriftCodec
                         throw new IllegalStateException("Failed to deserialize connector split", e);
                     }
                     finally {
-                        for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                        for (ByteBufferPool.PooledByteBuffer buffer : byteBufferList) {
                             buffer.release();
                         }
                     }
@@ -107,7 +107,7 @@ public class ConnectorSplitThriftCodec
                                 throw new IllegalStateException("Failed to serialize connector split", e);
                             }
                             finally {
-                                for (ByteBufferPool.ReusableByteBuffer buffer : byteBufferList) {
+                                for (ByteBufferPool.PooledByteBuffer buffer : byteBufferList) {
                                     buffer.release();
                                 }
                             }
