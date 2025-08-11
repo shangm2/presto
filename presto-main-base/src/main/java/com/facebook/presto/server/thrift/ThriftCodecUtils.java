@@ -63,7 +63,7 @@ public class ThriftCodecUtils
         }
     }
 
-    public static <T> T deserializeFromBufferList(
+    public static <T> T deserializeConcreteValue(
             List<ByteBufferPool.PooledByteBuffer> byteBufferList,
             ThriftCodec<T> codec)
             throws Exception
@@ -73,7 +73,7 @@ public class ThriftCodecUtils
         return codec.read(protocol);
     }
 
-    public static <T> void serializeToBufferList(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
+    public static <T> void serializeConcreteValue(T value, ThriftCodec<T> codec, ByteBufferPool pool, Consumer<List<ByteBufferPool.PooledByteBuffer>> consumer)
             throws Exception
     {
         List<ByteBufferPool.PooledByteBuffer> byteBufferList = new ArrayList<>();
@@ -85,7 +85,7 @@ public class ThriftCodecUtils
         consumer.accept(byteBufferList);
     }
 
-    public static <T> T readConcreteThriftValue(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
+    public static <T> T deserializeFromBufferList(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
             throws Exception
     {
         List<ByteBufferPool.PooledByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
@@ -103,7 +103,7 @@ public class ThriftCodecUtils
         }
     }
 
-    public static <T> void writeConcreteThriftValue(ConnectorCodec<T> codec, T value, TProtocolWriter writer)
+    public static <T> void serializeToBufferList(ConnectorCodec<T> codec, T value, TProtocolWriter writer)
             throws Exception
     {
         codec.serialize(value, byteBufferList -> {

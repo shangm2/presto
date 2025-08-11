@@ -15,7 +15,7 @@ package com.facebook.presto.connector;
 
 import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
+import com.facebook.presto.server.thrift.ForPooledByteBuffer;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorDeleteTableHandle;
 import com.facebook.presto.spi.ConnectorId;

@@ -15,7 +15,6 @@ package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.drift.buffer.ByteBufferPool;
-import com.facebook.drift.buffer.ForPooledByteBuffer;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -29,8 +28,8 @@ import javax.inject.Inject;
 
 import java.util.Optional;
 
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.readConcreteThriftValue;
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.writeConcreteThriftValue;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.deserializeFromBufferList;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.serializeToBufferList;
 import static java.util.Objects.requireNonNull;
 
 public class TransactionHandleThriftCodec
@@ -74,7 +73,7 @@ public class TransactionHandleThriftCodec
         if (!codec.isPresent()) {
             return null;
         }
-        return readConcreteThriftValue(codec.get(), reader, pool);
+        return deserializeFromBufferList(codec.get(), reader, pool);
     }
 
     @Override
@@ -87,7 +86,7 @@ public class TransactionHandleThriftCodec
             return;
         }
 
-        writeConcreteThriftValue(codec.get(), value, writer);
+        serializeToBufferList(codec.get(), value, writer);
     }
 
     @Override

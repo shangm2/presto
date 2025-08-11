@@ -47,7 +47,7 @@ public class RemoteTransactionHandleCodec
         RemoteTransactionHandle remoteHandle = (RemoteTransactionHandle) handle;
 
         try {
-            ThriftCodecUtils.serializeToBufferList(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
+            ThriftCodecUtils.serializeConcreteValue(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);
@@ -59,7 +59,7 @@ public class RemoteTransactionHandleCodec
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
         try {
-            return ThriftCodecUtils.deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
+            return ThriftCodecUtils.deserializeConcreteValue(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteTransactionHandle", e);

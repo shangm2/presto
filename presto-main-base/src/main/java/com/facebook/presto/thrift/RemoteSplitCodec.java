@@ -23,8 +23,8 @@ import com.google.inject.Provider;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.deserializeFromBufferList;
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.serializeToBufferList;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.deserializeConcreteValue;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.serializeConcreteValue;
 import static java.util.Objects.requireNonNull;
 
 public class RemoteSplitCodec
@@ -48,7 +48,7 @@ public class RemoteSplitCodec
         RemoteSplit remoteSplit = (RemoteSplit) connectorSplit;
 
         try {
-            serializeToBufferList(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), pool, consumer);
+            serializeConcreteValue(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), pool, consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);
@@ -62,7 +62,7 @@ public class RemoteSplitCodec
 
         ConnectorSplit split;
         try {
-            split = deserializeFromBufferList(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+            split = deserializeConcreteValue(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteSplit", e);

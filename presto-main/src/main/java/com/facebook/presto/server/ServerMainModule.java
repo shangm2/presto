@@ -18,7 +18,6 @@ import com.facebook.airlift.configuration.AbstractConfigurationAwareModule;
 import com.facebook.airlift.discovery.client.ServiceAnnouncement;
 import com.facebook.airlift.http.server.TheServlet;
 import com.facebook.airlift.json.JsonObjectMapperProvider;
-import com.facebook.airlift.stats.DistributionStat;
 import com.facebook.airlift.stats.GcMonitor;
 import com.facebook.airlift.stats.JmxGcMonitor;
 import com.facebook.airlift.stats.PauseMeter;
@@ -26,7 +25,6 @@ import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.client.ExceptionClassification;
 import com.facebook.drift.client.address.AddressSelector;
 import com.facebook.drift.codec.utils.DefaultThriftCodecsModule;
-import com.facebook.drift.protocol.bytebuffer.ForPooledByteBuffer;
 import com.facebook.drift.transport.netty.client.DriftNettyClientModule;
 import com.facebook.drift.transport.netty.server.DriftNettyServerModule;
 import com.facebook.presto.GroupByHashPageIndexerFactory;
@@ -145,6 +143,7 @@ import com.facebook.presto.resourcemanager.ResourceManagerResourceGroupService;
 import com.facebook.presto.server.remotetask.HttpLocationFactory;
 import com.facebook.presto.server.remotetask.ReactorNettyHttpClientConfig;
 import com.facebook.presto.server.thrift.FixedAddressSelector;
+import com.facebook.presto.server.thrift.ForPooledByteBuffer;
 import com.facebook.presto.server.thrift.HandleThriftModule;
 import com.facebook.presto.server.thrift.ThriftServerInfoClient;
 import com.facebook.presto.server.thrift.ThriftServerInfoService;
@@ -851,15 +850,7 @@ public class ServerMainModule
     @ForPooledByteBuffer
     public static ByteBufferPool createBufferPool(TaskManagerConfig config)
     {
-        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount(), true);
-    }
-
-    @Provides
-    @Singleton
-    @ForPooledByteBuffer
-    public static DistributionStat createSplitSizeTracker()
-    {
-        return new DistributionStat();
+        return new ByteBufferPool(config.getByteBufferSize(), config.getMaxBufferCount());
     }
 
     @Provides

@@ -35,7 +35,6 @@ public class RemoteCodecProvider
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
         this.pool = requireNonNull(pool, "pool is null");
-        System.out.println("=====> RemoteCodecProvider, id: " + pool.getId() + ", direct: " + pool.isUseDirect());
     }
 
     @Override
