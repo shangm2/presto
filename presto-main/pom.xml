@@ -18,6 +18,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.jctools</groupId>
+            <artifactId>jctools-core</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-main-base</artifactId>
         </dependency>
@@ -447,7 +452,7 @@
                                 <argument>-DoutputDirectory=benchmark_outputs</argument>
                                 <argument>-Dmyproperty=myvalue</argument>
                                 <argument>-classpath</argument>
-                                <classpath/>
+                                <classpath />
                                 <argument>com.facebook.presto.benchmark.BenchmarkSuite</argument>
                             </arguments>
                             <classpathScope>test</classpathScope>
