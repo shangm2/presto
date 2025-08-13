@@ -67,6 +67,7 @@ public class PluginManagerUtil
             .add("com.facebook.drift.buffer.")
             .add("com.facebook.drift.TException")
             .add("com.facebook.drift.TApplicationException")
+            .add("org.jctools.queues")
             .build();
 
     private PluginManagerUtil()
