@@ -60,13 +60,11 @@ public class RemoteSplitCodec
     {
         requireNonNull(byteBufferList, "byteBufferList is null");
 
-        ConnectorSplit split;
         try {
-            split = deserializeConcreteValue(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
+            return deserializeConcreteValue(byteBufferList, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class));
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to deserialize RemoteSplit", e);
         }
-        return split;
     }
 }

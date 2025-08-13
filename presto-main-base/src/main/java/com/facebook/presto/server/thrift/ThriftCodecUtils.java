@@ -85,7 +85,7 @@ public class ThriftCodecUtils
         consumer.accept(byteBufferList);
     }
 
-    public static <T> T deserializeFromBufferList(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
+    public static <T> T deserialize(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
             throws Exception
     {
         List<ByteBufferPool.PooledByteBuffer> byteBufferList = reader.readBinaryToBufferList(pool);
@@ -103,7 +103,7 @@ public class ThriftCodecUtils
         }
     }
 
-    public static <T> void serializeToBufferList(ConnectorCodec<T> codec, T value, TProtocolWriter writer)
+    public static <T> void serialize(ConnectorCodec<T> codec, T value, TProtocolWriter writer)
             throws Exception
     {
         codec.serialize(value, byteBufferList -> {

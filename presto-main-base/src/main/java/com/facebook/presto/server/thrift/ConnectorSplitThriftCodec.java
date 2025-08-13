@@ -28,8 +28,8 @@ import javax.inject.Inject;
 
 import java.util.Optional;
 
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.deserializeFromBufferList;
-import static com.facebook.presto.server.thrift.ThriftCodecUtils.serializeToBufferList;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.deserialize;
+import static com.facebook.presto.server.thrift.ThriftCodecUtils.serialize;
 import static java.util.Objects.requireNonNull;
 
 public class ConnectorSplitThriftCodec
@@ -74,7 +74,7 @@ public class ConnectorSplitThriftCodec
             return null;
         }
 
-        return deserializeFromBufferList(codec.get(), reader, pool);
+        return deserialize(codec.get(), reader, pool);
     }
 
     @Override
@@ -87,7 +87,7 @@ public class ConnectorSplitThriftCodec
             return;
         }
 
-        serializeToBufferList(codec.get(), value, writer);
+        serialize(codec.get(), value, writer);
     }
 
     @Override

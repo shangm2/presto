@@ -33,28 +33,4 @@ public class ByteBufferPoolStats
     {
         return pool.getPoolSize();
     }
-
-    @Managed
-    public long getPoolAcquire()
-    {
-        return pool.getAcquire();
-    }
-
-    @Managed
-    public long getPoolReuse()
-    {
-        return pool.getReuse();
-    }
-
-    @Managed
-    public long getPoolRecycle()
-    {
-        return pool.getRecycle();
-    }
-
-    @Managed
-    public long getPoolNewAllocation()
-    {
-        return pool.getNewAllocate();
-    }
 }
