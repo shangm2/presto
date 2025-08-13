@@ -89,7 +89,6 @@ import com.facebook.presto.server.remotetask.HttpRemoteTaskFactory;
 import com.facebook.presto.server.remotetask.ReactorNettyHttpClient;
 import com.facebook.presto.server.remotetask.ReactorNettyHttpClientConfig;
 import com.facebook.presto.server.remotetask.RemoteTaskStats;
-import com.facebook.presto.server.thrift.ByteBufferPoolStats;
 import com.facebook.presto.spi.memory.ClusterMemoryPoolManager;
 import com.facebook.presto.spi.security.SelectedRole;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
@@ -270,9 +269,6 @@ public class CoordinatorModule
         // execution scheduler
         binder.bind(RemoteTaskFactory.class).to(HttpRemoteTaskFactory.class).in(Scopes.SINGLETON);
         newExporter(binder).export(RemoteTaskFactory.class).withGeneratedName();
-
-        binder.bind(ByteBufferPoolStats.class).in(Scopes.SINGLETON);
-        newExporter(binder).export(ByteBufferPoolStats.class).withGeneratedName();
 
         binder.bind(RemoteTaskStats.class).in(Scopes.SINGLETON);
         newExporter(binder).export(RemoteTaskStats.class).withGeneratedName();
