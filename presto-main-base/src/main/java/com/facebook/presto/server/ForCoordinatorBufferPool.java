@@ -11,20 +11,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.spi;
+package com.facebook.presto.server;
 
-import com.facebook.presto.spi.api.Experimental;
+import javax.inject.Qualifier;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.function.Consumer;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-@Experimental
-public interface ConnectorCodec<T>
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+@Retention(RUNTIME)
+@Target({FIELD, PARAMETER, METHOD})
+@Qualifier
+public @interface ForCoordinatorBufferPool
 {
-    void serialize(T value, Consumer<List<ByteBuffer>> consumer)
-            throws Exception;
-
-    T deserialize(List<ByteBuffer> byteBufferList)
-            throws Exception;
 }

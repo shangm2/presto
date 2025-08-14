@@ -13,48 +13,58 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TProtocolException;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorTableHandle;
-import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.tpcds.TpcdsTableHandle;
+import com.google.inject.Provider;
 
-import static com.facebook.presto.spi.StandardErrorCode.INVALID_ARGUMENTS;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.toThrift;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.Consumer;
+
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.deserializeConcreteValue;
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.serializeConcreteValue;
 import static java.util.Objects.requireNonNull;
 
 public class TpcdsTableHandleCodec
         implements ConnectorCodec<ConnectorTableHandle>
 {
-    private final ThriftCodec<TpcdsTableHandle> thriftCodec;
+    private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufferPool pool;
 
-    public TpcdsTableHandleCodec(ThriftCodecManager thriftCodecManager)
+    public TpcdsTableHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
-        this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(TpcdsTableHandle.class);
+        this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorTableHandle handle)
+    public void serialize(ConnectorTableHandle handle, Consumer<List<ByteBuffer>> consumer)
     {
+        requireNonNull(handle, "split is null");
+        requireNonNull(consumer, "consumer is null");
+
+        TpcdsTableHandle tableHandle = (TpcdsTableHandle) handle;
+
         try {
-            return toThrift((TpcdsTableHandle) handle, thriftCodec);
+            serializeConcreteValue(tableHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class), pool, consumer);
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not serialize tpcds table handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize TpcdsTableHandle", e);
         }
     }
 
     @Override
-    public ConnectorTableHandle deserialize(byte[] bytes)
+    public ConnectorTableHandle deserialize(List<ByteBuffer> byteBuffers)
     {
+        requireNonNull(byteBuffers, "byteBuffers is null");
         try {
-            return fromThrift(bytes, thriftCodec);
+            return deserializeConcreteValue(byteBuffers, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class));
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not deserialize tpcds table handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize TpcdsTableHandle", e);
         }
     }
 }

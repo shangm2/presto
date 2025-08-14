@@ -13,48 +13,58 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TProtocolException;
 import com.facebook.presto.spi.ConnectorCodec;
-import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.tpcds.TpcdsTransactionHandle;
+import com.google.inject.Provider;
 
-import static com.facebook.presto.spi.StandardErrorCode.INVALID_ARGUMENTS;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.toThrift;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.Consumer;
+
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.deserializeConcreteValue;
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.serializeConcreteValue;
 import static java.util.Objects.requireNonNull;
 
 public class TpcdsTransactionHandleCodec
         implements ConnectorCodec<ConnectorTransactionHandle>
 {
-    private final ThriftCodec<TpcdsTransactionHandle> thriftCodec;
+    private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufferPool pool;
 
-    public TpcdsTransactionHandleCodec(ThriftCodecManager thriftCodecManager)
+    public TpcdsTransactionHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
-        this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(TpcdsTransactionHandle.class);
+        this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorTransactionHandle handle)
+    public void serialize(ConnectorTransactionHandle handle, Consumer<List<ByteBuffer>> consumer)
     {
+        requireNonNull(handle, "split is null");
+        requireNonNull(consumer, "consumer is null");
+
+        TpcdsTransactionHandle transactionHandle = (TpcdsTransactionHandle) handle;
+
         try {
-            return toThrift((TpcdsTransactionHandle) handle, thriftCodec);
+            serializeConcreteValue(transactionHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class), pool, consumer);
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not serialize tpcds transaction handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize TpcdsTransactionHandle", e);
         }
     }
 
     @Override
-    public ConnectorTransactionHandle deserialize(byte[] bytes)
+    public ConnectorTransactionHandle deserialize(List<ByteBuffer> byteBuffers)
     {
+        requireNonNull(byteBuffers, "byteBuffers is null");
         try {
-            return fromThrift(bytes, thriftCodec);
+            return deserializeConcreteValue(byteBuffers, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class));
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not deserialize tpcds transaction handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize TpcdsTransactionHandle", e);
         }
     }
 }

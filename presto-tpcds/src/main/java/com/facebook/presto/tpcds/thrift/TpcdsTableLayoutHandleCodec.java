@@ -13,48 +13,58 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.codec.ThriftCodec;
+import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
-import com.facebook.drift.protocol.TProtocolException;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
-import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.tpcds.TpcdsTableLayoutHandle;
+import com.google.inject.Provider;
 
-import static com.facebook.presto.spi.StandardErrorCode.INVALID_ARGUMENTS;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.fromThrift;
-import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.toThrift;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.Consumer;
+
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.deserializeConcreteValue;
+import static com.facebook.presto.tpcds.thrift.ThriftCodecUtils.serializeConcreteValue;
 import static java.util.Objects.requireNonNull;
 
 public class TpcdsTableLayoutHandleCodec
         implements ConnectorCodec<ConnectorTableLayoutHandle>
 {
-    private final ThriftCodec<TpcdsTableLayoutHandle> thriftCodec;
+    private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
+    private final ByteBufferPool pool;
 
-    public TpcdsTableLayoutHandleCodec(ThriftCodecManager thriftCodecManager)
+    public TpcdsTableLayoutHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
     {
-        this.thriftCodec = requireNonNull(thriftCodecManager, "thriftCodecManager is null").getCodec(TpcdsTableLayoutHandle.class);
+        this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
+        this.pool = requireNonNull(pool, "pool is null");
     }
 
     @Override
-    public byte[] serialize(ConnectorTableLayoutHandle handle)
+    public void serialize(ConnectorTableLayoutHandle handle, Consumer<List<ByteBuffer>> consumer)
     {
+        requireNonNull(handle, "split is null");
+        requireNonNull(consumer, "consumer is null");
+
+        TpcdsTableLayoutHandle layoutHandle = (TpcdsTableLayoutHandle) handle;
+
         try {
-            return toThrift((TpcdsTableLayoutHandle) handle, thriftCodec);
+            serializeConcreteValue(layoutHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableLayoutHandle.class), pool, consumer);
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not serialize tpcds table Layout handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to serialize TpcdsTableLayoutHandle", e);
         }
     }
 
     @Override
-    public ConnectorTableLayoutHandle deserialize(byte[] bytes)
+    public ConnectorTableLayoutHandle deserialize(List<ByteBuffer> byteBuffers)
     {
+        requireNonNull(byteBuffers, "byteBuffers is null");
         try {
-            return fromThrift(bytes, thriftCodec);
+            return deserializeConcreteValue(byteBuffers, thriftCodecManagerProvider.get().getCodec(TpcdsTableLayoutHandle.class));
         }
-        catch (TProtocolException e) {
-            throw new PrestoException(INVALID_ARGUMENTS, "Can not deserialize tpcds table Layout handle", e);
+        catch (Exception e) {
+            throw new RuntimeException("Failed to deserialize TpcdsTableLayoutHandle", e);
         }
     }
 }
