@@ -25,6 +25,7 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferInputTransport;
 import com.facebook.drift.protocol.bytebuffer.ByteBufferOutputTransport;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
 
 import java.nio.ByteBuffer;
@@ -86,10 +87,11 @@ public class ThriftCodecUtils
         consumer.accept(byteBuffers);
     }
 
-    public static <T> T deserialize(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPool pool)
+    public static <T> T deserialize(ConnectorCodec<T> codec, TProtocolReader reader, ByteBufferPoolManager byteBufferPoolManager)
             throws Exception
     {
-        List<ByteBuffer> byteBuffers = reader.readBinaryToBuffers(pool);
+        ByteBufferPool byteBufferPool = byteBufferPoolManager.getPool();
+        List<ByteBuffer> byteBuffers = reader.readBinaryToBuffers(byteBufferPool);
         if (byteBuffers.isEmpty()) {
             return null;
         }
@@ -99,12 +101,12 @@ public class ThriftCodecUtils
         }
         finally {
             for (ByteBuffer byteBuffer : byteBuffers) {
-                pool.release(byteBuffer);
+                byteBufferPool.release(byteBuffer);
             }
         }
     }
 
-    public static <T> void serialize(ConnectorCodec<T> codec, T value, TProtocolWriter writer, ByteBufferPool pool)
+    public static <T> void serialize(ConnectorCodec<T> codec, T value, TProtocolWriter writer, ByteBufferPoolManager byteBufferPoolManager)
             throws Exception
     {
         codec.serialize(value, byteBuffers -> {
@@ -116,7 +118,7 @@ public class ThriftCodecUtils
             }
             finally {
                 for (ByteBuffer byteBuffer : byteBuffers) {
-                    pool.release(byteBuffer);
+                    byteBufferPoolManager.getPool().release(byteBuffer);
                 }
             }
         });

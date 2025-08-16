@@ -14,7 +14,6 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -38,7 +37,7 @@ public class DeleteTableHandleThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorDeleteTableHandle.class);
     private final ConnectorCodecManager connectorCodecManager;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
     @Inject
     public DeleteTableHandleThriftCodec(HandleResolver handleResolver,
@@ -51,7 +50,7 @@ public class DeleteTableHandleThriftCodec
                 requireNonNull(handleResolver, "handleResolver is null")::getId,
                 handleResolver::getDeleteTableHandleClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
-        this.pool = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null").getPool();
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @CodecThriftType
@@ -74,7 +73,7 @@ public class DeleteTableHandleThriftCodec
         if (!codec.isPresent()) {
             return null;
         }
-        return deserialize(codec.get(), reader, pool);
+        return deserialize(codec.get(), reader, byteBufferPoolManager);
     }
 
     @Override
@@ -87,7 +86,7 @@ public class DeleteTableHandleThriftCodec
             return;
         }
 
-        serialize(codec.get(), value, writer, pool);
+        serialize(codec.get(), value, writer, byteBufferPoolManager);
     }
 
     @Override

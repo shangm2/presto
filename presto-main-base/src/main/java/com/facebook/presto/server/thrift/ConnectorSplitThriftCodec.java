@@ -14,7 +14,6 @@
 package com.facebook.presto.server.thrift;
 
 import com.facebook.airlift.json.JsonCodec;
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.CodecThriftType;
 import com.facebook.drift.codec.metadata.ThriftType;
 import com.facebook.drift.protocol.TProtocolReader;
@@ -38,7 +37,7 @@ public class ConnectorSplitThriftCodec
 {
     private static final ThriftType THRIFT_TYPE = createThriftType(ConnectorSplit.class);
     private final ConnectorCodecManager connectorCodecManager;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
     @Inject
     public ConnectorSplitThriftCodec(HandleResolver handleResolver,
@@ -51,7 +50,7 @@ public class ConnectorSplitThriftCodec
                 requireNonNull(handleResolver, "handleResolver is null")::getId,
                 handleResolver::getSplitClass);
         this.connectorCodecManager = requireNonNull(connectorCodecManager, "connectorThriftCodecManager is null");
-        this.pool = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null").getPool();
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @CodecThriftType
@@ -75,7 +74,7 @@ public class ConnectorSplitThriftCodec
             return null;
         }
 
-        return deserialize(codec.get(), reader, pool);
+        return deserialize(codec.get(), reader, byteBufferPoolManager);
     }
 
     @Override
@@ -88,17 +87,12 @@ public class ConnectorSplitThriftCodec
             return;
         }
 
-        serialize(codec.get(), value, writer, pool);
+        serialize(codec.get(), value, writer, byteBufferPoolManager);
     }
 
     @Override
     public boolean isThriftCodecAvailable(String connectorId)
     {
         return connectorCodecManager.getConnectorSplitCodec(connectorId).isPresent();
-    }
-
-    public ByteBufferPool getPool()
-    {
-        return pool;
     }
 }

@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorTableHandle;
 import com.facebook.presto.tpcds.TpcdsTableHandle;
@@ -32,12 +32,12 @@ public class TpcdsTableHandleCodec
         implements ConnectorCodec<ConnectorTableHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
-    public TpcdsTableHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
+    public TpcdsTableHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.pool = requireNonNull(pool, "pool is null");
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class TpcdsTableHandleCodec
         TpcdsTableHandle tableHandle = (TpcdsTableHandle) handle;
 
         try {
-            serializeConcreteValue(tableHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class), pool, consumer);
+            serializeConcreteValue(tableHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableHandle.class), byteBufferPoolManager.getPool(), consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize TpcdsTableHandle", e);

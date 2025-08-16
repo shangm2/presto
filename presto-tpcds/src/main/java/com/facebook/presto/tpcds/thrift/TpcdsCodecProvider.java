@@ -13,7 +13,6 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
 import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
@@ -32,35 +31,35 @@ public class TpcdsCodecProvider
         implements ConnectorCodecProvider
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool byteBufferPool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
     public TpcdsCodecProvider(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.byteBufferPool = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null").getPool();
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
     public Optional<ConnectorCodec<ConnectorSplit>> getConnectorSplitCodec()
     {
-        return Optional.of(new TpcdsSplitCodec(thriftCodecManagerProvider, byteBufferPool));
+        return Optional.of(new TpcdsSplitCodec(thriftCodecManagerProvider, byteBufferPoolManager));
     }
 
     @Override
     public Optional<ConnectorCodec<ConnectorTransactionHandle>> getConnectorTransactionHandleCodec()
     {
-        return Optional.of(new TpcdsTransactionHandleCodec(thriftCodecManagerProvider, byteBufferPool));
+        return Optional.of(new TpcdsTransactionHandleCodec(thriftCodecManagerProvider, byteBufferPoolManager));
     }
 
     @Override
     public Optional<ConnectorCodec<ConnectorTableLayoutHandle>> getConnectorTableLayoutHandleCodec()
     {
-        return Optional.of(new TpcdsTableLayoutHandleCodec(thriftCodecManagerProvider, byteBufferPool));
+        return Optional.of(new TpcdsTableLayoutHandleCodec(thriftCodecManagerProvider, byteBufferPoolManager));
     }
 
     @Override
     public Optional<ConnectorCodec<ConnectorTableHandle>> getConnectorTableHandleCodec()
     {
-        return Optional.of(new TpcdsTableHandleCodec(thriftCodecManagerProvider, byteBufferPool));
+        return Optional.of(new TpcdsTableHandleCodec(thriftCodecManagerProvider, byteBufferPoolManager));
     }
 }

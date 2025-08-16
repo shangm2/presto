@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.tpcds.TpcdsTableLayoutHandle;
@@ -32,12 +32,12 @@ public class TpcdsTableLayoutHandleCodec
         implements ConnectorCodec<ConnectorTableLayoutHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
-    public TpcdsTableLayoutHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
+    public TpcdsTableLayoutHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.pool = requireNonNull(pool, "pool is null");
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class TpcdsTableLayoutHandleCodec
         TpcdsTableLayoutHandle layoutHandle = (TpcdsTableLayoutHandle) handle;
 
         try {
-            serializeConcreteValue(layoutHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableLayoutHandle.class), pool, consumer);
+            serializeConcreteValue(layoutHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTableLayoutHandle.class), byteBufferPoolManager.getPool(), consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize TpcdsTableLayoutHandle", e);

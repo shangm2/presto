@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.metadata.RemoteTransactionHandle;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
@@ -32,12 +32,12 @@ public class RemoteTransactionHandleCodec
         implements ConnectorCodec<ConnectorTransactionHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
-    public RemoteTransactionHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
+    public RemoteTransactionHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.pool = requireNonNull(pool, "pool is null");
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class RemoteTransactionHandleCodec
         RemoteTransactionHandle remoteHandle = (RemoteTransactionHandle) handle;
 
         try {
-            serializeConcreteValue(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), pool, consumer);
+            serializeConcreteValue(remoteHandle, thriftCodecManagerProvider.get().getCodec(RemoteTransactionHandle.class), byteBufferPoolManager.getPool(), consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);

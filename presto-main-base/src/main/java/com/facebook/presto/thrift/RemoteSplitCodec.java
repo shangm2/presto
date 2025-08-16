@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.split.RemoteSplit;
@@ -32,12 +32,12 @@ public class RemoteSplitCodec
         implements ConnectorCodec<ConnectorSplit>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
-    public RemoteSplitCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
+    public RemoteSplitCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.pool = requireNonNull(pool, "pool is null");
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class RemoteSplitCodec
         RemoteSplit remoteSplit = (RemoteSplit) connectorSplit;
 
         try {
-            serializeConcreteValue(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), pool, consumer);
+            serializeConcreteValue(remoteSplit, thriftCodecManagerProvider.get().getCodec(RemoteSplit.class), byteBufferPoolManager.getPool(), consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize RemoteSplit", e);

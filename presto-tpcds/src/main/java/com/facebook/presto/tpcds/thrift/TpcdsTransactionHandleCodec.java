@@ -13,8 +13,8 @@
  */
 package com.facebook.presto.tpcds.thrift;
 
-import com.facebook.drift.buffer.ByteBufferPool;
 import com.facebook.drift.codec.ThriftCodecManager;
+import com.facebook.presto.common.thrift.ByteBufferPoolManager;
 import com.facebook.presto.spi.ConnectorCodec;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.tpcds.TpcdsTransactionHandle;
@@ -32,12 +32,12 @@ public class TpcdsTransactionHandleCodec
         implements ConnectorCodec<ConnectorTransactionHandle>
 {
     private final Provider<ThriftCodecManager> thriftCodecManagerProvider;
-    private final ByteBufferPool pool;
+    private final ByteBufferPoolManager byteBufferPoolManager;
 
-    public TpcdsTransactionHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPool pool)
+    public TpcdsTransactionHandleCodec(Provider<ThriftCodecManager> thriftCodecManagerProvider, ByteBufferPoolManager byteBufferPoolManager)
     {
         this.thriftCodecManagerProvider = requireNonNull(thriftCodecManagerProvider, "thriftCodecManagerProvider is null");
-        this.pool = requireNonNull(pool, "pool is null");
+        this.byteBufferPoolManager = requireNonNull(byteBufferPoolManager, "byteBufferPoolManager is null");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class TpcdsTransactionHandleCodec
         TpcdsTransactionHandle transactionHandle = (TpcdsTransactionHandle) handle;
 
         try {
-            serializeConcreteValue(transactionHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class), pool, consumer);
+            serializeConcreteValue(transactionHandle, thriftCodecManagerProvider.get().getCodec(TpcdsTransactionHandle.class), byteBufferPoolManager.getPool(), consumer);
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to serialize TpcdsTransactionHandle", e);
