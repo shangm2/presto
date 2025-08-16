@@ -23,6 +23,7 @@ public class ByteBufferPoolManager
 
     public ByteBufferPool getPool()
     {
+        System.out.println("======> getPool for thread: " + threadPools.size());
         return threadPools.computeIfAbsent(Thread.currentThread(), t -> new ByteBufferPool());
     }
 }
