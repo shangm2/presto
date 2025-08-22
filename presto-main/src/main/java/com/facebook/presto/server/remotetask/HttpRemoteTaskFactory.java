@@ -206,8 +206,13 @@ public class HttpRemoteTaskFactory
         this.taskUpdateSizeTrackingEnabled = taskConfig.isTaskUpdateSizeTrackingEnabled();
 
         int totalThreads = config.getRemoteTaskMaxCallbackThreads();
-        int tableScanThreads = Math.max((int) (totalThreads * taskConfig.getTableScanEventLoopRatio()), 1);
-        int regularTaskThreads = totalThreads - tableScanThreads;
+        int regularTaskThreads = totalThreads;
+        int tableScanThreads = 0;
+        double tableScanThreadsRatio = taskConfig.getTableScanEventLoopRatio();
+        if (tableScanThreadsRatio > 0.0) {
+            tableScanThreads = Math.max((int) (totalThreads * taskConfig.getTableScanEventLoopRatio()), 1);
+            regularTaskThreads = totalThreads - tableScanThreads;
+        }
 
         this.eventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(regularTaskThreads,
                 new ThreadFactoryBuilder().setNameFormat("task-event-loop-%s").setDaemon(true).build(), taskConfig.getSlowMethodThresholdOnEventLoop())
@@ -219,7 +224,7 @@ public class HttpRemoteTaskFactory
             }
         }) : Optional.empty();
 
-        this.tableScanEventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(tableScanThreads,
+        this.tableScanEventLoopGroup = (taskConfig.isEventLoopEnabled() && tableScanThreads > 0) ? Optional.of(new SafeEventLoopGroup(tableScanThreads,
                 new ThreadFactoryBuilder().setNameFormat("table-scan-event-loop-%s").setDaemon(true).build(), taskConfig.getSlowMethodThresholdOnEventLoop())
         {
             @Override
@@ -307,7 +312,7 @@ public class HttpRemoteTaskFactory
                     taskUpdateSizeTrackingEnabled,
                     handleResolver,
                     schedulerStatsTracker,
-                    (SafeEventLoopGroup.SafeEventLoop) (isTableScan ? tableScanEventLoopGroup.get().next() : eventLoopGroup.get().next()));
+                    (SafeEventLoopGroup.SafeEventLoop) ((isTableScan && tableScanEventLoopGroup.isPresent()) ? tableScanEventLoopGroup.get().next() : eventLoopGroup.get().next()));
         }
         // Use default executor based HttpRemoteTask
         return new HttpRemoteTask(
