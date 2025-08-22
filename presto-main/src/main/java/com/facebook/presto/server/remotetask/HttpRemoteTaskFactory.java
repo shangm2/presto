@@ -107,6 +107,7 @@ public class HttpRemoteTaskFactory
     private final DecayCounter taskUpdateRequestSize;
     private final boolean taskUpdateSizeTrackingEnabled;
     private final Optional<SafeEventLoopGroup> eventLoopGroup;
+    private final Optional<SafeEventLoopGroup> tableScanEventLoopGroup;
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -204,8 +205,22 @@ public class HttpRemoteTaskFactory
         this.taskUpdateRequestSize = new DecayCounter(ExponentialDecay.oneMinute());
         this.taskUpdateSizeTrackingEnabled = taskConfig.isTaskUpdateSizeTrackingEnabled();
 
-        this.eventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(config.getRemoteTaskMaxCallbackThreads(),
+        int totalThreads = config.getRemoteTaskMaxCallbackThreads();
+        int tableScanThreads = Math.max((int) (totalThreads * taskConfig.getTableScanEventLoopRatio()), 1);
+        int regularTaskThreads = totalThreads - tableScanThreads;
+
+        this.eventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(regularTaskThreads,
                 new ThreadFactoryBuilder().setNameFormat("task-event-loop-%s").setDaemon(true).build(), taskConfig.getSlowMethodThresholdOnEventLoop())
+        {
+            @Override
+            protected EventLoop newChild(Executor executor, Object... args)
+            {
+                return new SafeEventLoop(this, executor);
+            }
+        }) : Optional.empty();
+
+        this.tableScanEventLoopGroup = taskConfig.isEventLoopEnabled() ? Optional.of(new SafeEventLoopGroup(tableScanThreads,
+                new ThreadFactoryBuilder().setNameFormat("table-scan-event-loop-%s").setDaemon(true).build(), taskConfig.getSlowMethodThresholdOnEventLoop())
         {
             @Override
             protected EventLoop newChild(Executor executor, Object... args)
@@ -236,6 +251,7 @@ public class HttpRemoteTaskFactory
         errorScheduledExecutor.shutdownNow();
 
         eventLoopGroup.map(AbstractEventExecutorGroup::shutdownGracefully);
+        tableScanEventLoopGroup.map(AbstractEventExecutorGroup::shutdownGracefully);
     }
 
     @Override
@@ -253,6 +269,7 @@ public class HttpRemoteTaskFactory
     {
         if (eventLoopGroup.isPresent()) {
             // Use event loop based HttpRemoteTask
+            boolean isTableScan = !fragment.getTableScanSchedulingOrder().isEmpty();
             return createHttpRemoteTaskWithEventLoop(
                     session,
                     taskId,
@@ -290,7 +307,7 @@ public class HttpRemoteTaskFactory
                     taskUpdateSizeTrackingEnabled,
                     handleResolver,
                     schedulerStatsTracker,
-                    (SafeEventLoopGroup.SafeEventLoop) eventLoopGroup.get().next());
+                    (SafeEventLoopGroup.SafeEventLoop) (isTableScan ? tableScanEventLoopGroup.get().next() : eventLoopGroup.get().next()));
         }
         // Use default executor based HttpRemoteTask
         return new HttpRemoteTask(

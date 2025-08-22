@@ -102,6 +102,19 @@ public class TaskManagerConfig
     private boolean enableEventLoop;
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
 
+    private double tableScanEventLoopRatio = 0.1;
+
+    public double getTableScanEventLoopRatio()
+    {
+        return tableScanEventLoopRatio;
+    }
+
+    @Config("task.table-scan-event-loop-ratio")
+    public void setTableScanEventLoopRatio(double tableScanEventLoopRatio)
+    {
+        this.tableScanEventLoopRatio = tableScanEventLoopRatio;
+    }
+
     public long getSlowMethodThresholdOnEventLoop()
     {
         return slowMethodThresholdOnEventLoop.roundTo(NANOSECONDS);
