@@ -11,18 +11,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.facebook.presto.iceberg;
+package com.facebook.presto.spark.execution.http;
 
-import com.facebook.presto.spi.PrestoException;
-import com.facebook.presto.spi.SchemaTableName;
+import com.facebook.presto.spark.execution.http.server.smile.BaseResponse;
+import okhttp3.Request;
+import okhttp3.Response;
 
-import static com.facebook.presto.iceberg.IcebergErrorCode.ICEBERG_UNKNOWN_TABLE_TYPE;
+import java.io.IOException;
 
-public class UnknownTableTypeException
-        extends PrestoException
+public interface OkHttpResponseHandler<T>
 {
-    public UnknownTableTypeException(SchemaTableName tableName)
-    {
-        super(ICEBERG_UNKNOWN_TABLE_TYPE, "Not an Iceberg table: " + tableName);
-    }
+    BaseResponse<T> handle(Request request, Response response) throws IOException;
 }
