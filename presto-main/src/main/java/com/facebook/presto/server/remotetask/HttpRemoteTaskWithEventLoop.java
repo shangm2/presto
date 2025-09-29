@@ -95,6 +95,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.facebook.airlift.http.client.HttpStatus.NO_CONTENT;
@@ -993,7 +994,11 @@ public final class HttpRemoteTaskWithEventLoop
             }
 
             List<TaskSource> sources = getSources();
-
+            if (sources.isEmpty()) {
+                log.info("====> Shang, no source");
+                return;
+            }
+            log.info(format("====> Shang, Task id: %s with number of task source: %s", taskId, sources.stream().map(source -> source.getSplits().size()).collect(Collectors.toList())));
             Optional<byte[]> fragment = Optional.empty();
             if (sendPlan) {
                 long start = THREAD_MX_BEAN.getCurrentThreadCpuTime();
