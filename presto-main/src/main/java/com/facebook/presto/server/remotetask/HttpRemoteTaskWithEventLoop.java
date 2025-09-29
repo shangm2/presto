@@ -993,7 +993,10 @@ public final class HttpRemoteTaskWithEventLoop
             }
 
             List<TaskSource> sources = getSources();
-
+            if (sources.isEmpty()) {
+                log.info("=====> Shang, return on empty task source");
+                return;
+            }
             Optional<byte[]> fragment = Optional.empty();
             if (sendPlan) {
                 long start = THREAD_MX_BEAN.getCurrentThreadCpuTime();
