@@ -84,6 +84,7 @@ public class ReactorNettyHttpClient
     private static final Logger log = Logger.get(ReactorNettyHttpClient.class);
     private static final HeaderName CONTENT_TYPE_HEADER_NAME = HeaderName.of("Content-Type");
     private static final HeaderName CONTENT_LENGTH_HEADER_NAME = HeaderName.of("Content-Length");
+    private static final HeaderName CONTENT_ENCODING_HEADER_NAME = HeaderName.of("Content-Encoding");
 
     private final Duration requestTimeout;
     private HttpClient httpClient;
@@ -183,9 +184,7 @@ public class ReactorNettyHttpClient
                 .option(ChannelOption.SO_SNDBUF, 1048576)
                 .responseTimeout(java.time.Duration.ofMillis(500))
                 .compress(true)
-                .doOnRequest(
-                        (req, conn) -> log.debug("Shang Acquired connection: {}", conn.channel().id())
-                )
+                .doOnRequest((req, conn) -> log.debug("Shang Acquired connection: {}", conn.channel().id()))
                 // Track HTTP client metrics
                 .metrics(true, () -> httpClientStats, Function.identity());
 
@@ -310,6 +309,7 @@ public class ReactorNettyHttpClient
         }
 
         long contentLength = 0;
+        String contentEncoding = null;
         // Iterate over the headers
         for (String name : headers.names()) {
             if (name.equalsIgnoreCase(CONTENT_LENGTH_HEADER_NAME.toString())) {
@@ -320,9 +320,21 @@ public class ReactorNettyHttpClient
             else if (name.equalsIgnoreCase(CONTENT_TYPE_HEADER_NAME.toString())) {
                 responseHeaders.put(CONTENT_TYPE_HEADER_NAME, headers.get(name));
             }
+            else if (name.equalsIgnoreCase(CONTENT_ENCODING_HEADER_NAME.toString())) {
+                contentEncoding = headers.get(name);
+                responseHeaders.put(HeaderName.of(name), contentEncoding);
+            }
             else {
                 responseHeaders.put(HeaderName.of(name), headers.get(name));
             }
+        }
+
+        if (contentEncoding != null) {
+            log.info("Shang Response compressed with: %s, compressed size: %d bytes",
+                    contentEncoding, contentLength);
+        }
+        else {
+            log.debug("Shang Response not compressed, size: %d bytes", contentLength);
         }
 
         if (!responseHeaders.containsKey(CONTENT_TYPE_HEADER_NAME) || responseHeaders.get(CONTENT_TYPE_HEADER_NAME).size() != 1) {
