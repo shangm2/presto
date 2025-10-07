@@ -151,7 +151,7 @@ public class ReactorNettyHttpClient
          */
         ConnectionProvider pool = ConnectionProvider.builder("shared-pool")
                 .maxConnections(config.getMaxConnections())
-                .fifo()
+                .lifo()
                 .maxIdleTime(java.time.Duration.of(config.getMaxIdleTime().toMillis(), MILLIS))
                 .evictInBackground(java.time.Duration.of(config.getEvictBackgroundTime().toMillis(), MILLIS))
                 .pendingAcquireTimeout(java.time.Duration.of(config.getPendingAcquireTimeout().toMillis(), MILLIS))
@@ -179,6 +179,13 @@ public class ReactorNettyHttpClient
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) config.getConnectTimeout().getValue())
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
+                .option(ChannelOption.SO_RCVBUF, 1048576)
+                .option(ChannelOption.SO_SNDBUF, 1048576)
+                .responseTimeout(java.time.Duration.ofMillis(500))
+                .compress(true)
+                .doOnRequest(
+                        (req, conn) -> log.debug("Shang Acquired connection: {}", conn.channel().id())
+                )
                 // Track HTTP client metrics
                 .metrics(true, () -> httpClientStats, Function.identity());
 
