@@ -28,6 +28,7 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
+import com.facebook.presto.spi.ColumnHandle;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -198,7 +199,11 @@ public abstract class AbstractTypedThriftCodec<T>
         else {
             // If thrift codec is not available for this connector, fall back to its json
             writer.writeFieldBegin(new TField(JSON_VALUE, TType.STRING, JSON_FIELD_ID));
-            writer.writeString(jsonCodec.toJson(value));
+            String jsonString = jsonCodec.toJson(value);
+            if (value instanceof ColumnHandle) {
+                log.info("SHANG catch a json ColumnHandle: " + jsonString);
+            }
+            writer.writeString(jsonString);
             writer.writeFieldEnd();
         }
         writer.writeFieldStop();
