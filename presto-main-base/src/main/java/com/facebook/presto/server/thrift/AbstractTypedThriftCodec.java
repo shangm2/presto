@@ -186,6 +186,10 @@ public abstract class AbstractTypedThriftCodec<T>
         String connectorId = nameResolver.apply(value);
         requireNonNull(connectorId, "connectorId is null");
 
+        // SHANG: Debug ALL serialization paths
+        boolean hasThriftCodec = isThriftCodecAvailable(connectorId);
+        log.error("SHANG: Serializing " + baseClass.getSimpleName() + " connectorId='" + connectorId +
+                "' hasThriftCodec=" + hasThriftCodec + " valueType=" + value.getClass().getSimpleName());
         writer.writeStructBegin(new TStruct(baseClass.getSimpleName()));
         if (isThriftCodecAvailable(connectorId)) {
             writer.writeFieldBegin(new TField(TYPE_VALUE, TType.STRING, TYPE_FIELD_ID));
