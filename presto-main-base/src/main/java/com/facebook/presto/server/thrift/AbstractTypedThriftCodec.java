@@ -28,7 +28,6 @@ import com.facebook.drift.protocol.TProtocolReader;
 import com.facebook.drift.protocol.TProtocolWriter;
 import com.facebook.drift.protocol.TStruct;
 import com.facebook.drift.protocol.TType;
-import com.facebook.presto.spi.ColumnHandle;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -186,10 +185,6 @@ public abstract class AbstractTypedThriftCodec<T>
         String connectorId = nameResolver.apply(value);
         requireNonNull(connectorId, "connectorId is null");
 
-        // SHANG: Debug ALL serialization paths
-        boolean hasThriftCodec = isThriftCodecAvailable(connectorId);
-        log.error("SHANG: Serializing " + baseClass.getSimpleName() + " connectorId='" + connectorId +
-                "' hasThriftCodec=" + hasThriftCodec + " valueType=" + value.getClass().getSimpleName() + " json: " + jsonCodec.toJson(value));
         writer.writeStructBegin(new TStruct(baseClass.getSimpleName()));
         if (isThriftCodecAvailable(connectorId)) {
             writer.writeFieldBegin(new TField(TYPE_VALUE, TType.STRING, TYPE_FIELD_ID));
@@ -203,11 +198,7 @@ public abstract class AbstractTypedThriftCodec<T>
         else {
             // If thrift codec is not available for this connector, fall back to its json
             writer.writeFieldBegin(new TField(JSON_VALUE, TType.STRING, JSON_FIELD_ID));
-            String jsonString = jsonCodec.toJson(value);
-            if (value instanceof ColumnHandle) {
-                log.info("SHANG catch a json ColumnHandle: " + jsonString);
-            }
-            writer.writeString(jsonString);
+            writer.writeString(jsonCodec.toJson(value));
             writer.writeFieldEnd();
         }
         writer.writeFieldStop();
