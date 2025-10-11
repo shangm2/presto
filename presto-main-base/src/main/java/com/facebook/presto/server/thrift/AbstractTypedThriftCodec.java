@@ -189,7 +189,7 @@ public abstract class AbstractTypedThriftCodec<T>
         // SHANG: Debug ALL serialization paths
         boolean hasThriftCodec = isThriftCodecAvailable(connectorId);
         log.error("SHANG: Serializing " + baseClass.getSimpleName() + " connectorId='" + connectorId +
-                "' hasThriftCodec=" + hasThriftCodec + " valueType=" + value.getClass().getSimpleName());
+                "' hasThriftCodec=" + hasThriftCodec + " valueType=" + value.getClass().getSimpleName() + " json: " + jsonCodec.toJson(value));
         writer.writeStructBegin(new TStruct(baseClass.getSimpleName()));
         if (isThriftCodecAvailable(connectorId)) {
             writer.writeFieldBegin(new TField(TYPE_VALUE, TType.STRING, TYPE_FIELD_ID));
