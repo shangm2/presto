@@ -20,6 +20,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <limits>
 #if __has_include("filesystem")
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -46,14 +47,11 @@ uint32_t hardwareConcurrency() {
   return numLogicalCores;
 }
 
-#define STR_PROP(_key_, _val_) \
-  { std::string(_key_), std::string(_val_) }
+#define STR_PROP(_key_, _val_) {std::string(_key_), std::string(_val_)}
 #define NUM_PROP(_key_, _val_) \
-  { std::string(_key_), folly::to<std::string>(_val_) }
-#define BOOL_PROP(_key_, _val_) \
-  { std::string(_key_), bool2String(_val_) }
-#define NONE_PROP(_key_) \
-  { std::string(_key_), folly::none }
+  {std::string(_key_), folly::to<std::string>(_val_)}
+#define BOOL_PROP(_key_, _val_) {std::string(_key_), bool2String(_val_)}
+#define NONE_PROP(_key_) {std::string(_key_), folly::none}
 } // namespace
 
 void ConfigBase::initialize(const std::string& filePath, bool optionalConfig) {
@@ -143,6 +141,7 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kMaxDriversPerTask, hardwareConcurrency()),
           NONE_PROP(kTaskWriterCount),
           NONE_PROP(kTaskPartitionedWriterCount),
+          NONE_PROP(kTaskMaxStorageBroadcastBytes),
           NUM_PROP(kConcurrentLifespansPerTask, 1),
           STR_PROP(kTaskMaxPartialAggregationMemory, "16MB"),
           NUM_PROP(kDriverMaxSplitPreload, 2),
@@ -151,12 +150,17 @@ SystemConfig::SystemConfig() {
           NONE_PROP(kHttpServerHttpsPort),
           BOOL_PROP(kHttpServerHttpsEnabled, false),
           BOOL_PROP(kHttpServerHttp2Enabled, true),
+          NUM_PROP(kHttpServerHttp2InitialReceiveWindow, 1 << 20),
+          NUM_PROP(kHttpServerHttp2ReceiveStreamWindowSize, 1 << 20),
+          NUM_PROP(kHttpServerHttp2ReceiveSessionWindowSize, 10 * (1 << 20)),
+          NUM_PROP(kHttpServerIdleTimeoutMs, 60'000),
           STR_PROP(
               kHttpsSupportedCiphers,
               "ECDHE-ECDSA-AES256-GCM-SHA384,AES256-GCM-SHA384"),
           NONE_PROP(kHttpsCertPath),
           NONE_PROP(kHttpsKeyPath),
           NONE_PROP(kHttpsClientCertAndKeyPath),
+          NONE_PROP(kHttpsClientCaFile),
           NUM_PROP(kExchangeHttpClientNumIoThreadsHwMultiplier, 1.0),
           NUM_PROP(kExchangeHttpClientNumCpuThreadsHwMultiplier, 1.0),
           NUM_PROP(kConnectorNumCpuThreadsHwMultiplier, 0.0),
@@ -166,7 +170,9 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kDriverStuckOperatorThresholdMs, 30 * 60 * 1000),
           NUM_PROP(
               kDriverCancelTasksWithStuckOperatorsThresholdMs, 40 * 60 * 1000),
-          NUM_PROP(kDriverNumStuckOperatorsToDetachWorker, 0.5 * hardwareConcurrency()),
+          NUM_PROP(
+              kDriverNumStuckOperatorsToDetachWorker,
+              std::round(0.5 * hardwareConcurrency())),
           NUM_PROP(kSpillerNumCpuThreadsHwMultiplier, 1.0),
           STR_PROP(kSpillerFileCreateConfig, ""),
           STR_PROP(kSpillerDirectoryCreateConfig, ""),
@@ -227,6 +233,7 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kLogNumZombieTasks, 20),
           NUM_PROP(kAnnouncementMaxFrequencyMs, 30'000), // 30s
           NUM_PROP(kHeartbeatFrequencyMs, 0),
+          BOOL_PROP(kHttpClientHttp2Enabled, false),
           STR_PROP(kExchangeMaxErrorDuration, "3m"),
           STR_PROP(kExchangeRequestTimeout, "20s"),
           STR_PROP(kExchangeConnectTimeout, "20s"),
@@ -297,6 +304,25 @@ bool SystemConfig::httpServerHttp2Enabled() const {
   return optionalProperty<bool>(kHttpServerHttp2Enabled).value();
 }
 
+uint32_t SystemConfig::httpServerHttp2InitialReceiveWindow() const {
+  return optionalProperty<uint32_t>(kHttpServerHttp2InitialReceiveWindow)
+      .value();
+}
+
+uint32_t SystemConfig::httpServerHttp2ReceiveStreamWindowSize() const {
+  return optionalProperty<uint32_t>(kHttpServerHttp2ReceiveStreamWindowSize)
+      .value();
+}
+
+uint32_t SystemConfig::httpServerHttp2ReceiveSessionWindowSize() const {
+  return optionalProperty<uint32_t>(kHttpServerHttp2ReceiveSessionWindowSize)
+      .value();
+}
+
+uint32_t SystemConfig::httpServerIdleTimeoutMs() const {
+  return optionalProperty<uint32_t>(kHttpServerIdleTimeoutMs).value();
+}
+
 std::string SystemConfig::httpsSupportedCiphers() const {
   return optionalProperty(kHttpsSupportedCiphers).value();
 }
@@ -311,6 +337,10 @@ folly::Optional<std::string> SystemConfig::httpsKeyPath() const {
 
 folly::Optional<std::string> SystemConfig::httpsClientCertAndKeyPath() const {
   return optionalProperty(kHttpsClientCertAndKeyPath);
+}
+
+folly::Optional<std::string> SystemConfig::httpsClientCaFile() const {
+  return optionalProperty(kHttpsClientCaFile);
 }
 
 std::string SystemConfig::prestoVersion() const {
@@ -420,6 +450,10 @@ folly::Optional<int32_t> SystemConfig::taskWriterCount() const {
 
 folly::Optional<int32_t> SystemConfig::taskPartitionedWriterCount() const {
   return optionalProperty<int32_t>(kTaskPartitionedWriterCount);
+}
+
+folly::Optional<uint64_t> SystemConfig::taskMaxStorageBroadcastBytes() const {
+  return optionalProperty<uint64_t>(kTaskMaxStorageBroadcastBytes);
 }
 
 int32_t SystemConfig::concurrentLifespansPerTask() const {
@@ -678,8 +712,9 @@ std::string SystemConfig::sharedArbitratorFastExponentialGrowthCapacityLimit()
       kSharedArbitratorFastExponentialGrowthCapacityLimitDefault = "512MB";
   return optionalProperty<std::string>(
              kSharedArbitratorFastExponentialGrowthCapacityLimit)
-      .value_or(std::string(
-          kSharedArbitratorFastExponentialGrowthCapacityLimitDefault));
+      .value_or(
+          std::string(
+              kSharedArbitratorFastExponentialGrowthCapacityLimitDefault));
 }
 
 std::string SystemConfig::sharedArbitratorSlowCapacityGrowPct() const {
@@ -729,8 +764,9 @@ std::string SystemConfig::sharedArbitratorMemoryReclaimThreadsHwMultiplier()
       kSharedArbitratorMemoryReclaimThreadsHwMultiplierDefault = "0.5";
   return optionalProperty<std::string>(
              kSharedArbitratorMemoryReclaimThreadsHwMultiplier)
-      .value_or(std::string(
-          kSharedArbitratorMemoryReclaimThreadsHwMultiplierDefault));
+      .value_or(
+          std::string(
+              kSharedArbitratorMemoryReclaimThreadsHwMultiplierDefault));
 }
 
 std::string SystemConfig::sharedArbitratorGlobalArbitrationMemoryReclaimPct()
@@ -739,8 +775,9 @@ std::string SystemConfig::sharedArbitratorGlobalArbitrationMemoryReclaimPct()
       kSharedArbitratorGlobalArbitrationMemoryReclaimPctDefault = "10";
   return optionalProperty<std::string>(
              kSharedArbitratorGlobalArbitrationMemoryReclaimPct)
-      .value_or(std::string(
-          kSharedArbitratorGlobalArbitrationMemoryReclaimPctDefault));
+      .value_or(
+          std::string(
+              kSharedArbitratorGlobalArbitrationMemoryReclaimPctDefault));
 }
 
 std::string SystemConfig::sharedArbitratorGlobalArbitrationAbortTimeRatio()
@@ -817,6 +854,10 @@ uint64_t SystemConfig::announcementMaxFrequencyMs() const {
 
 uint64_t SystemConfig::heartbeatFrequencyMs() const {
   return optionalProperty<uint64_t>(kHeartbeatFrequencyMs).value();
+}
+
+bool SystemConfig::httpClientHttp2Enabled() const {
+  return optionalProperty<bool>(kHttpClientHttp2Enabled).value();
 }
 
 std::chrono::duration<double> SystemConfig::exchangeMaxErrorDuration() const {

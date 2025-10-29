@@ -18,6 +18,7 @@
 #endif // PRESTO_ENABLE_JWT
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/synchronization/Latch.h>
+#include <proxygen/lib/http/codec/CodecProtocol.h>
 #include <velox/common/base/Exceptions.h>
 #include "presto_cpp/main/common/Configs.h"
 #include "presto_cpp/main/common/Counters.h"
@@ -165,8 +166,9 @@ HttpResponse::nextAllocationSize(uint64_t dataLength) const {
       minAllocSize,
       std::min<size_t>(
           maxResponseAllocBytes_,
-          velox::bits::nextPowerOfTwo(velox::bits::roundUp(
-              dataLength + bodyChainBytes_, minResponseAllocBytes_))));
+          velox::bits::nextPowerOfTwo(
+              velox::bits::roundUp(
+                  dataLength + bodyChainBytes_, minResponseAllocBytes_))));
 }
 
 std::string HttpResponse::dumpBodyChain() const {
@@ -200,13 +202,22 @@ class ResponseHandler : public proxygen::HTTPTransactionHandler {
     return promise_.getSemiFuture();
   }
 
-  void setTransaction(proxygen::HTTPTransaction* /* txn */) noexcept override {}
+  void setTransaction(proxygen::HTTPTransaction* txn) noexcept override {
+    if (txn) {
+      protocol_ = txn->getTransport().getCodec().getProtocol();
+    }
+  }
+
   void detachTransaction() noexcept override {
     self_.reset();
   }
 
   void onHeadersComplete(
       std::unique_ptr<proxygen::HTTPMessage> msg) noexcept override {
+    if (protocol_.has_value()) {
+      VLOG(2) << "HttpClient received response of "
+              << proxygen::getCodecProtocolString(protocol_.value());
+    }
     response_ = std::make_unique<HttpResponse>(
         std::move(msg),
         client_->memoryPool(),
@@ -267,6 +278,7 @@ class ResponseHandler : public proxygen::HTTPTransactionHandler {
   folly::Promise<std::unique_ptr<HttpResponse>> promise_;
   std::shared_ptr<ResponseHandler> self_;
   std::shared_ptr<HttpClient> client_;
+  std::optional<proxygen::CodecProtocol> protocol_;
 };
 
 // Responsible for making an HTTP request. The request will be made in 2
@@ -557,8 +569,10 @@ void RequestBuilder::addJwtIfConfigured() {
     auto secretHash = std::vector<uint8_t>(SHA256_DIGEST_LENGTH);
     folly::ssl::OpenSSLHash::sha256(
         folly::range(secretHash),
-        folly::ByteRange(folly::StringPiece(
-            SystemConfig::instance()->internalCommunicationSharedSecret())));
+        folly::ByteRange(
+            folly::StringPiece(
+                SystemConfig::instance()
+                    ->internalCommunicationSharedSecret())));
 
     const auto time = std::chrono::system_clock::now();
     const auto token =
@@ -570,9 +584,10 @@ void RequestBuilder::addJwtIfConfigured() {
                 std::chrono::seconds{
                     SystemConfig::instance()
                         ->internalCommunicationJwtExpirationSeconds()})
-            .sign(jwt::algorithm::hs256{std::string(
-                reinterpret_cast<char*>(secretHash.data()),
-                secretHash.size())});
+            .sign(
+                jwt::algorithm::hs256{std::string(
+                    reinterpret_cast<char*>(secretHash.data()),
+                    secretHash.size())});
     header(kPrestoInternalBearer, token);
   }
 #endif // PRESTO_ENABLE_JWT

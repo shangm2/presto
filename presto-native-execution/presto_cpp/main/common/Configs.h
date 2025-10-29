@@ -140,8 +140,9 @@ class ConfigBase {
 
  protected:
   ConfigBase()
-      : config_(std::make_unique<velox::config::ConfigBase>(
-            std::unordered_map<std::string, std::string>())){};
+      : config_(
+            std::make_unique<velox::config::ConfigBase>(
+                std::unordered_map<std::string, std::string>())) {};
 
   // Check if all properties are registered.
   void checkRegisteredProperties(
@@ -179,6 +180,14 @@ class SystemConfig : public ConfigBase {
   static constexpr std::string_view kTaskWriterCount{"task.writer-count"};
   static constexpr std::string_view kTaskPartitionedWriterCount{
       "task.partitioned-writer-count"};
+
+  /// Maximum number of bytes per task that can be broadcast to storage for
+  /// storage-based broadcast joins. This property is only applicable to
+  /// storage-based broadcast join operations, currently used in the Presto on
+  /// Spark native stack. When the broadcast data size exceeds this limit, the
+  /// query fails.
+  static constexpr std::string_view kTaskMaxStorageBroadcastBytes{
+      "task.max-storage-broadcast-bytes"};
   static constexpr std::string_view kConcurrentLifespansPerTask{
       "task.concurrent-lifespans-per-task"};
   static constexpr std::string_view kTaskMaxPartialAggregationMemory{
@@ -200,6 +209,20 @@ class SystemConfig : public ConfigBase {
       "http-server.https.enabled"};
   static constexpr std::string_view kHttpServerHttp2Enabled{
       "http-server.http2.enabled"};
+  /// HTTP/2 initial receive window size in bytes (default 1MB).
+  static constexpr std::string_view kHttpServerHttp2InitialReceiveWindow{
+      "http-server.http2.initial-receive-window"};
+  /// HTTP/2 receive stream window size in bytes (default 1MB).
+  static constexpr std::string_view kHttpServerHttp2ReceiveStreamWindowSize{
+      "http-server.http2.receive-stream-window-size"};
+  /// HTTP/2 receive session window size in bytes (default 10MB).
+  static constexpr std::string_view kHttpServerHttp2ReceiveSessionWindowSize{
+      "http-server.http2.receive-session-window-size"};
+
+  /// HTTP server idle timeout in milliseconds
+  static constexpr std::string_view kHttpServerIdleTimeoutMs{
+      "http-server.idle-timeout-ms"};
+
   /// List of comma separated ciphers the client can use.
   ///
   /// NOTE: the client needs to have at least one cipher shared with server
@@ -211,6 +234,8 @@ class SystemConfig : public ConfigBase {
   /// Path to a .PEM file with certificate and key concatenated together.
   static constexpr std::string_view kHttpsClientCertAndKeyPath{
       "https-client-cert-key-path"};
+  /// Path to client CA file for SSL client certificate verification.
+  static constexpr std::string_view kHttpsClientCaFile{"https-client-ca-file"};
 
   /// Floating point number used in calculating how many threads we would use
   /// for CPU executor for connectors mainly for async operators:
@@ -628,6 +653,10 @@ class SystemConfig : public ConfigBase {
   static constexpr std::string_view kHeartbeatFrequencyMs{
       "heartbeat-frequency-ms"};
 
+  /// Whether HTTP/2 is enabled for HTTP client connections.
+  static constexpr std::string_view kHttpClientHttp2Enabled{
+      "http-client.http2-enabled"};
+
   static constexpr std::string_view kExchangeMaxErrorDuration{
       "exchange.max-error-duration"};
 
@@ -766,13 +795,12 @@ class SystemConfig : public ConfigBase {
   /// Enable the type char(n) with the same behavior as unbounded varchar.
   /// char(n) type is not supported by parser when set to false.
   static constexpr std::string_view kCharNToVarcharImplicitCast{
-    "char-n-to-varchar-implicit-cast"};
+      "char-n-to-varchar-implicit-cast"};
 
-  /// Enable BigintEnum and VarcharEnum types to be parsed and used in Velox. 
-  /// When set to false, BigintEnum or VarcharEnum types will throw an 
-  //  unsupported error during type parsing.
-  static constexpr std::string_view kEnumTypesEnabled{
-    "enum-types-enabled"};
+  /// Enable BigintEnum and VarcharEnum types to be parsed and used in Velox.
+  /// When set to false, BigintEnum or VarcharEnum types will throw an
+  ///  unsupported error during type parsing.
+  static constexpr std::string_view kEnumTypesEnabled{"enum-types-enabled"};
 
   SystemConfig();
 
@@ -791,6 +819,14 @@ class SystemConfig : public ConfigBase {
   int httpServerHttpsPort() const;
 
   bool httpServerHttp2Enabled() const;
+
+  uint32_t httpServerHttp2InitialReceiveWindow() const;
+
+  uint32_t httpServerHttp2ReceiveStreamWindowSize() const;
+
+  uint32_t httpServerHttp2ReceiveSessionWindowSize() const;
+
+  uint32_t httpServerIdleTimeoutMs() const;
 
   /// A list of ciphers (comma separated) that are supported by
   /// server and client. Note Java and folly::SSLContext use different names to
@@ -816,6 +852,9 @@ class SystemConfig : public ConfigBase {
   /// later.
   folly::Optional<std::string> httpsClientCertAndKeyPath() const;
 
+  /// Path to client CA file for SSL client certificate verification.
+  folly::Optional<std::string> httpsClientCaFile() const;
+
   bool mutableConfig() const;
 
   std::string prestoVersion() const;
@@ -838,6 +877,8 @@ class SystemConfig : public ConfigBase {
   folly::Optional<int32_t> taskWriterCount() const;
 
   folly::Optional<int32_t> taskPartitionedWriterCount() const;
+
+  folly::Optional<uint64_t> taskMaxStorageBroadcastBytes() const;
 
   int32_t concurrentLifespansPerTask() const;
 
@@ -998,6 +1039,8 @@ class SystemConfig : public ConfigBase {
   uint64_t announcementMaxFrequencyMs() const;
 
   uint64_t heartbeatFrequencyMs() const;
+
+  bool httpClientHttp2Enabled() const;
 
   std::chrono::duration<double> exchangeMaxErrorDuration() const;
 
