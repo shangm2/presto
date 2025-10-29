@@ -13,10 +13,6 @@
  */
 package com.facebook.presto.spark.execution.nativeprocess;
 
-import com.facebook.presto.spark.execution.property.NativeExecutionConnectorConfig;
-import com.facebook.presto.spark.execution.property.NativeExecutionNodeConfig;
-import com.facebook.presto.spark.execution.property.NativeExecutionSystemConfig;
-import com.facebook.presto.spark.execution.property.NativeExecutionVeloxConfig;
 import com.facebook.presto.spark.execution.property.PrestoSparkWorkerProperty;
 import com.facebook.presto.spark.execution.property.WorkerProperty;
 import com.facebook.presto.spark.execution.shuffle.PrestoSparkLocalShuffleInfoTranslator;
@@ -26,32 +22,23 @@ import com.facebook.presto.spark.execution.task.NativeExecutionTaskFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Binder;
 import com.google.inject.Module;
+import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
+import okhttp3.OkHttpClient;
 
-import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
-import static com.facebook.airlift.http.client.HttpClientBinder.httpClientBinder;
 import static com.google.inject.multibindings.OptionalBinder.newOptionalBinder;
 
 public class NativeExecutionModule
         implements Module
 {
-    private Optional<NativeExecutionConnectorConfig> connectorConfig;
-
-    // For use by production system where the configurations can only be tuned via configurations.
-    public NativeExecutionModule()
-    {
-        this.connectorConfig = Optional.empty();
-    }
-
     // In the future, we would make more bindings injected into NativeExecutionModule
     // to be able to test various configuration parameters
     @VisibleForTesting
-    public NativeExecutionModule(Optional<NativeExecutionConnectorConfig> connectorConfig)
-    {
-        this.connectorConfig = connectorConfig;
-    }
+    public NativeExecutionModule() {}
 
     @Override
     public void configure(Binder binder)
@@ -71,25 +58,34 @@ public class NativeExecutionModule
 
     protected void bindWorkerProperties(Binder binder)
     {
-        newOptionalBinder(binder, new TypeLiteral<WorkerProperty<?, ?, ?, ?>>() {}).setDefault().to(PrestoSparkWorkerProperty.class).in(Scopes.SINGLETON);
-        if (connectorConfig.isPresent()) {
-            binder.bind(PrestoSparkWorkerProperty.class).toInstance(new PrestoSparkWorkerProperty(connectorConfig.get(), new NativeExecutionNodeConfig(), new NativeExecutionSystemConfig(), new NativeExecutionVeloxConfig()));
-        }
-        else {
-            binder.bind(PrestoSparkWorkerProperty.class).in(Scopes.SINGLETON);
-        }
+        // Bind worker property classes
+        newOptionalBinder(binder, new TypeLiteral<WorkerProperty<?, ?, ?>>() {
+        }).setDefault().to(PrestoSparkWorkerProperty.class).in(Scopes.SINGLETON);
+        binder.bind(PrestoSparkWorkerProperty.class).in(Scopes.SINGLETON);
     }
 
     protected void bindHttpClient(Binder binder)
     {
-        httpClientBinder(binder)
-                .bindHttpClient("nativeExecution", ForNativeExecutionTask.class)
-                .withConfigDefaults(config -> {
-                    // We cannot currently use com.facebook.airlift.units as we are using http-client 0.216
-                    // We need to use io.airlift.units.Duration() but that needs more work
-                    // config.setRequestTimeout(new io.airlift.units.Duration(10, SECONDS));
-                    config.setMaxConnectionsPerServer(250);
-                });
+        // Bind OkHttpClient for native execution
+        binder.bind(OkHttpClient.class).toInstance(createOkHttpClient());
+    }
+
+    @Provides
+    @Singleton
+    @ForNativeExecutionTask
+    public OkHttpClient provideForNativeExecutionTaskOkHttpClient()
+    {
+        return createOkHttpClient();
+    }
+
+    private static OkHttpClient createOkHttpClient()
+    {
+        // TODO: Make these configurable
+        return new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .build();
     }
 
     protected void bindNativeExecutionTaskFactory(Binder binder)

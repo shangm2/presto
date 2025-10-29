@@ -3,7 +3,7 @@
     <parent>
         <artifactId>presto-root</artifactId>
         <groupId>com.facebook.presto</groupId>
-        <version>0.295-SNAPSHOT</version>
+        <version>0.296-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -14,6 +14,8 @@
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
         <air.check.skip-modernizer>true</air.check.skip-modernizer>
         <dep.jetty.version>9.4.55.v20240627</dep.jetty.version>
+        <dep.okhttp.version>4.12.0</dep.okhttp.version>
+        <dep.okio-jvm.version>3.9.1</dep.okio-jvm.version>
     </properties>
 
     <dependencyManagement>
@@ -25,16 +27,6 @@
                 <version>2.22.2</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.facebook.airlift</groupId>
-                <artifactId>http-client</artifactId>
-                <version>0.216</version>
-            </dependency>
-            <dependency>
-                <groupId>com.facebook.airlift</groupId>
-                <artifactId>http-server</artifactId>
-                <version>0.216</version>
             </dependency>
             <dependency>
                 <groupId>com.facebook.airlift</groupId>
@@ -51,16 +43,6 @@
                 <artifactId>drift-codec</artifactId>
                 <version>1.46</version>
             </dependency>
-            <dependency>
-                <groupId>com.facebook.drift</groupId>
-                <artifactId>drift-client</artifactId>
-                <version>1.46</version>
-            </dependency>
-            <dependency>
-                <groupId>com.facebook.drift</groupId>
-                <artifactId>drift-transport-spi</artifactId>
-                <version>1.46</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -69,7 +51,6 @@
         <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-spark-classloader-interface</artifactId>
-            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -129,18 +110,13 @@
                     <groupId>com.facebook.airlift.drift</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.facebook.presto</groupId>
+                    <artifactId>presto-function-namespace-managers-common</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
-        <dependency>
-            <groupId>com.facebook.drift</groupId>
-            <artifactId>drift-transport-spi</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.drift</groupId>
-            <artifactId>drift-client</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-expressions</artifactId>
@@ -177,20 +153,15 @@
         </dependency>
 
         <dependency>
-            <groupId>com.facebook.airlift</groupId>
-            <artifactId>http-client</artifactId>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>${dep.okhttp.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.facebook.airlift</groupId>
-            <artifactId>http-server</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.facebook.airlift</groupId>
-            <artifactId>event</artifactId>
-            <scope>provided</scope>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio-jvm</artifactId>
+            <version>${dep.okio-jvm.version}</version>
         </dependency>
 
         <dependency>
@@ -295,6 +266,10 @@
             <artifactId>commons-text</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+        </dependency>
         <!-- needed by tests at runtime -->
         <dependency>
             <groupId>javax.ws.rs</groupId>
@@ -329,7 +304,7 @@
 
         <dependency>
             <groupId>com.facebook.presto.hadoop</groupId>
-            <artifactId>hadoop-apache2</artifactId>
+            <artifactId>hadoop-apache</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -350,6 +325,10 @@
             <artifactId>presto-hive</artifactId>
             <scope>test</scope>
             <exclusions>
+                <exclusion>
+                    <groupId>com.facebook.airlift</groupId>
+                    <artifactId>http-client</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>org.xerial.snappy</groupId>
                     <artifactId>snappy-java</artifactId>
@@ -383,6 +362,14 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
+                    <groupId>com.facebook.airlift</groupId>
+                    <artifactId>http-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.facebook.airlift</groupId>
+                    <artifactId>http-server</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>javax.inject</groupId>
                     <artifactId>javax.inject</artifactId>
                 </exclusion>
@@ -410,6 +397,10 @@
             <artifactId>presto-function-namespace-managers</artifactId>
             <scope>test</scope>
             <exclusions>
+                <exclusion>
+                    <groupId>com.facebook.airlift</groupId>
+                    <artifactId>http-client</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>com.google.protobuf</groupId>
                     <artifactId>protobuf-java</artifactId>
@@ -466,10 +457,15 @@
                         <ignoredNonTestScopedDependency>com.facebook.presto:presto-expressions</ignoredNonTestScopedDependency>
                         <ignoredNonTestScopedDependency>it.unimi.dsi:fastutil</ignoredNonTestScopedDependency>
                         <ignoredNonTestScopedDependency>com.facebook.airlift:log-manager</ignoredNonTestScopedDependency>
+                        <ignoredNonTestScopedDependency>com.squareup.okio:okio-jvm</ignoredNonTestScopedDependency>
                     </ignoredNonTestScopedDependencies>
                     <ignoredUnusedDeclaredDependencies>
                         <ignoredUnusedDeclaredDependency>javax.ws.rs:javax.ws.rs-api</ignoredUnusedDeclaredDependency>
                         <ignoredUnusedDeclaredDependency>javax.servlet:javax.servlet-api</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>com.google.code.findbugs:jsr305</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>javax.inject:javax.inject</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>javax.annotation:javax.annotation-api</ignoredUnusedDeclaredDependency>
+                        <ignoredUnusedDeclaredDependency>org.apache.httpcomponents:httpcore</ignoredUnusedDeclaredDependency>
                     </ignoredUnusedDeclaredDependencies>
                 </configuration>
             </plugin>
@@ -534,6 +530,128 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+            <id>spark2</id>
+
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>!spark-version</name>
+                </property>
+            </activation>
+
+            <dependencies>
+                <dependency>
+                    <groupId>com.facebook.presto</groupId>
+                    <artifactId>presto-spark-classloader-spark2</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>spark3</id>
+
+            <activation>
+                <property>
+                    <name>spark-version</name>
+                    <value>3</value>
+                </property>
+            </activation>
+
+            <dependencies>
+                <dependency>
+                    <groupId>com.facebook.presto</groupId>
+                    <artifactId>presto-spark-classloader-spark3</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+
+                <dependency>
+                    <groupId>com.facebook.presto.spark</groupId>
+                    <artifactId>spark-core</artifactId>
+                    <version>3.4.1-1</version>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>com.google.inject</groupId>
+                    <artifactId>guice</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>jakarta.annotation</groupId>
+                    <artifactId>jakarta.annotation-api</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>com.google.errorprone</groupId>
+                    <artifactId>error_prone_annotations</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.weakref</groupId>
+                    <artifactId>jmxutils</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>jakarta.validation</groupId>
+                    <artifactId>jakarta.validation-api</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+
+                <dependency>
+                    <groupId>org.scala-lang</groupId>
+                    <artifactId>scala-library</artifactId>
+                    <version>2.13.8</version>
+                    <scope>provided</scope>
+                </dependency>
+
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <configuration>
+                            <ignoredDependencies>
+                                <ignoredDependency>org.glassfish.hk2.external:jakarta.inject</ignoredDependency>
+                                <ignoredDependency>org.apache.hadoop:hadoop-client-api</ignoredDependency>
+                                <ignoredDependency>jakarta.annotation:jakarta.annotation-api</ignoredDependency>
+                                <ignoredDependency>jakarta.validation:jakarta.validation-api</ignoredDependency>
+                            </ignoredDependencies>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <testExcludes>
+                                <!-- skip TestPrestoSparkExecutionExceptionFactory UT to avoid errors of incompatible types between spark 2 and spark 3-->
+                                <exclude>**/TestPrestoSparkExecutionExceptionFactory.java</exclude>
+                            </testExcludes>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <!-- skip TestPrestoSparkExecutionExceptionFactory UT to avoid errors of incompatible types between spark 2 and spark 3-->
+                                <exclude>**/TestPrestoSparkExecutionExceptionFactory.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+
         </profile>
     </profiles>
 </project>

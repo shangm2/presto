@@ -37,6 +37,11 @@ public abstract class AstVisitor<R, C>
         return visitNode(node, context);
     }
 
+    protected R visitEmptyTableTreatment(EmptyTableTreatment node, C context)
+    {
+        return visitNode(node, context);
+    }
+
     protected R visitCurrentTime(CurrentTime node, C context)
     {
         return visitExpression(node, context);
@@ -522,6 +527,26 @@ public abstract class AstVisitor<R, C>
         return visitNode(node, context);
     }
 
+    protected R visitMerge(Merge node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitMergeCase(MergeCase node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitMergeInsert(MergeInsert node, C context)
+    {
+        return visitMergeCase(node, context);
+    }
+
+    protected R visitMergeUpdate(MergeUpdate node, C context)
+    {
+        return visitMergeCase(node, context);
+    }
+
     protected R visitTableElement(TableElement node, C context)
     {
         return visitNode(node, context);
@@ -857,6 +882,36 @@ public abstract class AstVisitor<R, C>
     }
 
     protected R visitExternalBodyReference(ExternalBodyReference node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitTableFunctionInvocation(TableFunctionInvocation node, C context)
+    {
+        return visitRelation(node, context);
+    }
+
+    protected R visitTableFunctionArgument(TableFunctionArgument node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitTableArgument(TableFunctionTableArgument node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitDescriptorArgument(TableFunctionDescriptorArgument node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitDescriptor(Descriptor node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitDescriptorField(DescriptorField node, C context)
     {
         return visitNode(node, context);
     }

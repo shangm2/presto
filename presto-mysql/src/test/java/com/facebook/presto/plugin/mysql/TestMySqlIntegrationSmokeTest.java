@@ -34,6 +34,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Map;
 
+import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.VarcharType.VARCHAR;
 import static com.facebook.presto.plugin.mysql.MySqlQueryRunner.createMySqlQueryRunner;
 import static com.facebook.presto.testing.TestingSession.testSessionBuilder;
@@ -79,16 +80,16 @@ public class TestMySqlIntegrationSmokeTest
         // we need specific implementation of this tests due to specific Presto<->Mysql varchar length mapping.
         MaterializedResult actualColumns = computeActual("DESC ORDERS").toTestTypes();
 
-        MaterializedResult expectedColumns = MaterializedResult.resultBuilder(getQueryRunner().getDefaultSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("orderkey", "bigint", "", "")
-                .row("custkey", "bigint", "", "")
-                .row("orderstatus", "varchar(255)", "", "")
-                .row("totalprice", "double", "", "")
-                .row("orderdate", "date", "", "")
-                .row("orderpriority", "varchar(255)", "", "")
-                .row("clerk", "varchar(255)", "", "")
-                .row("shippriority", "integer", "", "")
-                .row("comment", "varchar(255)", "", "")
+        MaterializedResult expectedColumns = MaterializedResult.resultBuilder(getQueryRunner().getDefaultSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BIGINT, BIGINT)
+                .row("orderkey", "bigint", "", "", 19L, null, null)
+                .row("custkey", "bigint", "", "", 19L, null, null)
+                .row("orderstatus", "varchar(255)", "", "", null, null, 255L)
+                .row("totalprice", "double", "", "", 53L, null, null)
+                .row("orderdate", "date", "", "", null, null, null)
+                .row("orderpriority", "varchar(255)", "", "", null, null, 255L)
+                .row("clerk", "varchar(255)", "", "", null, null, 255L)
+                .row("shippriority", "integer", "", "", 10L, null, null)
+                .row("comment", "varchar(255)", "", "", null, null, 255L)
                 .build();
         assertEquals(actualColumns, expectedColumns);
     }
@@ -155,8 +156,8 @@ public class TestMySqlIntegrationSmokeTest
         execute("CREATE TABLE tpch.mysql_test_tinyint1 (c_tinyint tinyint(1))");
 
         MaterializedResult actual = computeActual("SHOW COLUMNS FROM mysql_test_tinyint1");
-        MaterializedResult expected = MaterializedResult.resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("c_tinyint", "tinyint", "", "")
+        MaterializedResult expected = MaterializedResult.resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR, BIGINT, BIGINT, BIGINT)
+                .row("c_tinyint", "tinyint", "", "", 3L, null, null)
                 .build();
 
         assertEquals(actual, expected);
@@ -213,6 +214,46 @@ public class TestMySqlIntegrationSmokeTest
                         "CAST('POLYGON ((0 0, 0 1, 1 1, 1 0, 0 0))' AS VARCHAR)");
 
         assertUpdate("DROP TABLE tpch.test_geometry");
+    }
+
+    @Test
+    public void testMysqlDecimal()
+    {
+        assertUpdate("CREATE TABLE test_decimal (d DECIMAL(10, 2))");
+
+        assertUpdate("INSERT INTO test_decimal VALUES (123.45)", 1);
+        assertUpdate("INSERT INTO test_decimal VALUES (67890.12)", 1);
+        assertUpdate("INSERT INTO test_decimal VALUES (0.99)", 1);
+
+        assertQuery(
+                "SELECT d FROM test_decimal WHERE d<200.00 AND d>0.00",
+                "VALUES " +
+                        "CAST('123.45' AS DECIMAL), " +
+                        "CAST('0.99' AS DECIMAL)");
+
+        assertUpdate("DROP TABLE test_decimal");
+    }
+
+    @Test
+    public void testMysqlTime()
+    {
+        assertUpdate("CREATE TABLE test_time (datatype_time time)");
+
+        assertUpdate("INSERT INTO test_time VALUES (time '01:02:03.456')", 1);
+
+        assertQuery(
+                "SELECT datatype_time FROM test_time",
+                "VALUES " +
+                        "CAST('01:02:03.456' AS time)");
+
+        assertUpdate("DROP TABLE test_time");
+    }
+
+    @Test
+    public void testMysqlUnsupportedTimeTypes()
+    {
+        assertQueryFails("CREATE TABLE test_timestamp_with_timezone (timestamp_with_time_zone timestamp with time zone)", "Unsupported column type: timestamp with time zone");
+        assertQueryFails("CREATE TABLE test_time_with_timezone (time_with_with_time_zone time with time zone)", "Unsupported column type: time with time zone");
     }
 
     @Test

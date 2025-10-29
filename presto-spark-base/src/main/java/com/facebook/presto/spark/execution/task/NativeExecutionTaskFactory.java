@@ -14,7 +14,6 @@
 package com.facebook.presto.spark.execution.task;
 
 import com.facebook.airlift.concurrent.BoundedExecutor;
-import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.presto.Session;
 import com.facebook.presto.execution.QueryManagerConfig;
@@ -25,7 +24,9 @@ import com.facebook.presto.execution.TaskSource;
 import com.facebook.presto.execution.scheduler.TableWriteInfo;
 import com.facebook.presto.spark.execution.http.BatchTaskUpdateRequest;
 import com.facebook.presto.spark.execution.http.PrestoSparkHttpTaskClient;
+import com.facebook.presto.spiller.LocalTempStorage;
 import com.facebook.presto.sql.planner.PlanFragment;
+import okhttp3.OkHttpClient;
 
 import javax.annotation.PreDestroy;
 import javax.inject.Inject;
@@ -44,7 +45,7 @@ public class NativeExecutionTaskFactory
     // TODO add config
     private static final int MAX_THREADS = 1000;
 
-    private final HttpClient httpClient;
+    private final OkHttpClient httpClient;
     private final ExecutorService coreExecutor;
     private final Executor executor;
     private final ScheduledExecutorService scheduledExecutorService;
@@ -56,7 +57,7 @@ public class NativeExecutionTaskFactory
 
     @Inject
     public NativeExecutionTaskFactory(
-            @ForNativeExecutionTask HttpClient httpClient,
+            @ForNativeExecutionTask OkHttpClient httpClient,
             ExecutorService coreExecutor,
             ScheduledExecutorService scheduledExecutorService,
             JsonCodec<TaskInfo> taskInfoCodec,
@@ -83,9 +84,15 @@ public class NativeExecutionTaskFactory
             PlanFragment fragment,
             List<TaskSource> sources,
             TableWriteInfo tableWriteInfo,
+            Optional<byte[]> serializedNativeTempStorageHandle,
             Optional<String> shuffleWriteInfo,
-            Optional<String> broadcastBasePath)
+            boolean isFixedBroadcastDistribution)
     {
+        Optional<String> broadcastBasePath =
+                serializedNativeTempStorageHandle.isPresent() ? Optional.of(
+                        LocalTempStorage.deserializeStatic(
+                                serializedNativeTempStorageHandle.get()).getPathAsString())
+                        : Optional.empty();
         PrestoSparkHttpTaskClient workerClient = new PrestoSparkHttpTaskClient(
                 httpClient,
                 taskId,
@@ -104,7 +111,7 @@ public class NativeExecutionTaskFactory
                 sources,
                 tableWriteInfo,
                 shuffleWriteInfo,
-                broadcastBasePath,
+                isFixedBroadcastDistribution ? broadcastBasePath : Optional.empty(),
                 scheduledExecutorService,
                 taskManagerConfig);
     }
@@ -116,7 +123,7 @@ public class NativeExecutionTaskFactory
         scheduledExecutorService.shutdownNow();
     }
 
-    public HttpClient getHttpClient()
+    public OkHttpClient getHttpClient()
     {
         return httpClient;
     }

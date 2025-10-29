@@ -13,7 +13,6 @@
  */
 package com.facebook.presto.spark.execution.nativeprocess;
 
-import com.facebook.airlift.http.client.HttpClient;
 import com.facebook.airlift.json.JsonCodec;
 import com.facebook.airlift.units.Duration;
 import com.facebook.presto.Session;
@@ -21,10 +20,13 @@ import com.facebook.presto.client.ServerInfo;
 import com.facebook.presto.spark.execution.property.WorkerProperty;
 import com.facebook.presto.spark.execution.task.ForNativeExecutionTask;
 import com.facebook.presto.spi.PrestoException;
+import com.facebook.presto.spi.storage.TempStorageHandle;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
 import com.google.inject.Inject;
+import okhttp3.OkHttpClient;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,19 +38,19 @@ import static java.util.Objects.requireNonNull;
 public class DetachedNativeExecutionProcessFactory
         extends NativeExecutionProcessFactory
 {
-    private final HttpClient httpClient;
+    private final OkHttpClient httpClient;
     private final ExecutorService coreExecutor;
     private final ScheduledExecutorService errorRetryScheduledExecutor;
     private final JsonCodec<ServerInfo> serverInfoCodec;
-    private final WorkerProperty<?, ?, ?, ?> workerProperty;
+    private final WorkerProperty<?, ?, ?> workerProperty;
 
     @Inject
     public DetachedNativeExecutionProcessFactory(
-            @ForNativeExecutionTask HttpClient httpClient,
+            @ForNativeExecutionTask OkHttpClient httpClient,
             ExecutorService coreExecutor,
             ScheduledExecutorService errorRetryScheduledExecutor,
             JsonCodec<ServerInfo> serverInfoCodec,
-            WorkerProperty<?, ?, ?, ?> workerProperty,
+            WorkerProperty<?, ?, ?> workerProperty,
             FeaturesConfig featuresConfig)
     {
         super(httpClient, coreExecutor, errorRetryScheduledExecutor, serverInfoCodec, workerProperty, featuresConfig);
@@ -60,13 +62,16 @@ public class DetachedNativeExecutionProcessFactory
     }
 
     @Override
-    public NativeExecutionProcess getNativeExecutionProcess(Session session)
+    public NativeExecutionProcess getNativeExecutionProcess(Session session,
+            Optional<TempStorageHandle> nativeTempStorageHandle)
     {
-        return createNativeExecutionProcess(session, new Duration(2, TimeUnit.MINUTES));
+        return createNativeExecutionProcess(session, new Duration(2, TimeUnit.MINUTES),
+                Optional.empty());
     }
 
     @Override
-    public NativeExecutionProcess createNativeExecutionProcess(Session session, Duration maxErrorDuration)
+    public NativeExecutionProcess createNativeExecutionProcess(Session session,
+            Duration maxErrorDuration, Optional<TempStorageHandle> nativeTempStorageHandle)
     {
         try {
             return new DetachedNativeExecutionProcess(
