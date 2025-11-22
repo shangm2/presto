@@ -20,6 +20,7 @@ import com.facebook.presto.cost.StatsCalculator;
 import com.facebook.presto.cost.TaskCountEstimator;
 import com.facebook.presto.execution.TaskManagerConfig;
 import com.facebook.presto.metadata.Metadata;
+import com.facebook.presto.spi.security.AccessControl;
 import com.facebook.presto.split.PageSourceManager;
 import com.facebook.presto.split.SplitManager;
 import com.facebook.presto.sql.analyzer.FeaturesConfig;
@@ -55,6 +56,7 @@ import com.facebook.presto.sql.planner.iterative.rule.InlineProjectionsOnValues;
 import com.facebook.presto.sql.planner.iterative.rule.InlineSqlFunctions;
 import com.facebook.presto.sql.planner.iterative.rule.LeftJoinNullFilterToSemiJoin;
 import com.facebook.presto.sql.planner.iterative.rule.LeftJoinWithArrayContainsToEquiJoinCondition;
+import com.facebook.presto.sql.planner.iterative.rule.MaterializedViewRewrite;
 import com.facebook.presto.sql.planner.iterative.rule.MergeDuplicateAggregation;
 import com.facebook.presto.sql.planner.iterative.rule.MergeFilters;
 import com.facebook.presto.sql.planner.iterative.rule.MergeLimitWithDistinct;
@@ -186,10 +188,12 @@ import com.facebook.presto.sql.planner.optimizations.RemoveRedundantDistinctAggr
 import com.facebook.presto.sql.planner.optimizations.ReplaceConstantVariableReferencesWithConstants;
 import com.facebook.presto.sql.planner.optimizations.ReplicateSemiJoinInDelete;
 import com.facebook.presto.sql.planner.optimizations.RewriteIfOverAggregation;
+import com.facebook.presto.sql.planner.optimizations.RewriteWriterTarget;
 import com.facebook.presto.sql.planner.optimizations.SetFlatteningOptimizer;
 import com.facebook.presto.sql.planner.optimizations.ShardJoins;
 import com.facebook.presto.sql.planner.optimizations.SimplifyPlanWithEmptyInput;
 import com.facebook.presto.sql.planner.optimizations.SortMergeJoinOptimizer;
+import com.facebook.presto.sql.planner.optimizations.SortedExchangeRule;
 import com.facebook.presto.sql.planner.optimizations.StatsRecordingPlanOptimizer;
 import com.facebook.presto.sql.planner.optimizations.TransformQuantifiedComparisonApplyToLateralJoin;
 import com.facebook.presto.sql.planner.optimizations.UnaliasSymbolReferences;
@@ -233,7 +237,8 @@ public class PlanOptimizers
             PartitioningProviderManager partitioningProviderManager,
             FeaturesConfig featuresConfig,
             ExpressionOptimizerManager expressionOptimizerManager,
-            TaskManagerConfig taskManagerConfig)
+            TaskManagerConfig taskManagerConfig,
+            AccessControl accessControl)
     {
         this(metadata,
                 sqlParser,
@@ -250,7 +255,8 @@ public class PlanOptimizers
                 partitioningProviderManager,
                 featuresConfig,
                 expressionOptimizerManager,
-                taskManagerConfig);
+                taskManagerConfig,
+                accessControl);
     }
 
     @PostConstruct
@@ -283,7 +289,8 @@ public class PlanOptimizers
             PartitioningProviderManager partitioningProviderManager,
             FeaturesConfig featuresConfig,
             ExpressionOptimizerManager expressionOptimizerManager,
-            TaskManagerConfig taskManagerConfig)
+            TaskManagerConfig taskManagerConfig,
+            AccessControl accessControl)
     {
         this.exporter = exporter;
         ImmutableList.Builder<PlanOptimizer> builder = ImmutableList.builder();
@@ -313,6 +320,13 @@ public class PlanOptimizers
                 new PruneTableScanColumns());
 
         builder.add(new LogicalCteOptimizer(metadata));
+
+        builder.add(new IterativeOptimizer(
+                metadata,
+                ruleStats,
+                statsCalculator,
+                estimatedExchangesCostCalculator,
+                ImmutableSet.of(new MaterializedViewRewrite(metadata, accessControl))));
 
         IterativeOptimizer inlineProjections = new IterativeOptimizer(
                 metadata,
@@ -750,6 +764,14 @@ public class PlanOptimizers
         // Pass a supplier so that we pickup connector optimizers that are installed later
         builder.add(
                 new ApplyConnectorOptimization(() -> planOptimizerManager.getOptimizers(LOGICAL)),
+                new IterativeOptimizer(
+                        metadata,
+                        ruleStats,
+                        statsCalculator,
+                        costCalculator,
+                        ImmutableSet.of(
+                                new RewriteFilterWithExternalFunctionToProject(metadata.getFunctionAndTypeManager()),
+                                new PlanRemoteProjections(metadata.getFunctionAndTypeManager()))),
                 projectionPushDown,
                 new PruneUnreferencedOutputs());
 
@@ -947,8 +969,15 @@ public class PlanOptimizers
         // MergeJoinForSortedInputOptimizer can avoid the local exchange for a join operation
         // Should be placed after AddExchanges, but before AddLocalExchange
         // To replace the JoinNode to MergeJoin ahead of AddLocalExchange to avoid adding extra local exchange
-        builder.add(new MergeJoinForSortedInputOptimizer(metadata, featuresConfig.isNativeExecutionEnabled()),
+        builder.add(new MergeJoinForSortedInputOptimizer(metadata, featuresConfig.isNativeExecutionEnabled(), featuresConfig.isPrestoSparkExecutionEnvironment()),
                 new SortMergeJoinOptimizer(metadata, featuresConfig.isNativeExecutionEnabled()));
+        // SortedExchangeRule pushes sorts down to exchange nodes for distributed queries
+        // The rule is added unconditionally but only applies when:
+        // 1. Native execution is enabled
+        // 2. Running in Presto Spark execution environment
+        // 3. Session property sorted_exchange_enabled is true
+        builder.add(new SortedExchangeRule(
+                featuresConfig.isNativeExecutionEnabled() && featuresConfig.isPrestoSparkExecutionEnvironment()));
 
         // Optimizers above this don't understand local exchanges, so be careful moving this.
         builder.add(new AddLocalExchanges(metadata, featuresConfig.isNativeExecutionEnabled()));
@@ -1022,6 +1051,8 @@ public class PlanOptimizers
                         featuresConfig.isNativeExecutionEnabled(),
                         featuresConfig.isPrestoSparkExecutionEnvironment()))));
         builder.add(new MetadataDeleteOptimizer(metadata));
+
+        builder.add(new RewriteWriterTarget());
 
         // TODO: consider adding a formal final plan sanitization optimizer that prepares the plan for transmission/execution/logging
         // TODO: figure out how to improve the set flattening optimizer so that it can run at any point

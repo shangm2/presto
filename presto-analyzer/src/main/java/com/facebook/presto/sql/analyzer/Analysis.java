@@ -21,17 +21,20 @@ import com.facebook.presto.common.type.Type;
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ColumnMetadata;
 import com.facebook.presto.spi.ConnectorId;
+import com.facebook.presto.spi.MaterializedViewDefinition;
 import com.facebook.presto.spi.TableHandle;
 import com.facebook.presto.spi.analyzer.AccessControlInfo;
 import com.facebook.presto.spi.analyzer.AccessControlInfoForTable;
 import com.facebook.presto.spi.analyzer.AccessControlReferences;
 import com.facebook.presto.spi.analyzer.AccessControlRole;
+import com.facebook.presto.spi.analyzer.UpdateInfo;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.eventlistener.OutputColumnMetadata;
 import com.facebook.presto.spi.function.FunctionHandle;
 import com.facebook.presto.spi.function.FunctionKind;
 import com.facebook.presto.spi.function.table.Argument;
 import com.facebook.presto.spi.function.table.ConnectorTableFunctionHandle;
+import com.facebook.presto.spi.procedure.DistributedProcedure;
 import com.facebook.presto.spi.security.AccessControl;
 import com.facebook.presto.spi.security.AccessControlContext;
 import com.facebook.presto.spi.security.AllowAllAccessControl;
@@ -107,7 +110,7 @@ public class Analysis
     @Nullable
     private final Statement root;
     private final Map<NodeRef<Parameter>, Expression> parameters;
-    private String updateType;
+    private UpdateInfo updateInfo;
 
     private final Map<NodeRef<Table>, NamedQuery> namedQueries = new LinkedHashMap<>();
 
@@ -174,6 +177,13 @@ public class Analysis
     private final Multiset<ColumnMaskScopeEntry> columnMaskScopes = HashMultiset.create();
     private final Map<NodeRef<Table>, Map<String, Expression>> columnMasks = new LinkedHashMap<>();
 
+    // for call distributed procedure
+    private Optional<DistributedProcedure.DistributedProcedureType> distributedProcedureType = Optional.empty();
+    private Optional<QualifiedObjectName> procedureName = Optional.empty();
+    private Optional<Object[]> procedureArguments = Optional.empty();
+    private Optional<TableHandle> callTarget = Optional.empty();
+    private Optional<QuerySpecification> targetQuery = Optional.empty();
+
     // for create table
     private Optional<QualifiedObjectName> createTableDestination = Optional.empty();
     private Map<String, Expression> createTableProperties = ImmutableMap.of();
@@ -201,6 +211,8 @@ public class Analysis
     private final Map<Table, MaterializedViewAnalysisState> materializedViewAnalysisStateMap = new HashMap<>();
 
     private final Map<QualifiedObjectName, String> materializedViews = new LinkedHashMap<>();
+
+    private final Map<NodeRef<Table>, MaterializedViewInfo> materializedViewInfoMap = new LinkedHashMap<>();
 
     private Optional<String> expandedQuery = Optional.empty();
 
@@ -233,14 +245,14 @@ public class Analysis
         return root;
     }
 
-    public String getUpdateType()
+    public UpdateInfo getUpdateInfo()
     {
-        return updateType;
+        return updateInfo;
     }
 
-    public void setUpdateType(String updateType)
+    public void setUpdateInfo(UpdateInfo updateInfo)
     {
-        this.updateType = updateType;
+        this.updateInfo = updateInfo;
     }
 
     public boolean isCreateTableAsSelectWithData()
@@ -666,6 +678,46 @@ public class Analysis
         return createTableDestination;
     }
 
+    public Optional<QualifiedObjectName> getProcedureName()
+    {
+        return procedureName;
+    }
+
+    public void setProcedureName(Optional<QualifiedObjectName> procedureName)
+    {
+        this.procedureName = procedureName;
+    }
+
+    public Optional<DistributedProcedure.DistributedProcedureType> getDistributedProcedureType()
+    {
+        return distributedProcedureType;
+    }
+
+    public void setDistributedProcedureType(Optional<DistributedProcedure.DistributedProcedureType> distributedProcedureType)
+    {
+        this.distributedProcedureType = distributedProcedureType;
+    }
+
+    public Optional<Object[]> getProcedureArguments()
+    {
+        return procedureArguments;
+    }
+
+    public void setProcedureArguments(Optional<Object[]> procedureArguments)
+    {
+        this.procedureArguments = procedureArguments;
+    }
+
+    public Optional<TableHandle> getCallTarget()
+    {
+        return callTarget;
+    }
+
+    public void setCallTarget(TableHandle callTarget)
+    {
+        this.callTarget = Optional.of(callTarget);
+    }
+
     public Optional<TableHandle> getAnalyzeTarget()
     {
         return analyzeTarget;
@@ -816,6 +868,19 @@ public class Analysis
         return tablesForMaterializedView.containsEntry(NodeRef.of(view), table);
     }
 
+    public void setMaterializedViewInfo(Table table, MaterializedViewInfo materializedViewInfo)
+    {
+        requireNonNull(table, "table is null");
+        requireNonNull(materializedViewInfo, "materializedViewInfo is null");
+        materializedViewInfoMap.put(NodeRef.of(table), materializedViewInfo);
+    }
+
+    public Optional<MaterializedViewInfo> getMaterializedViewInfo(Table table)
+    {
+        requireNonNull(table, "table is null");
+        return Optional.ofNullable(materializedViewInfoMap.get(NodeRef.of(table)));
+    }
+
     public void setSampleRatio(SampledRelation relation, double ratio)
     {
         sampleRatios.put(NodeRef.of(relation), ratio);
@@ -914,12 +979,12 @@ public class Analysis
         return ImmutableMap.copyOf(utilizedTableColumnReferences);
     }
 
-    public void populateTableColumnAndSubfieldReferencesForAccessControl(boolean checkAccessControlOnUtilizedColumnsOnly, boolean checkAccessControlWithSubfields)
+    public void populateTableColumnAndSubfieldReferencesForAccessControl(boolean checkAccessControlOnUtilizedColumnsOnly, boolean checkAccessControlWithSubfields, boolean isLegacyMaterializedViews)
     {
-        accessControlReferences.addTableColumnAndSubfieldReferencesForAccessControl(getTableColumnAndSubfieldReferencesForAccessControl(checkAccessControlOnUtilizedColumnsOnly, checkAccessControlWithSubfields));
+        accessControlReferences.addTableColumnAndSubfieldReferencesForAccessControl(getTableColumnAndSubfieldReferencesForAccessControl(checkAccessControlOnUtilizedColumnsOnly, checkAccessControlWithSubfields, isLegacyMaterializedViews));
     }
 
-    private Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> getTableColumnAndSubfieldReferencesForAccessControl(boolean checkAccessControlOnUtilizedColumnsOnly, boolean checkAccessControlWithSubfields)
+    private Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> getTableColumnAndSubfieldReferencesForAccessControl(boolean checkAccessControlOnUtilizedColumnsOnly, boolean checkAccessControlWithSubfields, boolean isLegacyMaterializedViews)
     {
         Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> references;
         if (!checkAccessControlWithSubfields) {
@@ -951,16 +1016,23 @@ public class Analysis
                                                     })
                                                     .collect(toImmutableSet())))));
         }
-        return buildMaterializedViewAccessControl(references);
+        return buildMaterializedViewAccessControl(references, isLegacyMaterializedViews);
     }
 
     /**
-     * For a query on materialized view, only check the actual required access controls for its base tables. For the materialized view,
-     * will not check access control by replacing with AllowAllAccessControl.
+     * For a query on materialized view:
+     * - When legacy_materialized_views=true: Only check access controls for base tables, bypass access control
+     *   for the materialized view itself by replacing with AllowAllAccessControl.
+     * - When legacy_materialized_views=false: Check access control for both the materialized view itself
+     *   and all base tables referenced in the view query.
      **/
-    private Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> buildMaterializedViewAccessControl(Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> tableColumnReferences)
+    private Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> buildMaterializedViewAccessControl(Map<AccessControlInfo, Map<QualifiedObjectName, Set<Subfield>>> tableColumnReferences, boolean isLegacyMaterializedViews)
     {
         if (!(getStatement() instanceof Query) || materializedViews.isEmpty()) {
+            return tableColumnReferences;
+        }
+
+        if (!isLegacyMaterializedViews) {
             return tableColumnReferences;
         }
 
@@ -1018,6 +1090,16 @@ public class Analysis
     public Optional<QuerySpecification> getCurrentQuerySpecification()
     {
         return currentQuerySpecification;
+    }
+
+    public void setTargetQuery(QuerySpecification targetQuery)
+    {
+        this.targetQuery = Optional.of(targetQuery);
+    }
+
+    public Optional<QuerySpecification> getTargetQuery()
+    {
+        return this.targetQuery;
     }
 
     public Map<FunctionKind, Set<String>> getInvokedFunctions()
@@ -1207,6 +1289,47 @@ public class Analysis
         public Query getQuery()
         {
             return query;
+        }
+    }
+
+    @Immutable
+    public static final class MaterializedViewInfo
+    {
+        private final QualifiedObjectName materializedViewName;
+        private final Table dataTable;
+        private final Query viewQuery;
+        private final MaterializedViewDefinition materializedViewDefinition;
+
+        public MaterializedViewInfo(
+                QualifiedObjectName materializedViewName,
+                Table dataTable,
+                Query viewQuery,
+                MaterializedViewDefinition materializedViewDefinition)
+        {
+            this.materializedViewName = requireNonNull(materializedViewName, "materializedViewName is null");
+            this.dataTable = requireNonNull(dataTable, "dataTable is null");
+            this.viewQuery = requireNonNull(viewQuery, "viewQuery is null");
+            this.materializedViewDefinition = requireNonNull(materializedViewDefinition, "materializedViewDefinition is null");
+        }
+
+        public QualifiedObjectName getMaterializedViewName()
+        {
+            return materializedViewName;
+        }
+
+        public Table getDataTable()
+        {
+            return dataTable;
+        }
+
+        public Query getViewQuery()
+        {
+            return viewQuery;
+        }
+
+        public MaterializedViewDefinition getMaterializedViewDefinition()
+        {
+            return materializedViewDefinition;
         }
     }
 

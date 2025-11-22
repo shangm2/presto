@@ -44,6 +44,15 @@ HttpClient::HttpClient(
       address_(address),
       transactionTimeout_(transactionTimeout),
       connectTimeout_(connectTimeout),
+      http2Enabled_(SystemConfig::instance()->httpClientHttp2Enabled()),
+      maxConcurrentStreams_(
+          SystemConfig::instance()->httpClientHttp2MaxStreamsPerConnection()),
+      http2InitialStreamWindow_(
+          SystemConfig::instance()->httpClientHttp2InitialStreamWindow()),
+      http2StreamWindow_(
+          SystemConfig::instance()->httpClientHttp2StreamWindow()),
+      http2SessionWindow_(
+          SystemConfig::instance()->httpClientHttp2SessionWindow()),
       pool_(std::move(pool)),
       sslContext_(sslContext),
       reportOnBodyStatsFunc_(std::move(reportOnBodyStatsFunc)),
@@ -203,12 +212,12 @@ class ResponseHandler : public proxygen::HTTPTransactionHandler {
   }
 
   void setTransaction(proxygen::HTTPTransaction* txn) noexcept override {
-    if (txn) {
-      protocol_ = txn->getTransport().getCodec().getProtocol();
-    }
+    txn_ = CHECK_NOTNULL(txn);
+    protocol_ = txn_->getTransport().getCodec().getProtocol();
   }
 
   void detachTransaction() noexcept override {
+    txn_ = nullptr;
     self_.reset();
   }
 
@@ -260,12 +269,14 @@ class ResponseHandler : public proxygen::HTTPTransactionHandler {
     self_.reset();
   }
 
-  void sendRequest(proxygen::HTTPTransaction* txn) {
-    txn->sendHeaders(request_);
-    if (!body_.empty()) {
-      txn->sendBody(folly::IOBuf::wrapBuffer(body_.c_str(), body_.size()));
+  void sendRequest() {
+    if (txn_) {
+      txn_->sendHeaders(request_);
+      if (!body_.empty()) {
+        txn_->sendBody(folly::IOBuf::wrapBuffer(body_.c_str(), body_.size()));
+      }
+      txn_->sendEOM();
     }
-    txn->sendEOM();
   }
 
  private:
@@ -279,6 +290,7 @@ class ResponseHandler : public proxygen::HTTPTransactionHandler {
   std::shared_ptr<ResponseHandler> self_;
   std::shared_ptr<HttpClient> client_;
   std::optional<proxygen::CodecProtocol> protocol_;
+  proxygen::HTTPTransaction* txn_{nullptr};
 };
 
 // Responsible for making an HTTP request. The request will be made in 2
@@ -303,6 +315,11 @@ class ConnectionHandler : public proxygen::HTTPConnector::Callback {
       proxygen::SessionPool* sessionPool,
       proxygen::WheelTimerInstance transactionTimeout,
       std::chrono::milliseconds connectTimeout,
+      bool http2Enabled,
+      uint32_t maxConcurrentStreams,
+      uint32_t http2InitialStreamWindow,
+      uint32_t http2StreamWindow,
+      uint32_t http2SessionWindow,
       folly::EventBase* eventBase,
       const folly::SocketAddress& address,
       folly::SSLContextPtr sslContext)
@@ -310,6 +327,11 @@ class ConnectionHandler : public proxygen::HTTPConnector::Callback {
         sessionPool_(sessionPool),
         transactionTimer_(transactionTimeout),
         connectTimeout_(connectTimeout),
+        http2Enabled_(http2Enabled),
+        maxConcurrentStreams_(maxConcurrentStreams),
+        http2InitialStreamWindow_(http2InitialStreamWindow),
+        http2StreamWindow_(http2StreamWindow),
+        http2SessionWindow_(http2SessionWindow),
         eventBase_(eventBase),
         address_(address),
         sslContext_(std::move(sslContext)) {}
@@ -330,10 +352,13 @@ class ConnectionHandler : public proxygen::HTTPConnector::Callback {
   }
 
   void connectSuccess(proxygen::HTTPUpstreamSession* session) override {
-    auto txn = session->newTransaction(responseHandler_.get());
-    if (txn) {
-      responseHandler_->sendRequest(txn);
+    if (http2Enabled_) {
+      session->setFlowControl(
+          http2InitialStreamWindow_, http2StreamWindow_, http2SessionWindow_);
+      session->setMaxConcurrentOutgoingStreams(maxConcurrentStreams_);
     }
+    session->newTransaction(responseHandler_.get());
+    responseHandler_->sendRequest();
 
     sessionPool_->putSession(session);
     delete this;
@@ -352,6 +377,11 @@ class ConnectionHandler : public proxygen::HTTPConnector::Callback {
   // The connect timeout used to timeout the duration from starting connection
   // to connect success
   const std::chrono::milliseconds connectTimeout_;
+  const bool http2Enabled_;
+  const uint32_t maxConcurrentStreams_;
+  const uint32_t http2InitialStreamWindow_;
+  const uint32_t http2StreamWindow_;
+  const uint32_t http2SessionWindow_;
   folly::EventBase* const eventBase_;
   const folly::SocketAddress address_;
   const folly::SSLContextPtr sslContext_;
@@ -506,7 +536,9 @@ void HttpClient::sendRequest(std::shared_ptr<ResponseHandler> responseHandler) {
   auto doSend = [this, responseHandler = std::move(responseHandler)](
                     proxygen::HTTPTransaction* txn) {
     if (txn) {
-      responseHandler->sendRequest(txn);
+      // txn may no longer be valid, ::onError and ::detachTransaction would
+      // have been called. In such case, ::sendRequest will be no-op
+      responseHandler->sendRequest();
       return;
     }
     VLOG(2) << "Create new connection to " << address_.describe();
@@ -518,6 +550,11 @@ void HttpClient::sendRequest(std::shared_ptr<ResponseHandler> responseHandler) {
         sessionPool_,
         proxygen::WheelTimerInstance(transactionTimeout_, eventBase_),
         connectTimeout_,
+        http2Enabled_,
+        maxConcurrentStreams_,
+        http2InitialStreamWindow_,
+        http2StreamWindow_,
+        http2SessionWindow_,
         eventBase_,
         address_,
         sslContext_);

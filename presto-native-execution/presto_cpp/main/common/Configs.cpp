@@ -150,10 +150,17 @@ SystemConfig::SystemConfig() {
           NONE_PROP(kHttpServerHttpsPort),
           BOOL_PROP(kHttpServerHttpsEnabled, false),
           BOOL_PROP(kHttpServerHttp2Enabled, true),
+          NUM_PROP(kHttpServerIdleTimeoutMs, 60'000),
           NUM_PROP(kHttpServerHttp2InitialReceiveWindow, 1 << 20),
           NUM_PROP(kHttpServerHttp2ReceiveStreamWindowSize, 1 << 20),
           NUM_PROP(kHttpServerHttp2ReceiveSessionWindowSize, 10 * (1 << 20)),
-          NUM_PROP(kHttpServerIdleTimeoutMs, 60'000),
+          NUM_PROP(kHttpServerHttp2MaxConcurrentStreams, 100),
+          NUM_PROP(kHttpServerContentCompressionLevel, 4),
+          NUM_PROP(kHttpServerContentCompressionMinimumSize, 3584),
+          BOOL_PROP(kHttpServerEnableContentCompression, false),
+          BOOL_PROP(kHttpServerEnableZstdCompression, false),
+          NUM_PROP(kHttpServerZstdContentCompressionLevel, 8),
+          BOOL_PROP(kHttpServerEnableGzipCompression, false),
           STR_PROP(
               kHttpsSupportedCiphers,
               "ECDHE-ECDSA-AES256-GCM-SHA384,AES256-GCM-SHA384"),
@@ -188,6 +195,7 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kWorkerOverloadedThresholdCpuPct, 0),
           NUM_PROP(kWorkerOverloadedThresholdNumQueuedDriversHwMultiplier, 0.0),
           NUM_PROP(kWorkerOverloadedCooldownPeriodSec, 5),
+          NUM_PROP(kWorkerOverloadedSecondsToDetachWorker, 0),
           BOOL_PROP(kWorkerOverloadedTaskQueuingEnabled, false),
           NUM_PROP(kMallocHeapDumpThresholdGb, 20),
           NUM_PROP(kMallocMemMinHeapDumpInterval, 10),
@@ -234,12 +242,17 @@ SystemConfig::SystemConfig() {
           NUM_PROP(kAnnouncementMaxFrequencyMs, 30'000), // 30s
           NUM_PROP(kHeartbeatFrequencyMs, 0),
           BOOL_PROP(kHttpClientHttp2Enabled, false),
+          NUM_PROP(kHttpClientHttp2MaxStreamsPerConnection, 8),
+          NUM_PROP(kHttpClientHttp2InitialStreamWindow, 1 << 23 /*8MB*/),
+          NUM_PROP(kHttpClientHttp2StreamWindow, 1 << 23 /*8MB*/),
+          NUM_PROP(kHttpClientHttp2SessionWindow, 1 << 26 /*64MB*/),
           STR_PROP(kExchangeMaxErrorDuration, "3m"),
           STR_PROP(kExchangeRequestTimeout, "20s"),
           STR_PROP(kExchangeConnectTimeout, "20s"),
           BOOL_PROP(kExchangeEnableConnectionPool, true),
           BOOL_PROP(kExchangeEnableBufferCopy, true),
           BOOL_PROP(kExchangeImmediateBufferTransfer, true),
+          STR_PROP(kExchangeMaxBufferSize, "32MB"),
           NUM_PROP(kTaskRunTimeSliceMicros, 50'000),
           BOOL_PROP(kIncludeNodeInSpillPath, false),
           NUM_PROP(kOldTaskCleanUpMs, 60'000),
@@ -304,6 +317,10 @@ bool SystemConfig::httpServerHttp2Enabled() const {
   return optionalProperty<bool>(kHttpServerHttp2Enabled).value();
 }
 
+uint32_t SystemConfig::httpServerIdleTimeoutMs() const {
+  return optionalProperty<uint32_t>(kHttpServerIdleTimeoutMs).value();
+}
+
 uint32_t SystemConfig::httpServerHttp2InitialReceiveWindow() const {
   return optionalProperty<uint32_t>(kHttpServerHttp2InitialReceiveWindow)
       .value();
@@ -319,8 +336,35 @@ uint32_t SystemConfig::httpServerHttp2ReceiveSessionWindowSize() const {
       .value();
 }
 
-uint32_t SystemConfig::httpServerIdleTimeoutMs() const {
-  return optionalProperty<uint32_t>(kHttpServerIdleTimeoutMs).value();
+uint32_t SystemConfig::httpServerHttp2MaxConcurrentStreams() const {
+  return optionalProperty<uint32_t>(kHttpServerHttp2MaxConcurrentStreams)
+      .value();
+}
+
+uint32_t SystemConfig::httpServerContentCompressionLevel() const {
+  return optionalProperty<uint32_t>(kHttpServerContentCompressionLevel).value();
+}
+
+uint32_t SystemConfig::httpServerContentCompressionMinimumSize() const {
+  return optionalProperty<uint32_t>(kHttpServerContentCompressionMinimumSize)
+      .value();
+}
+
+bool SystemConfig::httpServerEnableContentCompression() const {
+  return optionalProperty<bool>(kHttpServerEnableContentCompression).value();
+}
+
+bool SystemConfig::httpServerEnableZstdCompression() const {
+  return optionalProperty<bool>(kHttpServerEnableZstdCompression).value();
+}
+
+uint32_t SystemConfig::httpServerZstdContentCompressionLevel() const {
+  return optionalProperty<uint32_t>(kHttpServerZstdContentCompressionLevel)
+      .value();
+}
+
+bool SystemConfig::httpServerEnableGzipCompression() const {
+  return optionalProperty<bool>(kHttpServerEnableGzipCompression).value();
 }
 
 std::string SystemConfig::httpsSupportedCiphers() const {
@@ -434,6 +478,10 @@ std::string SystemConfig::remoteFunctionServerCatalogName() const {
 
 std::string SystemConfig::remoteFunctionServerSerde() const {
   return optionalProperty(kRemoteFunctionServerSerde).value();
+}
+
+std::string SystemConfig::remoteFunctionServerRestURL() const {
+  return optionalProperty(kRemoteFunctionServerRestURL).value();
 }
 
 int32_t SystemConfig::maxDriversPerTask() const {
@@ -570,6 +618,11 @@ double SystemConfig::workerOverloadedThresholdNumQueuedDriversHwMultiplier()
 
 uint32_t SystemConfig::workerOverloadedCooldownPeriodSec() const {
   return optionalProperty<uint32_t>(kWorkerOverloadedCooldownPeriodSec).value();
+}
+
+uint64_t SystemConfig::workerOverloadedSecondsToDetachWorker() const {
+  return optionalProperty<uint64_t>(kWorkerOverloadedSecondsToDetachWorker)
+      .value();
 }
 
 bool SystemConfig::workerOverloadedTaskQueuingEnabled() const {
@@ -860,6 +913,24 @@ bool SystemConfig::httpClientHttp2Enabled() const {
   return optionalProperty<bool>(kHttpClientHttp2Enabled).value();
 }
 
+uint32_t SystemConfig::httpClientHttp2MaxStreamsPerConnection() const {
+  return optionalProperty<uint32_t>(kHttpClientHttp2MaxStreamsPerConnection)
+      .value();
+}
+
+uint32_t SystemConfig::httpClientHttp2InitialStreamWindow() const {
+  return optionalProperty<uint32_t>(kHttpClientHttp2InitialStreamWindow)
+      .value();
+}
+
+uint32_t SystemConfig::httpClientHttp2StreamWindow() const {
+  return optionalProperty<uint32_t>(kHttpClientHttp2StreamWindow).value();
+}
+
+uint32_t SystemConfig::httpClientHttp2SessionWindow() const {
+  return optionalProperty<uint32_t>(kHttpClientHttp2SessionWindow).value();
+}
+
 std::chrono::duration<double> SystemConfig::exchangeMaxErrorDuration() const {
   return velox::config::toDuration(
       optionalProperty(kExchangeMaxErrorDuration).value());
@@ -885,6 +956,12 @@ bool SystemConfig::exchangeEnableBufferCopy() const {
 
 bool SystemConfig::exchangeImmediateBufferTransfer() const {
   return optionalProperty<bool>(kExchangeImmediateBufferTransfer).value();
+}
+
+uint64_t SystemConfig::exchangeMaxBufferSize() const {
+  return velox::config::toCapacity(
+      optionalProperty(kExchangeMaxBufferSize).value(),
+      velox::config::CapacityUnit::BYTE);
 }
 
 int32_t SystemConfig::taskRunTimeSliceMicros() const {

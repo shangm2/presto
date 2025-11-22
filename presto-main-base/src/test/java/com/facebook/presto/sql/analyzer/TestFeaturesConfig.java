@@ -38,6 +38,8 @@ import static com.facebook.airlift.configuration.testing.ConfigAssertions.assert
 import static com.facebook.airlift.units.DataSize.Unit.GIGABYTE;
 import static com.facebook.airlift.units.DataSize.Unit.KILOBYTE;
 import static com.facebook.airlift.units.DataSize.Unit.MEGABYTE;
+import static com.facebook.presto.spi.security.ViewSecurity.DEFINER;
+import static com.facebook.presto.spi.security.ViewSecurity.INVOKER;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.AggregationPartitioningMergingStrategy.LEGACY;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.AggregationPartitioningMergingStrategy.TOP_DOWN;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.JoinDistributionType.BROADCAST;
@@ -48,8 +50,6 @@ import static com.facebook.presto.sql.analyzer.FeaturesConfig.SPILLER_SPILL_PATH
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.SPILL_ENABLED;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.TaskSpillingStrategy.ORDER_BY_CREATE_TIME;
 import static com.facebook.presto.sql.analyzer.FeaturesConfig.TaskSpillingStrategy.PER_TASK_MEMORY_THRESHOLD;
-import static com.facebook.presto.sql.tree.CreateView.Security.DEFINER;
-import static com.facebook.presto.sql.tree.CreateView.Security.INVOKER;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -59,6 +59,7 @@ public class TestFeaturesConfig
     public void testDefaults()
     {
         assertRecordedDefaults(ConfigAssertions.recordDefaults(FeaturesConfig.class)
+                .setMaxPrefixesCount(100)
                 .setCpuCostWeight(75)
                 .setMemoryCostWeight(10)
                 .setNetworkCostWeight(15)
@@ -188,6 +189,8 @@ public class TestFeaturesConfig
                 .setMaterializedViewPartitionFilteringEnabled(true)
                 .setQueryOptimizationWithMaterializedViewEnabled(false)
                 .setLegacyMaterializedViews(true)
+                .setAllowLegacyMaterializedViewsToggle(false)
+                .setMaterializedViewAllowFullRefreshEnabled(false)
                 .setVerboseRuntimeStatsEnabled(false)
                 .setAggregationIfToFilterRewriteStrategy(AggregationIfToFilterRewriteStrategy.DISABLED)
                 .setAnalyzerType("BUILTIN")
@@ -197,6 +200,7 @@ public class TestFeaturesConfig
                 .setHyperloglogStandardErrorWarningThreshold(0.004)
                 .setPreferMergeJoinForSortedInputs(false)
                 .setPreferSortMergeJoin(false)
+                .setSortedExchangeEnabled(false)
                 .setSegmentedAggregationEnabled(false)
                 .setQueryAnalyzerTimeout(new Duration(3, MINUTES))
                 .setQuickDistinctLimitEnabled(false)
@@ -272,13 +276,15 @@ public class TestFeaturesConfig
                 .setInEqualityJoinPushdownEnabled(false)
                 .setRewriteMinMaxByToTopNEnabled(false)
                 .setPrestoSparkExecutionEnvironment(false)
-                .setMaxSerializableObjectSize(1000));
+                .setMaxSerializableObjectSize(1000)
+                .setUseConnectorProvidedSerializationCodecs(false));
     }
 
     @Test
     public void testExplicitPropertyMappings()
     {
         Map<String, String> properties = new ImmutableMap.Builder<String, String>()
+                .put("max-prefixes-count", "1")
                 .put("cpu-cost-weight", "0.4")
                 .put("memory-cost-weight", "0.3")
                 .put("network-cost-weight", "0.2")
@@ -408,6 +414,8 @@ public class TestFeaturesConfig
                 .put("consider-query-filters-for-materialized-view-partitions", "false")
                 .put("query-optimization-with-materialized-view-enabled", "true")
                 .put("experimental.legacy-materialized-views", "false")
+                .put("experimental.allow-legacy-materialized-views-toggle", "true")
+                .put("materialized-view-allow-full-refresh-enabled", "true")
                 .put("analyzer-type", "CRUX")
                 .put("pre-process-metadata-calls", "true")
                 .put("verbose-runtime-stats-enabled", "true")
@@ -417,6 +425,7 @@ public class TestFeaturesConfig
                 .put("hyperloglog-standard-error-warning-threshold", "0.02")
                 .put("optimizer.prefer-merge-join-for-sorted-inputs", "true")
                 .put("experimental.optimizer.prefer-sort-merge-join", "true")
+                .put("experimental.optimizer.sorted-exchange-enabled", "true")
                 .put("optimizer.segmented-aggregation-enabled", "true")
                 .put("planner.query-analyzer-timeout", "10s")
                 .put("optimizer.quick-distinct-limit-enabled", "true")
@@ -492,9 +501,11 @@ public class TestFeaturesConfig
                 .put("optimizer.utilize-unique-property-in-query-planning", "false")
                 .put("optimizer.add-exchange-below-partial-aggregation-over-group-id", "true")
                 .put("max_serializable_object_size", "50")
+                .put("use-connector-provided-serialization-codecs", "true")
                 .build();
 
         FeaturesConfig expected = new FeaturesConfig()
+                .setMaxPrefixesCount(1)
                 .setCpuCostWeight(0.4)
                 .setMemoryCostWeight(0.3)
                 .setNetworkCostWeight(0.2)
@@ -625,6 +636,8 @@ public class TestFeaturesConfig
                 .setMaterializedViewPartitionFilteringEnabled(false)
                 .setQueryOptimizationWithMaterializedViewEnabled(true)
                 .setLegacyMaterializedViews(false)
+                .setAllowLegacyMaterializedViewsToggle(true)
+                .setMaterializedViewAllowFullRefreshEnabled(true)
                 .setVerboseRuntimeStatsEnabled(true)
                 .setAggregationIfToFilterRewriteStrategy(AggregationIfToFilterRewriteStrategy.FILTER_WITH_IF)
                 .setAnalyzerType("CRUX")
@@ -634,6 +647,7 @@ public class TestFeaturesConfig
                 .setHyperloglogStandardErrorWarningThreshold(0.02)
                 .setPreferMergeJoinForSortedInputs(true)
                 .setPreferSortMergeJoin(true)
+                .setSortedExchangeEnabled(true)
                 .setSegmentedAggregationEnabled(true)
                 .setQueryAnalyzerTimeout(new Duration(10, SECONDS))
                 .setQuickDistinctLimitEnabled(true)
@@ -709,7 +723,8 @@ public class TestFeaturesConfig
                 .setRewriteMinMaxByToTopNEnabled(true)
                 .setInnerJoinPushdownEnabled(true)
                 .setPrestoSparkExecutionEnvironment(true)
-                .setMaxSerializableObjectSize(50);
+                .setMaxSerializableObjectSize(50)
+                .setUseConnectorProvidedSerializationCodecs(true);
         assertFullMapping(properties, expected);
     }
 

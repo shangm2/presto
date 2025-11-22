@@ -209,6 +209,9 @@ class SystemConfig : public ConfigBase {
       "http-server.https.enabled"};
   static constexpr std::string_view kHttpServerHttp2Enabled{
       "http-server.http2.enabled"};
+  /// HTTP/2 server idle timeout in milliseconds (default 60000ms).
+  static constexpr std::string_view kHttpServerIdleTimeoutMs{
+      "http-server.http2.idle-timeout-ms"};
   /// HTTP/2 initial receive window size in bytes (default 1MB).
   static constexpr std::string_view kHttpServerHttp2InitialReceiveWindow{
       "http-server.http2.initial-receive-window"};
@@ -218,11 +221,27 @@ class SystemConfig : public ConfigBase {
   /// HTTP/2 receive session window size in bytes (default 10MB).
   static constexpr std::string_view kHttpServerHttp2ReceiveSessionWindowSize{
       "http-server.http2.receive-session-window-size"};
-
-  /// HTTP server idle timeout in milliseconds
-  static constexpr std::string_view kHttpServerIdleTimeoutMs{
-      "http-server.idle-timeout-ms"};
-
+  /// HTTP/2 maximum concurrent streams per connection (default 100).
+  static constexpr std::string_view kHttpServerHttp2MaxConcurrentStreams{
+      "http-server.http2.max-concurrent-streams"};
+  /// HTTP/2 content compression level (1-9, default 4 for speed).
+  static constexpr std::string_view kHttpServerContentCompressionLevel{
+      "http-server.http2.content-compression-level"};
+  /// HTTP/2 content compression minimum size in bytes (default 3584).
+  static constexpr std::string_view kHttpServerContentCompressionMinimumSize{
+      "http-server.http2.content-compression-minimum-size"};
+  /// Enable content compression (master switch, default true).
+  static constexpr std::string_view kHttpServerEnableContentCompression{
+      "http-server.http2.enable-content-compression"};
+  /// Enable zstd compression (default false).
+  static constexpr std::string_view kHttpServerEnableZstdCompression{
+      "http-server.http2.enable-zstd-compression"};
+  /// Zstd compression level (-5 to 22, default 8).
+  static constexpr std::string_view kHttpServerZstdContentCompressionLevel{
+      "http-server.http2.zstd-content-compression-level"};
+  /// Enable gzip compression (default true).
+  static constexpr std::string_view kHttpServerEnableGzipCompression{
+      "http-server.http2.enable-gzip-compression"};
   /// List of comma separated ciphers the client can use.
   ///
   /// NOTE: the client needs to have at least one cipher shared with server
@@ -353,6 +372,11 @@ class SystemConfig : public ConfigBase {
   /// This is to prevent spiky fluctuation of the overloaded status.
   static constexpr std::string_view kWorkerOverloadedCooldownPeriodSec{
       "worker-overloaded-cooldown-period-sec"};
+  /// The number of seconds the worker needs to be continuously overloaded for
+  /// us to detach the worker from the cluster in an attempt to keep the
+  /// cluster operational. Ignored if set to zero. Default is zero.
+  static constexpr std::string_view kWorkerOverloadedSecondsToDetachWorker{
+      "worker-overloaded-seconds-to-detach-worker"};
   /// If true, the worker starts queuing new tasks when overloaded, and
   /// starts them gradually when it stops being overloaded.
   static constexpr std::string_view kWorkerOverloadedTaskQueuingEnabled{
@@ -657,6 +681,22 @@ class SystemConfig : public ConfigBase {
   static constexpr std::string_view kHttpClientHttp2Enabled{
       "http-client.http2-enabled"};
 
+  /// Maximum concurrent streams per HTTP/2 connection
+  static constexpr std::string_view kHttpClientHttp2MaxStreamsPerConnection{
+      "http-client.http2.max-streams-per-connection"};
+
+  /// HTTP/2 initial stream window size in bytes.
+  static constexpr std::string_view kHttpClientHttp2InitialStreamWindow{
+      "http-client.http2.initial-stream-window"};
+
+  /// HTTP/2 stream window size in bytes.
+  static constexpr std::string_view kHttpClientHttp2StreamWindow{
+      "http-client.http2.stream-window"};
+
+  /// HTTP/2 session window size in bytes.
+  static constexpr std::string_view kHttpClientHttp2SessionWindow{
+      "http-client.http2.session-window"};
+
   static constexpr std::string_view kExchangeMaxErrorDuration{
       "exchange.max-error-duration"};
 
@@ -701,6 +741,11 @@ class SystemConfig : public ConfigBase {
       kExchangeHttpClientNumCpuThreadsHwMultiplier{
           "exchange.http-client.num-cpu-threads-hw-multiplier"};
 
+  /// Maximum size in bytes to accumulate in ExchangeQueue. Enforced
+  /// approximately, not strictly.
+  static constexpr std::string_view kExchangeMaxBufferSize{
+      "exchange.max-buffer-size"};
+
   /// The maximum timeslice for a task on thread if there are threads queued.
   static constexpr std::string_view kTaskRunTimeSliceMicros{
       "task-run-timeslice-micros"};
@@ -722,6 +767,10 @@ class SystemConfig : public ConfigBase {
   /// UDS (unix domain socket) path used by the remote function thrift server.
   static constexpr std::string_view kRemoteFunctionServerThriftUdsPath{
       "remote-function-server.thrift.uds-path"};
+
+  /// HTTP URL used by the remote function rest server.
+  static constexpr std::string_view kRemoteFunctionServerRestURL{
+      "remote-function-server.rest.url"};
 
   /// Path where json files containing signatures for remote functions can be
   /// found.
@@ -820,13 +869,27 @@ class SystemConfig : public ConfigBase {
 
   bool httpServerHttp2Enabled() const;
 
+  uint32_t httpServerIdleTimeoutMs() const;
+
   uint32_t httpServerHttp2InitialReceiveWindow() const;
 
   uint32_t httpServerHttp2ReceiveStreamWindowSize() const;
 
   uint32_t httpServerHttp2ReceiveSessionWindowSize() const;
 
-  uint32_t httpServerIdleTimeoutMs() const;
+  uint32_t httpServerHttp2MaxConcurrentStreams() const;
+
+  uint32_t httpServerContentCompressionLevel() const;
+
+  uint32_t httpServerContentCompressionMinimumSize() const;
+
+  bool httpServerEnableContentCompression() const;
+
+  bool httpServerEnableZstdCompression() const;
+
+  uint32_t httpServerZstdContentCompressionLevel() const;
+
+  bool httpServerEnableGzipCompression() const;
 
   /// A list of ciphers (comma separated) that are supported by
   /// server and client. Note Java and folly::SSLContext use different names to
@@ -869,6 +932,8 @@ class SystemConfig : public ConfigBase {
   std::string remoteFunctionServerCatalogName() const;
 
   std::string remoteFunctionServerSerde() const;
+
+  std::string remoteFunctionServerRestURL() const;
 
   int32_t maxDriversPerTask() const;
 
@@ -931,6 +996,8 @@ class SystemConfig : public ConfigBase {
   double workerOverloadedThresholdNumQueuedDriversHwMultiplier() const;
 
   uint32_t workerOverloadedCooldownPeriodSec() const;
+
+  uint64_t workerOverloadedSecondsToDetachWorker() const;
 
   bool workerOverloadedTaskQueuingEnabled() const;
 
@@ -1042,6 +1109,14 @@ class SystemConfig : public ConfigBase {
 
   bool httpClientHttp2Enabled() const;
 
+  uint32_t httpClientHttp2MaxStreamsPerConnection() const;
+
+  uint32_t httpClientHttp2InitialStreamWindow() const;
+
+  uint32_t httpClientHttp2StreamWindow() const;
+
+  uint32_t httpClientHttp2SessionWindow() const;
+
   std::chrono::duration<double> exchangeMaxErrorDuration() const;
 
   std::chrono::duration<double> exchangeRequestTimeoutMs() const;
@@ -1053,6 +1128,8 @@ class SystemConfig : public ConfigBase {
   bool exchangeEnableBufferCopy() const;
 
   bool exchangeImmediateBufferTransfer() const;
+
+  uint64_t exchangeMaxBufferSize() const;
 
   int32_t taskRunTimeSliceMicros() const;
 

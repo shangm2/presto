@@ -32,6 +32,7 @@ import com.facebook.presto.spi.plan.IntersectNode;
 import com.facebook.presto.spi.plan.JoinNode;
 import com.facebook.presto.spi.plan.LimitNode;
 import com.facebook.presto.spi.plan.MarkDistinctNode;
+import com.facebook.presto.spi.plan.MaterializedViewScanNode;
 import com.facebook.presto.spi.plan.MergeJoinNode;
 import com.facebook.presto.spi.plan.MetadataDeleteNode;
 import com.facebook.presto.spi.plan.OutputNode;
@@ -57,6 +58,7 @@ import com.facebook.presto.sql.planner.VariablesExtractor;
 import com.facebook.presto.sql.planner.optimizations.WindowNodeUtil;
 import com.facebook.presto.sql.planner.plan.ApplyNode;
 import com.facebook.presto.sql.planner.plan.AssignUniqueId;
+import com.facebook.presto.sql.planner.plan.CallDistributedProcedureNode;
 import com.facebook.presto.sql.planner.plan.EnforceSingleRowNode;
 import com.facebook.presto.sql.planner.plan.ExchangeNode;
 import com.facebook.presto.sql.planner.plan.ExplainAnalyzeNode;
@@ -368,6 +370,47 @@ public final class ValidateDependenciesChecker
         }
 
         @Override
+        public Void visitMaterializedViewScan(MaterializedViewScanNode node, Set<VariableReferenceExpression> boundVariables)
+        {
+            PlanNode dataTablePlan = node.getSources().get(0);
+            PlanNode viewQueryPlan = node.getSources().get(1);
+
+            dataTablePlan.accept(this, boundVariables);
+            viewQueryPlan.accept(this, boundVariables);
+
+            Set<VariableReferenceExpression> dataTableOutputs = ImmutableSet.copyOf(dataTablePlan.getOutputVariables());
+            Set<VariableReferenceExpression> viewQueryOutputs = ImmutableSet.copyOf(viewQueryPlan.getOutputVariables());
+
+            for (VariableReferenceExpression outputVariable : node.getOutputVariables()) {
+                VariableReferenceExpression dataTableVariable = node.getDataTableMappings().get(outputVariable);
+                checkArgument(
+                        dataTableVariable != null,
+                        "Output variable %s has no mapping in dataTableMappings",
+                        outputVariable);
+                checkArgument(
+                        dataTableOutputs.contains(dataTableVariable),
+                        "Data table mapping variable %s for output %s not in data table plan output (%s)",
+                        dataTableVariable,
+                        outputVariable,
+                        dataTableOutputs);
+
+                VariableReferenceExpression viewQueryVariable = node.getViewQueryMappings().get(outputVariable);
+                checkArgument(
+                        viewQueryVariable != null,
+                        "Output variable %s has no mapping in viewQueryMappings",
+                        outputVariable);
+                checkArgument(
+                        viewQueryOutputs.contains(viewQueryVariable),
+                        "View query mapping variable %s for output %s not in view query plan output (%s)",
+                        viewQueryVariable,
+                        outputVariable,
+                        viewQueryOutputs);
+            }
+
+            return null;
+        }
+
+        @Override
         public Void visitJoin(JoinNode node, Set<VariableReferenceExpression> boundVariables)
         {
             node.getLeft().accept(this, boundVariables);
@@ -591,6 +634,15 @@ public final class ValidateDependenciesChecker
                     node.getOutputVariables(),
                     node.getPartitioningScheme().getOutputLayout(),
                     "EXCHANGE must provide all of the necessary symbols for partition function");
+
+            return null;
+        }
+
+        @Override
+        public Void visitCallDistributedProcedure(CallDistributedProcedureNode node, Set<VariableReferenceExpression> boundVariables)
+        {
+            PlanNode source = node.getSource();
+            source.accept(this, boundVariables); // visit child
 
             return null;
         }

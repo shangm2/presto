@@ -63,6 +63,7 @@
 #include "velox/dwio/parquet/RegisterParquetWriter.h"
 #include "velox/dwio/text/RegisterTextWriter.h"
 #include "velox/exec/OutputBufferManager.h"
+#include "velox/exec/TraceUtil.h"
 #include "velox/functions/prestosql/aggregates/RegisterAggregateFunctions.h"
 #include "velox/functions/prestosql/registration/RegistrationFunctions.h"
 #include "velox/functions/prestosql/window/WindowFunctionsRegistration.h"
@@ -437,6 +438,7 @@ void PrestoServer::run() {
   registerRemoteFunctions();
   registerVectorSerdes();
   registerPrestoPlanNodeSerDe();
+  registerTraceNodeFactories();
   registerDynamicFunctions();
 
   facebook::velox::exec::ExchangeSource::registerFactory(
@@ -1243,7 +1245,7 @@ std::vector<std::string> PrestoServer::registerVeloxConnectors(
   if (numConnectorCpuThreads > 0) {
     connectorCpuExecutor_ = std::make_unique<folly::CPUThreadPoolExecutor>(
         numConnectorCpuThreads,
-        std::make_shared<folly::NamedThreadFactory>("Connector"));
+        std::make_shared<folly::NamedThreadFactory>("ConnectorCPU"));
 
     PRESTO_STARTUP_LOG(INFO)
         << "Connector CPU executor has " << connectorCpuExecutor_->numThreads()
@@ -1257,7 +1259,7 @@ std::vector<std::string> PrestoServer::registerVeloxConnectors(
   if (numConnectorIoThreads > 0) {
     connectorIoExecutor_ = std::make_unique<folly::IOThreadPoolExecutor>(
         numConnectorIoThreads,
-        std::make_shared<folly::NamedThreadFactory>("Connector"));
+        std::make_shared<folly::NamedThreadFactory>("ConnectorIO"));
 
     PRESTO_STARTUP_LOG(INFO)
         << "Connector IO executor has " << connectorIoExecutor_->numThreads()
@@ -1389,11 +1391,12 @@ void PrestoServer::registerRemoteFunctions() {
           << catalogName << "' catalog.";
     } else {
       VELOX_FAIL(
-          "To register remote functions using a json file path you need to "
-          "specify the remote server location using '{}', '{}' or '{}'.",
+          "To register remote functions you need to specify the remote server "
+          "location using '{}', '{}' or '{}' or {}.",
           SystemConfig::kRemoteFunctionServerThriftAddress,
           SystemConfig::kRemoteFunctionServerThriftPort,
-          SystemConfig::kRemoteFunctionServerThriftUdsPath);
+          SystemConfig::kRemoteFunctionServerThriftUdsPath,
+          SystemConfig::kRemoteFunctionServerRestURL);
     }
   }
 #endif
@@ -1804,5 +1807,30 @@ void PrestoServer::reportNodeStats(proxygen::ResponseHandler* downstream) {
   nodeStats.nodeState = convertNodeState(this->nodeState());
 
   http::sendOkResponse(downstream, json(nodeStats));
+}
+
+void PrestoServer::registerTraceNodeFactories() {
+  // Register trace node factory for PartitionAndSerialize operator
+  velox::exec::trace::registerTraceNodeFactory(
+      "PartitionAndSerialize",
+      [](const velox::core::PlanNode* traceNode,
+         const velox::core::PlanNodeId& nodeId) -> velox::core::PlanNodePtr {
+        if (const auto* partitionAndSerializeNode =
+                dynamic_cast<const operators::PartitionAndSerializeNode*>(
+                    traceNode)) {
+          return std::make_shared<operators::PartitionAndSerializeNode>(
+              nodeId,
+              partitionAndSerializeNode->keys(),
+              partitionAndSerializeNode->numPartitions(),
+              partitionAndSerializeNode->serializedRowType(),
+              std::make_shared<velox::exec::trace::DummySourceNode>(
+                  partitionAndSerializeNode->sources().front()->outputType()),
+              partitionAndSerializeNode->isReplicateNullsAndAny(),
+              partitionAndSerializeNode->partitionFunctionFactory(),
+              partitionAndSerializeNode->sortingOrders(),
+              partitionAndSerializeNode->sortingKeys());
+        }
+        return nullptr;
+      });
 }
 } // namespace facebook::presto
