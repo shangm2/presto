@@ -99,7 +99,7 @@ public class GcStatusMonitor
     {
         if (GC_NOTIFICATION_TYPE.equals(notification.getType())) {
             GarbageCollectionNotificationInfo info = new GarbageCollectionNotificationInfo((CompositeData) notification.getUserData());
-            if (info.isMajorGc()) {
+            if (info.isFullGcCycle()) {
                 onMajorGc();
             }
         }
