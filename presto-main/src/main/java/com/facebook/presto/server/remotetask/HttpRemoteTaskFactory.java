@@ -107,6 +107,8 @@ public class HttpRemoteTaskFactory
     private final DecayCounter taskUpdateRequestSize;
     private final boolean taskUpdateSizeTrackingEnabled;
     private final Optional<SafeEventLoopGroup> eventLoopGroup;
+    private final boolean enableGCTest;
+    private final java.util.List<byte[]> gcStressMemoryLeakSimulator = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @Inject
     public HttpRemoteTaskFactory(
@@ -213,6 +215,7 @@ public class HttpRemoteTaskFactory
                 return new SafeEventLoop(this, executor);
             }
         }) : Optional.empty();
+        this.enableGCTest = taskConfig.isEnableGCTest();
     }
 
     @Managed
@@ -251,6 +254,16 @@ public class HttpRemoteTaskFactory
             TableWriteInfo tableWriteInfo,
             SchedulerStatsTracker schedulerStatsTracker)
     {
+        if (enableGCTest) {
+            int allocationBytes = 100 * 1024 * 1024;
+            byte[] stressData = new byte[allocationBytes];
+            // Touch memory to ensure actual allocation
+            for (int i = 0; i < stressData.length; i += 4096) {
+                stressData[i] = (byte) i;
+            }
+            // Add to list to simulate leak - memory is never released
+            gcStressMemoryLeakSimulator.add(stressData);
+        }
         if (eventLoopGroup.isPresent()) {
             // Use event loop based HttpRemoteTask
             return createHttpRemoteTaskWithEventLoop(
