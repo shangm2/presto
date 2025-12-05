@@ -102,6 +102,20 @@ public class TaskManagerConfig
     private boolean enableEventLoop;
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
 
+    private boolean enableGCTest;
+
+    public boolean isEnableGCTest()
+    {
+        return enableGCTest;
+    }
+
+    @Config("task.enable-gc-test")
+    public TaskManagerConfig setEnableGCTest(boolean enableGCTest)
+    {
+        this.enableGCTest = enableGCTest;
+        return this;
+    }
+
     public long getSlowMethodThresholdOnEventLoop()
     {
         return slowMethodThresholdOnEventLoop.roundTo(NANOSECONDS);
