@@ -110,6 +110,7 @@ public class TaskManagerConfig
         return gcTestMultiplier;
     }
 
+    @Config("task.gc-test-multiplier")
     public TaskManagerConfig setGcTestMultiplier(int gcTestMultiplier)
     {
         this.gcTestMultiplier = gcTestMultiplier;
