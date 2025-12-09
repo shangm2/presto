@@ -108,6 +108,7 @@ public class HttpRemoteTaskFactory
     private final boolean taskUpdateSizeTrackingEnabled;
     private final Optional<SafeEventLoopGroup> eventLoopGroup;
     private final boolean enableGCTest;
+    private final int gcTestMultiplier;
     private final java.util.List<byte[]> gcStressMemoryLeakSimulator = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     @Inject
@@ -216,6 +217,7 @@ public class HttpRemoteTaskFactory
             }
         }) : Optional.empty();
         this.enableGCTest = taskConfig.isEnableGCTest();
+        this.gcTestMultiplier = taskConfig.getGcTestMultiplier();
     }
 
     @Managed
@@ -255,7 +257,7 @@ public class HttpRemoteTaskFactory
             SchedulerStatsTracker schedulerStatsTracker)
     {
         if (enableGCTest) {
-            int allocationBytes = 100 * 1024 * 1024;
+            int allocationBytes = this.gcTestMultiplier * 1024 * 1024;
             byte[] stressData = new byte[allocationBytes];
             // Touch memory to ensure actual allocation
             for (int i = 0; i < stressData.length; i += 4096) {

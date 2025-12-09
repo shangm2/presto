@@ -103,6 +103,18 @@ public class TaskManagerConfig
     private Duration slowMethodThresholdOnEventLoop = new Duration(0, SECONDS);
 
     private boolean enableGCTest;
+    private int gcTestMultiplier = 100;
+
+    public int getGcTestMultiplier()
+    {
+        return gcTestMultiplier;
+    }
+
+    public TaskManagerConfig setGcTestMultiplier(int gcTestMultiplier)
+    {
+        this.gcTestMultiplier = gcTestMultiplier;
+        return this;
+    }
 
     public boolean isEnableGCTest()
     {
