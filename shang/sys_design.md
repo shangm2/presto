@@ -1,3 +1,7 @@
+1. design a calendar like apple calendar where user could create events. It should support day/month/year view. Follow-up: Multi-device support, how do you sync status between multiple device (say device A create a new event, how would device B get it)
+
+---------------------------------------
+
 1. 
 
 题目有些长：
