@@ -1,3 +1,42 @@
+TaskUpdateRequest
+├── @ThriftField(1) SessionRepresentation session          → SessionRepresentationCodec
+├── @ThriftField(2) Map<String, String> extraCredentials   → MapCodec<String, String> (primitives)
+├── @ThriftField(3) Optional<byte[]> fragment              → OptionalCodec<byte[]> (primitive)
+├── @ThriftField(4) List<TaskSource> sources               → ListCodec<TaskSource>
+│                                                                └── TaskSourceCodec
+│                                                                      ├── @ThriftField(1) PlanNodeId planNodeId
+│                                                                      │                     └── PlanNodeIdCodec
+│                                                                      ├── @ThriftField(2) Set<ScheduledSplit> splits
+│                                                                      │                     └── SetCodec<ScheduledSplit>
+│                                                                      │                           └── ScheduledSplitCodec
+│                                                                      │                                 ├── @ThriftField(1) long sequenceId (primitive)
+│                                                                      │                                 ├── @ThriftField(2) PlanNodeId planNodeId
+│                                                                      │                                 │                     └── PlanNodeIdCodec
+│                                                                      │                                 └── @ThriftField(3) Split split
+│                                                                      │                                       └── SplitCodec
+│                                                                      │                                             ├── @ThriftField(1) ConnectorId connectorId
+│                                                                      │                                             │                     └── ConnectorIdCodec
+│                                                                      │                                             ├── @ThriftField(2) ConnectorTransactionHandle transactionHandle
+│                                                                      │                                             │                     └── ConnectorTransactionHandleCodec
+│                                                                      │                                             ├── @ThriftField(3) ConnectorSplit connectorSplit
+│                                                                      │                                             │                     └── ConnectorSplitCodec (polymorphic)
+│                                                                      │                                             ├── @ThriftField(4) Lifespan lifespan
+│                                                                      │                                             │                     └── LifespanCodec
+│                                                                      │                                             └── @ThriftField(5) SplitContext splitContext
+│                                                                      │                                                                   └── SplitContextCodec
+│                                                                      ├── @ThriftField(3) Set<Lifespan> noMoreSplitsForLifespan
+│                                                                      │                     └── SetCodec<Lifespan>
+│                                                                      │                           └── LifespanCodec
+│                                                                      └── @ThriftField(4) boolean noMoreSplits (primitive)
+│
+├── @ThriftField(5) OutputBuffers outputIds                → OutputBuffersCodec
+│                                                                ├── @ThriftField fields...
+│                                                                └── ... (nested types)
+│
+└── @ThriftField(6) Optional<TableWriteInfo> tableWriteInfo → OptionalCodec<TableWriteInfo>
+                                                                   └── TableWriteInfoCodec
+                                                                         └── ... (nested types)
+
 
 getCodec(TaskUpdateRequest.class)
     │
