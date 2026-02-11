@@ -190,7 +190,64 @@
 
     We will continue to build interactive warehouse infrastructure to expand the supported class for Unidash in H2 and onboard new customers and use cases in 2025.
 
+- more result
+    iWH Infra Perf 2025 H2 Summary
 
+    TLDR
+
+    iWH Infra Perf covers KR 3.2 from the Roadmap, and supports KR 3.1 and 3.3 (overall Unidash and Daiquery product-level perf and compliance), and was driven by the Presto and Onyx teams with continuous collaboration along the way.
+
+    Overall iWH Infra Perf goals for Compliant traffic were achieved: 100GB query support (up from 25GB), p95 4.5s backend query perf for Unidash, p90 8.5s backend query perf for Daiquery, and p95 queue time of 0 for Daiquery. All goals were hit, with Daiquery perf goal exceeded.
+
+    iWH Perf was broken down into two top-level components for internal goaling and tracking – Quartz/Onyx and Presto – where all underlying dependencies roll up into those, and so adding these two non-overlapping components up yields the overall iWH Infra Perf latency. Both top-level components achieved their respective underlying goals for Unidash and Daiquery latency.
+
+    Quartz/Onyx Overhead: Achieved goals of p99 3.5s for Unidash and p90 2s for Daiquery.
+
+    Presto: Achieved goals of <4s p90 for Unidash and <4s p85 for Daiquery.
+
+    Details
+
+    Quartz/Onyx
+
+    Quartz/Mica H2 Recap. See the recap post for most Quartz/Onyx perf details. Key improvements included Metrics+Telemetry pipelines, M360 perf wins, Macros rollout, SQL Gen caching, Signals Framework parallelization, and Silica Dimensions optimization. Note that for M360, we originally aligned and worked with Malloy toward potentially solving M360 perf challenges, but pivoted part-way through the half, due to major changes with Malloy. Non-overlapping items follow below.
+
+    Perf Classification for Scuba/ODS. For supporting KR 3.3, the Quartz/Onyx folks added support for Scuba and ODS queries to be part of the Perf Classification system and fully supported as part of the iWH Infra perf program. This was critical for achieving Unidash Compliance for KR 3.3. Both Scuba and ODS achieved SLO attainment over p95 4.5s within a single half, and SLO coverage for Scuba traffic went 0->80% coverage, and ODS 0->97%. (SLO attainment and coverage graph here for reference.)
+
+    Perf Classification for JOIN -> Table count. We addressed a perf classification feedback item from a user post by simplifying perf classification criteria from counting JOINs to counting Tables, and improving SLO attainment and coverage by ~0.25% and 2% (D88973680).
+
+    Dynamic Depri. The Dynamic Depri feature was fully rolled out for Daiquery and ultimately enabled roughly 20% of Daiquery traffic to be prioritized on the iWH priority clusters.
+
+    Agent Onboarding. Datamate traffic was able to be onboarded to iWH priority clusters via the Dynamic Depri feature as well.
+
+    Presto
+
+    NoCost Onboarding. The Presto team rolled out Presto-side improvements to more Presto Interactive clusters beyond the core iWH prioritized clusters to achieve major wins for Bento (75% latency improvement) and scuba_web (>90% latency improvement).
+
+    Core Presto Improvements. The Presto team made numerous improvements that improved Presto latency and reliability, including Shuffle HTTP upgrade, full Prestissimo rollout (H1, H2), Zero copy rollout, Metastore latency wins, and Java garbage collection win.
+
+    Daiquery Onboarding. Onboarding Daiquery to iWH and eliminating queueing was a major win, initially estimated in October to save ~69 employee years annually (and more perf wins landed after that)!
+
+    Compliant Traffic and SLO Coverage for Presto
+
+    Lastly, while there wasn’t a goal around SLO Coverage in 2025 H2 for Presto traffic, it is something we goaled against in 2025 H1, and changes to SLO Coverage are impactful.
+
+    SLO Coverage is just the % of traffic that is “Compliant”, which just means that the traffic adheres to the perf classification criteria that we’ve defined for traffic that can be supported.
+
+    It’s important to note that SLO Coverage depends on user behavior and is therefore not completely within our control.
+
+    That said, here’s the breakdown of SLO Coverage in H2 for Presto traffic.
+
+    Unidash:  ~75% of Presto traffic is Compliant throughout half.
+
+    Daiquery: 56->66% of Presto traffic is Compliant from the beginning to end of the half.
+
+    The two primary changes to Compliant perf criteria for Presto traffic included:
+
+    Bumping ‘bytes read’ from 25GB to 100GB. This was baked into our goals for the half and was a major driver for Daiquery SLO Coverage increase.
+
+    Switching from JOIN count to Table count. This was done in response to user feedback and bumped SLO Coverage about 2%.
+
+    SLO Attainment is now at around 95%, so increases in SLO Coverage are a notable opportunity to continue increasing the number of queries that receive the SLO.
 
 # What is Next
 With Dashboard loads reaching satisfactory levels, our focus expands to data exploratory related requirements. Data Exploratory needs are more challenging due to the exploratory nature. To tackle this need, we kick started a cross collaboration effort (v-team) across Presto, DXI and Saber to make interactive data consumption snappy. Some details for this sync are shared here. Please note that the content of this doc is still work in progress.
